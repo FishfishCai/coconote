@@ -8,7 +8,7 @@ title: welcome
 
 Coconote is a self-hosted markdown notebook. It runs in either of two modes, both configured through one `coconote.yaml`:
 
-- **Desktop app**: a native window with the UI built in. Nothing else to set up.
+- **Desktop app**: a native window that runs the server internally and shows the UI. Nothing else to set up.
 - **Headless server**: backend HTTP/WS only. Edit from any device by pointing a browser at the server URL and entering the `auth` token.
 
 ## coconote.yaml
@@ -28,7 +28,7 @@ url:
 Four top-level fields:
 
 - **port**: the HTTP server port.
-- **auth**: the bearer token. **Required**, and defaults to `coconote` if omitted. Remote browser clients enter it at login. Loopback (`127.0.0.1`) is always exempt, so local desktop clients never present it.
+- **auth**: the bearer token. Defaults to `coconote` if omitted. Remote browser clients enter it at login. Loopback (`127.0.0.1`) is always exempt, so local desktop clients never present it.
 - **root**: local roots, as a `name -> absolute path` mapping (see below).
 - **url**: remote roots, as a list of server URLs (see below).
 
@@ -38,10 +38,10 @@ The file lives in the standard per-user config directory: `~/.config/coconote/` 
 
 ## Roots (local and remote)
 
-A vault is built from roots of two kinds, which coexist:
+A vault (your whole set of notes) is built from roots of two kinds, which coexist:
 
 - **Local root**: one entry under `root:`, a `name -> absolute path` pair whose name you choose. The path must be absolute, and the server refuses to mount these system locations: `/`, `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `/dev`, `/System`, `/Library`. Symlinks are resolved before this check.
-- **Remote root**: one URL under `url:`, pointing at another coconote server. Connecting mounts **all** of that server's roots (its own `root:` mapping) into your vault at once. You don't choose their names, which come from the remote yaml.
+- **Remote root**: one URL under `url:`, pointing at another coconote server you want to read from or sync with. Connecting mounts **all** of that server's roots (its own `root:` mapping) into your vault at once. You don't choose their names, which come from the remote yaml.
 
 Every file then has a logical path of the shape:
 
@@ -49,7 +49,7 @@ Every file then has a logical path of the shape:
 <source URL>/<root name>/<path inside the root>/<filename>
 ```
 
-where `<source URL>` is the server the file lives on: your own server (`http://localhost:<port>`, the `port` from your yaml) for a local root, or the matching `url:` entry for a url-mounted one.
+where `<source URL>` is the server the file lives on: your own server (`http://localhost:<port>`, the `port` from your yaml) for a local root, or the matching `url:` entry for a url-mounted one. For example, `intro.md` inside `papers/2024/` under your local `main` root is `http://localhost:40704/main/papers/2024/intro.md`.
 
 ## Map
 
