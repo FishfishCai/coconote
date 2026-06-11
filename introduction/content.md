@@ -34,6 +34,7 @@ The menu below applies only to files **already included in Coconote** (see above
 **Folder:**
 - **New Markdown**: prompts for a name and creates `<name>.md` in that folder. If a file with that name already exists but is excluded (`coconote: false`, see [[file]]), its `coconote` is flipped to `true` instead of overwriting.
 - **New Folder**: creates a new folder under the folder.
+- **Include in Coconote**: includes every supported file under the folder that is not yet included (see [[file]]).
 - **Rename / Remove / Delete**: apply the same file actions to every page under the folder at once. Rename keeps the folder inside its root (the leading root name is fixed). These appear only on sub-folders, not on a configured root folder (a root is renamed or dropped only via Setting, see [[setting]]).
 
 **`.md` and `.pdf`:**
