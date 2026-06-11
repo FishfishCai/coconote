@@ -31,7 +31,7 @@ It has four top-level fields:
 
 - **port** — the HTTP server port.
 - **auth** — the bearer token. **Required**; defaults to `coconote` if omitted. Remote browser clients enter it at login. Loopback (`127.0.0.1`) is always exempt, so local desktop clients never present it.
-- **root** — local roots, written as a `name → absolute path` mapping (see below).
+- **root** — local roots, written as a `name -> absolute path` mapping (see below).
 - **url** — remote roots, written as a list of server URLs (see below).
 
 `port` and `auth` change only by editing `coconote.yaml` directly — there is no UI for them, and the server must restart for the change to take effect. `root` and `url` can also be managed live from the app — see [[setting]].
@@ -49,7 +49,7 @@ The server checks that directory for a parseable `coconote.yaml` on every boot. 
 
 A vault is assembled from roots, and the two kinds coexist:
 
-- **Local root** — one entry under `root:`: a `name → absolute path` pair whose name you choose. The path must be absolute. For safety the server refuses to mount these system locations: `/`, `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `/dev`, `/System`, `/Library`. Symlinks are resolved before this check.
+- **Local root** — one entry under `root:`: a `name -> absolute path` pair whose name you choose. The path must be absolute. For safety the server refuses to mount these system locations: `/`, `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `/dev`, `/System`, `/Library`. Symlinks are resolved before this check.
 - **Remote root** — one URL under `url:`, pointing at another coconote server. Connecting to it mounts **all** of that server's roots (its own `root:` mapping) into your vault at once; you don't pick their names — they come from the remote yaml.
 
 ### How a file is addressed
@@ -62,8 +62,8 @@ Every file has a logical path of this shape:
 
 `<source URL>` names the server the file lives on:
 
-- a **local** root → your own server, `http://localhost:<port>` (the `port` from your yaml).
-- a **url-mounted** root → the matching entry in `url:`.
+- a **local** root resolves to your own server, `http://localhost:<port>` (the `port` from your yaml).
+- a **url-mounted** root resolves to the matching entry in `url:`.
 
 ## Map
 
