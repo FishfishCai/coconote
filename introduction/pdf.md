@@ -4,7 +4,7 @@ coconote: true
 title: pdf
 ---
 
-## PDF reader
+# PDF
 
 The PDF reader supports the following:
 
