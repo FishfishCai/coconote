@@ -1,0 +1,27 @@
+{
+  "name": "coconote-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP stdio server that lets AI agents read and edit a Coconote vault",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --loader:.md=text --external:bufferutil --external:utf-8-validate \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=dist/index.js && esbuild node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs --bundle --platform=node --target=node18 --format=esm --outfile=dist/pdf.worker.mjs",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "fast-diff": "^1.3.0",
+    "lib0": "^0.2.117",
+    "pdfjs-dist": "^4.10.38",
+    "ws": "^8.18.0",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.31",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}
