@@ -8,3 +8,10 @@ export const fsEndpoint = "/.file";
 export function fileUrl(path: string): string {
   return `${fsEndpoint}/${encodePathSegments(path)}`;
 }
+
+/** Absolute `/.file` base for an HttpSpacePrimitives client and for
+ *  opening raw asset URLs: the document base (trailing slashes trimmed)
+ *  plus the fs endpoint. */
+export function absFsBase(): string {
+  return document.baseURI.replace(/\/*$/, "") + fsEndpoint;
+}

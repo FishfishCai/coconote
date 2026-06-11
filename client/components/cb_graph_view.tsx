@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
 import type { PageMeta } from "coconote/type/page";
+import { safeJsonParse } from "../lib/json.ts";
 import { useLocalStorageState } from "../lib/dom_hooks.ts";
 import { toPath } from "../lib/ref.ts";
 import { pageMatchesQuery } from "../lib/page_match.ts";
@@ -54,14 +55,10 @@ const DEFAULT_CONTROLS: GraphControls = {
 // `undefined` from previously-persisted state.
 const controlsCodec = {
   parse: (raw: string): GraphControls | undefined => {
-    try {
-      const v = JSON.parse(raw);
-      return v && typeof v === "object"
-        ? { ...DEFAULT_CONTROLS, ...v }
-        : undefined;
-    } catch {
-      return undefined;
-    }
+    const v = safeJsonParse<Partial<GraphControls>>(raw);
+    return v && typeof v === "object"
+      ? { ...DEFAULT_CONTROLS, ...v }
+      : undefined;
   },
   stringify: (c: GraphControls) => JSON.stringify(c),
 };

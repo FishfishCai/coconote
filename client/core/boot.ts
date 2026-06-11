@@ -9,6 +9,7 @@ import { authedFetch, setAuthToken } from "../lib/authed_fetch.ts";
 import { Client } from "./client.ts";
 import { Config } from "./config.ts";
 import type { BootConfig } from "../types/ui.ts";
+import { USER_PREFS_KEY } from "../lib/user_prefs.ts";
 
 const TOKEN_KEY = "coconote.authToken";
 
@@ -69,7 +70,7 @@ safeRun(async () => {
   // UI prefs live entirely in localStorage (the server doesn't ship a
   // `ui` block); Settings edits persist there without touching the yaml.
   try {
-    const raw = localStorage.getItem("coconote.userPrefs");
+    const raw = localStorage.getItem(USER_PREFS_KEY);
     if (raw) config.set("ui", JSON.parse(raw));
   } catch (_) { /* malformed — ignore */ }
 

@@ -2,6 +2,8 @@
 // Defaults merged with localStorage prefs at lookup time, so Settings
 // edits take effect without reloading. setting.md §Shortcut.
 
+import { readUserPrefs } from "./user_prefs.ts";
+
 export const SHORTCUT_NAMES = [
   "modeSwitch",
   "historyOpen",
@@ -78,15 +80,10 @@ function formatCombo(c: Combo): string {
 }
 
 function readUserShortcuts(): Partial<Record<ShortcutName, string>> {
-  try {
-    const raw = localStorage.getItem("coconote.userPrefs");
-    if (!raw) return {};
-    const prefs = JSON.parse(raw);
-    const s = prefs?.shortcuts;
-    return s && typeof s === "object" ? s : {};
-  } catch {
-    return {};
-  }
+  const s = readUserPrefs().shortcuts;
+  return s && typeof s === "object"
+    ? s as Partial<Record<ShortcutName, string>>
+    : {};
 }
 
 export function getShortcut(name: ShortcutName): string {

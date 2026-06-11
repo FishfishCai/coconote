@@ -25,7 +25,8 @@ import {
   type SpecialRoute,
 } from "./navigator.ts";
 import { Space } from "./space.ts";
-import { fsEndpoint } from "../spaces/constants.ts";
+import { absFsBase } from "../spaces/constants.ts";
+import { writeUserPrefs } from "../lib/user_prefs.ts";
 import { HttpSpacePrimitives } from "../spaces/http_space_primitives.ts";
 import { wireModuleLifecycle } from "./lifecycle.ts";
 import { getAuthToken } from "../lib/authed_fetch.ts";
@@ -147,7 +148,7 @@ export class Client implements ClientContext {
 
   initSpace() {
     this.httpSpacePrimitives = new HttpSpacePrimitives(
-      document.baseURI.replace(/\/*$/, "") + fsEndpoint,
+      absFsBase(),
       (message, actionOrRedirectHeader) => {
         alert(message);
         if (actionOrRedirectHeader === "reload") {
@@ -226,7 +227,7 @@ export class Client implements ClientContext {
     this.config.set(["ui", key], value);
     try {
       const prefs = { ...(this.config.get("ui") ?? {}) };
-      localStorage.setItem("coconote.userPrefs", JSON.stringify(prefs));
+      writeUserPrefs(prefs);
     } catch (_) { /* quota / disabled — ignore */ }
   }
 

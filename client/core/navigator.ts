@@ -15,7 +15,7 @@ import type { ClientContext as Client } from "./context.ts";
 import type { EditorView } from "@codemirror/view";
 import { detachCollab } from "../collab/attach_to_editor.ts";
 import { resolveWikiLinkPath } from "../markdown/wiki_link_resolver.ts";
-import { fsEndpoint } from "../spaces/constants.ts";
+import { absFsBase } from "../spaces/constants.ts";
 import { errMessage } from "../lib/constants.ts";
 
 // `path === ""` represents the root URL (`/`) — the Settings page.
@@ -133,7 +133,7 @@ async function doLoad(
   if (ref.path && !isMarkdownPath(ref.path) && getPathExtension(ref.path) !== "pdf") {
     openUrl(
       client,
-      `${document.baseURI.replace(/\/*$/, "") + fsEndpoint}/${ref.path}`,
+      `${absFsBase()}/${ref.path}`,
     );
     return;
   }

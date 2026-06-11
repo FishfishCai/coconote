@@ -4,6 +4,8 @@
 // is accepted only when GET /.health returns {app:"coconote"}.
 
 
+import { safeJsonParse } from "./json.ts";
+
 export type RemoteVault = {
   /** Stable client-side id; used as map key. */
   id: string;
@@ -18,14 +20,9 @@ export type RemoteVault = {
 const STORAGE_KEY = "coconote.remoteVaults";
 
 export function listRemoteVaults(): RemoteVault[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const v = JSON.parse(raw);
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const v = raw ? safeJsonParse(raw) : undefined;
+  return Array.isArray(v) ? v : [];
 }
 
 export function saveRemoteVaults(list: RemoteVault[]): void {
