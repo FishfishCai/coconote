@@ -9,15 +9,15 @@ title: pdf
 The PDF reader supports the following:
 
 - Continuous scrolling (mouse wheel / trackpad).
-- Browser-level zoom (`Cmd / Ctrl + +/-`).
-- Selecting text pops up a colour picker; clicking a colour saves the selection as a highlight.
-- Right-clicking a highlight pops up a menu:
-    - **anchor / rename anchor**: gives the highlight a name (or renames it if already named). Once named, the highlight becomes a jumpable target via wikilinks of the form `[[paper.pdf%<name>]]`; see [[wikilink]].
-    - **add / edit comment**: attaches a comment to this highlight (or edits the existing one); shown on hover.
-    - **change colour**: switches the highlight colour; choose from 5 (yellow / green / blue / pink / orange).
-    - **remove**: deletes the highlight, along with its anchor and comment.
+- Zoom (`Cmd / Ctrl + +/-`), using the host window's zoom.
+- Select text, then click a colour to save it as a highlight.
+- Right-clicking a highlight opens a menu:
+    - **anchor / rename anchor**: names the highlight (or renames it). A named highlight becomes a jump target written `[[paper.pdf%<name>]]`, where `%` separates the file from the anchor name (see [[wikilink]]).
+    - **add / edit comment**: adds or edits a comment, shown on hover.
+    - **change colour**: changes the highlight colour (yellow, green, blue, pink, or orange).
+    - **remove**: deletes the highlight along with its anchor and comment.
 
-All PDF metadata and annotations (metadata, highlights, anchors, comments) live in one sidecar file **`.<name>.json`** (basename without the `.pdf` extension; see [[file]]), structured as:
+All of a PDF's data lives in one sidecar **`.<name>.json`** beside it (so `paper.pdf` pairs with `.paper.json`): the four common fields (see [[file]]) plus highlights, anchors, and comments. Its shape:
 
 ```jsonc
 {
@@ -44,14 +44,14 @@ Shape of each highlight:
   "id": "...",            // highlight uuid
   "color": "yellow",      // yellow | green | blue | pink | orange
   "page": 3,              // page number (1-based)
-  "rects": [...],         // array of rectangular regions (in-page normalized coords)
+  "rects": [...],         // rectangles as page fractions (0 to 1, from the top-left)
   "text": "..."           // text snapshot at selection time
 }
 ```
 
 ### anchors
 
-Naming a highlight via the right-click menu writes one anchor row, mapping a readable name to the highlight id; named highlights serve as jumpable targets, see [[wikilink]].
+Naming a highlight writes an anchor entry that maps a readable name to the highlight id:
 
 ```json
 { "name": "fig3", "highlightId": "..." }
@@ -67,4 +67,4 @@ A comment attached to a highlight:
 
 ## Metadata panel
 
-While the PDF viewer is open, **`Cmd / Ctrl + Shift + M`** opens a floating panel that exposes the sidecar's four metadata fields — **id**, **coconote**, **title**, **tag** — for direct editing. Changes are written back to `.<name>.json` on **Save**; **Cancel** closes the panel without writing.
+While the PDF reader is open, **`Cmd / Ctrl + Shift + M`** opens a floating panel for editing the four common fields (`id`, `coconote`, `title`, `tag`, see [[file]]). **Save** writes them back to the sidecar. **Cancel** closes the panel without writing.
