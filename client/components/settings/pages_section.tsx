@@ -4,6 +4,8 @@ import { encodePageURI, toPath } from "../../lib/ref.ts";
 import { getConfig, patchConfig } from "../../lib/config_api.ts";
 import { errMessage } from "../../lib/constants.ts";
 import { useEffect, useState } from "preact/hooks";
+import { InlineConfirm } from "./inline_confirm.tsx";
+import { EmptyState } from "../empty_state.tsx";
 
 type Root = { name: string; path: string };
 
@@ -183,7 +185,7 @@ export function PagesSection(props: { client: Client }) {
       )}
       <div className="coconote-pages-list">
         {displayRoots.length === 0 && (
-          <p className="coconote-settings-hint">No roots configured.</p>
+          <EmptyState>No roots configured.</EmptyState>
         )}
         {displayRoots.map((root) => {
           const isOpen = openRoots.has(root);
@@ -207,39 +209,15 @@ export function PagesSection(props: { client: Client }) {
                   </span>
                 )}
                 <span className="coconote-pages-root-count">{pages.length}</span>
-                {removingName !== root && rootInfo && (
-                  <button
-                    type="button"
-                    className="coconote-pages-remove"
+                {rootInfo && (
+                  <InlineConfirm
+                    active={removingName === root}
                     title="Remove this root"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setRemovingName(root);
-                    }}
-                  >
-                    −
-                  </button>
-                )}
-                {removingName === root && (
-                  <span
-                    className="coconote-pages-remove-confirm"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span className="coconote-pages-remove-prompt">Remove?</span>
-                    <button
-                      type="button"
-                      className="danger"
-                      onClick={() => onRemove(root)}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRemovingName(null)}
-                    >
-                      No
-                    </button>
-                  </span>
+                    prompt="Remove?"
+                    onRequest={() => setRemovingName(root)}
+                    onConfirm={() => onRemove(root)}
+                    onCancel={() => setRemovingName(null)}
+                  />
                 )}
               </div>
               {isOpen && (

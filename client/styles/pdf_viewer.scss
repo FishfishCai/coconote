@@ -198,23 +198,15 @@
   gap: 0.7rem;
 
   textarea {
+    @include shared.text-input($padding: 0.5rem 0.6rem, $color: inherit, $font: false);
     font: inherit;
     min-height: 5.5em;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 5px;
-    background: var(--background-primary);
-    color: inherit;
     resize: vertical;
     line-height: 1.4;
   }
   .coconote-pdf-anchor-input {
+    @include shared.text-input($padding: 0.5rem 0.6rem, $color: inherit, $font: false);
     font: inherit;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 5px;
-    background: var(--background-primary);
-    color: inherit;
   }
   .coconote-pdf-anchor-error {
     margin-top: -0.3rem;
@@ -227,20 +219,13 @@
     gap: 0.5rem;
   }
   button {
-    padding: 0.35rem 1.1rem;
-    border-radius: 5px;
-    border: 1px solid var(--background-modifier-border);
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
+    @include shared.button-outlined($padding: 0.35rem 1.1rem, $radius: 5px);
     font: inherit;
-    &:hover { background: var(--background-modifier-hover); }
+    &:hover { @include shared.button-hover-bg($hover-bg: var(--background-modifier-hover)); }
   }
   .coconote-pdf-comment-save {
-    background: var(--interactive-accent);
-    border-color: var(--interactive-accent);
-    color: var(--text-on-accent);
-    &:hover { background: var(--interactive-accent-hover); }
+    @include shared.button-accent($color: var(--text-on-accent));
+    &:hover { @include shared.button-accent-hover; }
   }
 }
 

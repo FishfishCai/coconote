@@ -4,19 +4,16 @@
 // sidecar/assets cleanup, New Markdown admission) lives here.
 
 import { authedFetch } from "./authed_fetch.ts";
-import { encodePathSegments } from "./path_url.ts";
+import { mdAssetsPrefix } from "./path_url.ts";
+import { fileUrl } from "../spaces/constants.ts";
 import { refactorLinks } from "./refactor_links.ts";
 import { setFrontmatterKey } from "./frontmatter_edit.ts";
 import { stripFrontmatter } from "../markdown/frontmatter.ts";
 import { loadSidecar, saveSidecar, sidecarPath } from "../pdf/notes_client.ts";
 
-function enc(p: string): string {
-  return encodePathSegments(p);
-}
-
 /** PUT a text body to `/.file/<path>`. Throws on a non-2xx response. */
 export async function putFileBody(path: string, body: string): Promise<void> {
-  const r = await authedFetch(`/.file/${enc(path)}`, {
+  const r = await authedFetch(fileUrl(path), {
     method: "PUT",
     headers: { "Content-Type": "application/octet-stream" },
     body,
@@ -26,7 +23,7 @@ export async function putFileBody(path: string, body: string): Promise<void> {
 
 /** PUT `/.file/<path>?type=dir` — create a folder. */
 export async function putDirectory(path: string): Promise<void> {
-  const r = await authedFetch(`/.file/${enc(path)}?type=dir`, {
+  const r = await authedFetch(`${fileUrl(path)}?type=dir`, {
     method: "PUT",
   });
   if (!r.ok) throw new Error(`PUT ${r.status} ${await r.text()}`);
@@ -36,7 +33,7 @@ export async function putDirectory(path: string): Promise<void> {
  *  its frontmatter `coconote:` flips to false so it drops out of the
  *  index. Mirror of lib/include.ts `includeMarkdown`. */
 export async function removeMarkdownFromIndex(path: string): Promise<void> {
-  const r = await authedFetch(`/.file/${enc(path)}`);
+  const r = await authedFetch(fileUrl(path));
   if (!r.ok) throw new Error(`read ${r.status}`);
   const next = setFrontmatterKey(await r.text(), "coconote", "false");
   await putFileBody(path, next);
@@ -82,7 +79,7 @@ export async function deleteFolder(
   for (const fp of fullPaths) await deletePage(fp);
   // The server only deletes empty dirs; ignore failure when subdirs remain.
   try {
-    await authedFetch(`/.file/${enc(folderPath)}`, { method: "DELETE" });
+    await authedFetch(fileUrl(folderPath), { method: "DELETE" });
   } catch { /* non-empty or already gone */ }
 }
 
@@ -101,8 +98,8 @@ export async function renamePage(
   const isMd = lower.endsWith(".md");
   const isPdf = lower.endsWith(".pdf");
 
-  const oldFsPath = `/.file/${enc(fullPath)}`;
-  const newFsPath = `/.file/${enc(newFullPath)}`;
+  const oldFsPath = fileUrl(fullPath);
+  const newFsPath = fileUrl(newFullPath);
 
   const readRes = await authedFetch(oldFsPath);
   if (!readRes.ok) throw new Error(`read old ${readRes.status}`);
@@ -132,8 +129,8 @@ export async function renamePage(
 
   // Move the PDF sidecar alongside, if any.
   if (isPdf) {
-    const oldSc = `/.file/${enc(sidecarPath(fullPath))}`;
-    const newSc = `/.file/${enc(sidecarPath(newFullPath))}`;
+    const oldSc = fileUrl(sidecarPath(fullPath));
+    const newSc = fileUrl(sidecarPath(newFullPath));
     const r = await authedFetch(oldSc);
     if (r.ok) {
       const data = await r.arrayBuffer();
@@ -172,12 +169,12 @@ export async function deletePage(fullPath: string): Promise<void> {
   const isMd = lower.endsWith(".md");
   const isPdf = lower.endsWith(".pdf");
 
-  const r = await authedFetch(`/.file/${enc(fullPath)}`, {
+  const r = await authedFetch(fileUrl(fullPath), {
     method: "DELETE",
   });
   if (!r.ok) throw new Error(`delete ${r.status}`);
   if (isPdf) {
-    await authedFetch(`/.file/${enc(sidecarPath(fullPath))}`, {
+    await authedFetch(fileUrl(sidecarPath(fullPath)), {
       method: "DELETE",
     }).catch(() => {});
   } else if (isMd) {
@@ -197,7 +194,7 @@ export type CreateMarkdownResult = "created" | "admitted" | "already-included";
 export async function createMarkdownPage(
   target: string,
 ): Promise<CreateMarkdownResult> {
-  const existing = await authedFetch(`/.file/${enc(target)}`);
+  const existing = await authedFetch(fileUrl(target));
   if (!existing.ok) {
     await putFileBody(target, "---\ncoconote: true\n---\n");
     return "created";
@@ -219,13 +216,10 @@ function hasCoconoteTrue(body: string): boolean {
 }
 
 /** `notes/foo.md` → `notes/.foo.assets`. Mirrors orphan.rs naming
- *  (file.md: `<name>` carries no extension). */
+ *  (file.md: `<name>` carries no extension). Same derivation as
+ *  `mdAssetsPrefix`, minus its trailing slash. */
 function assetsDirFor(mdPath: string): string {
-  const slash = mdPath.lastIndexOf("/");
-  const dir = slash >= 0 ? mdPath.slice(0, slash + 1) : "";
-  const base = slash >= 0 ? mdPath.slice(slash + 1) : mdPath;
-  const stem = base.replace(/\.md$/i, "");
-  return `${dir}.${stem}.assets`;
+  return mdAssetsPrefix(mdPath).replace(/\/$/, "");
 }
 
 async function moveAssetsFolder(
@@ -245,17 +239,17 @@ async function moveAssetsFolder(
   const paths = (await listRes.json()) as string[];
   if (paths.length === 0) return;
   for (const oldPath of paths) {
-    const r = await authedFetch(`/.file/${enc(oldPath)}`);
+    const r = await authedFetch(fileUrl(oldPath));
     if (!r.ok) continue;
     const bytes = await r.arrayBuffer();
     const ct = r.headers.get("Content-Type") ?? "application/octet-stream";
     const newPath = newDir + "/" + oldPath.slice(prefix.length);
-    await authedFetch(`/.file/${enc(newPath)}`, {
+    await authedFetch(fileUrl(newPath), {
       method: "PUT",
       headers: { "Content-Type": ct },
       body: bytes,
     }).catch(() => {});
-    await authedFetch(`/.file/${enc(oldPath)}`, {
+    await authedFetch(fileUrl(oldPath), {
       method: "DELETE",
     }).catch(() => {});
   }
@@ -274,9 +268,9 @@ async function deleteAssetsFolder(dir: string): Promise<void> {
   if (!listRes.ok) return;
   const paths = (await listRes.json()) as string[];
   for (const p of paths) {
-    await authedFetch(`/.file/${enc(p)}`, { method: "DELETE" }).catch(() => {});
+    await authedFetch(fileUrl(p), { method: "DELETE" }).catch(() => {});
   }
-  await authedFetch(`/.file/${enc(dir)}`, { method: "DELETE" }).catch(
+  await authedFetch(fileUrl(dir), { method: "DELETE" }).catch(
     () => {},
   );
 }

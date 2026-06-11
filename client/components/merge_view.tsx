@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { errMessage } from "../lib/constants.ts";
 import { merge3 } from "../lib/diff3.ts";
 import type { Chunk } from "../lib/diff3.ts";
+import { ModalActions } from "./modal_actions.tsx";
 import { Modal } from "./modal.tsx";
 
 export type MergeViewProps = {
@@ -191,27 +192,21 @@ export function MergeView(
 
         {err && <p className="coconote-modal-error">{err}</p>}
 
-        <footer className="coconote-modal-actions">
-          <button type="button" onClick={onClose} disabled={!!busy}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="coconote-modal-primary"
-            disabled={!!busy || hasConflictMarkers}
-            onClick={commit}
-            title={hasConflictMarkers
-              ? "Resolve all conflicts (or hand-edit the buffer) first"
-              : direction === "pull"
-              ? "Write the merged result locally AND push it back to the remote"
-              : "Push the merged result to the remote AND overwrite local"}
-          >
-            {busy ??
-              (direction === "pull"
-                ? "Save merged & sync remote"
-                : "Push merged & save local")}
-          </button>
-        </footer>
+        <ModalActions
+          onCancel={onClose}
+          busy={!!busy}
+          onConfirm={commit}
+          disabled={!!busy || hasConflictMarkers}
+          confirmTitle={hasConflictMarkers
+            ? "Resolve all conflicts (or hand-edit the buffer) first"
+            : direction === "pull"
+            ? "Write the merged result locally AND push it back to the remote"
+            : "Push the merged result to the remote AND overwrite local"}
+          confirmLabel={busy ??
+            (direction === "pull"
+              ? "Save merged & sync remote"
+              : "Push merged & save local")}
+        />
       </div>
     </Modal>
   );

@@ -1,6 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import { authedFetch } from "../../lib/authed_fetch.ts";
-import { encodePathSegments } from "../../lib/path_url.ts";
+import { mdAssetsPrefix } from "../../lib/path_url.ts";
+import { fileUrl } from "../../spaces/constants.ts";
 import type { ClientContext as Client } from "../../core/context.ts";
 
 /** file.md: "Images pasted or dropped into the editor are
@@ -15,10 +16,6 @@ export async function handleImagePaste(
 ): Promise<void> {
   const fullPath = client.currentPath();
   if (!fullPath || !fullPath.endsWith(".md")) return;
-  const slash = fullPath.lastIndexOf("/");
-  const dir = slash >= 0 ? fullPath.slice(0, slash + 1) : "";
-  const base = slash >= 0 ? fullPath.slice(slash + 1) : fullPath;
-  const pageStem = base.replace(/\.md$/i, "");
   const ext = pickExt(file.type, file.name);
   // Date-based stems collide when two pastes land in the same
   // millisecond or the same file is dropped twice; append 6 random
@@ -26,10 +23,11 @@ export async function handleImagePaste(
   const rnd = Math.floor(Math.random() * 0x7fffffff).toString(36);
   const assetStem = `pasted-${Date.now().toString(36)}-${rnd}`;
   const name = `${assetStem}${ext}`;
-  const target = `${dir}.${pageStem}.assets/${name}`;
+  // mdAssetsPrefix returns `dir/.<stem>.assets/` (trailing slash).
+  const target = `${mdAssetsPrefix(fullPath)}${name}`;
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const r = await authedFetch(`/.file/${encodePathSegments(target)}`, {
+    const r = await authedFetch(fileUrl(target), {
       method: "PUT",
       headers: { "Content-Type": file.type || "application/octet-stream" },
       body: bytes,

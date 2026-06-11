@@ -4,7 +4,7 @@
 // same merge strategy via lib/sync_core.ts; assets folders are mirrored
 // remote → local for markdown pages.
 
-import { fsEndpoint } from "../spaces/constants.ts";
+import { fileUrl, fsEndpoint } from "../spaces/constants.ts";
 import { authedFetch } from "./authed_fetch.ts";
 import { getRemoteSpaceByLabel, parseRemotePath } from "./remote_index.ts";
 import type { HttpSpacePrimitives } from "../spaces/http_space_primitives.ts";
@@ -12,7 +12,6 @@ import { extractFrontmatter } from "../markdown/frontmatter.ts";
 import { fetchLocalMergeBase } from "./sync_history.ts";
 import { headersToFileMeta } from "./util.ts";
 import {
-  encodePathSegments,
   mdAssetsPrefix,
   pdfSidecarPath,
   stripFirstSegment,
@@ -46,11 +45,9 @@ export type PullOutcome =
   | { kind: "remoteMissing" }
   | { kind: "idMissing" };
 
-const enc = encodePathSegments;
-
 /** True when ANY file occupies `path` locally (admitted or not). */
 async function localPathOccupied(path: string): Promise<boolean> {
-  const r = await authedFetch(`${fsEndpoint}/${enc(path)}`, { method: "HEAD" });
+  const r = await authedFetch(fileUrl(path), { method: "HEAD" });
   return r.ok;
 }
 
@@ -71,7 +68,7 @@ async function writeLocalPullRow(
   bytes: Uint8Array,
 ): Promise<void> {
   const r = await authedFetch(
-    `${fsEndpoint}/${enc(localContentPath)}?save_type=pull`,
+    `${fileUrl(localContentPath)}?save_type=pull`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/octet-stream" },
@@ -82,7 +79,7 @@ async function writeLocalPullRow(
 }
 
 async function writeLocalFile(path: string, bytes: Uint8Array): Promise<void> {
-  const r = await authedFetch(`${fsEndpoint}/${enc(path)}`, {
+  const r = await authedFetch(fileUrl(path), {
     method: "PUT",
     headers: { "Content-Type": "application/octet-stream" },
     body: bytes as BodyInit,
@@ -169,7 +166,7 @@ export async function pullRemoteToLocal(
   }
 
   const localContentPath = isPdf ? pdfSidecarPath(localPath) : localPath;
-  const localResp = await authedFetch(`${fsEndpoint}/${enc(localContentPath)}`);
+  const localResp = await authedFetch(fileUrl(localContentPath));
   if (!localResp.ok) {
     throw new Error(`local read failed: HTTP ${localResp.status}`);
   }

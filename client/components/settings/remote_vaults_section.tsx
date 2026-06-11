@@ -9,6 +9,8 @@ import {
 import { newUuid } from "../../lib/uuid.ts";
 import { getConfig, patchConfig } from "../../lib/config_api.ts";
 import { errMessage } from "../../lib/constants.ts";
+import { InlineConfirm } from "./inline_confirm.tsx";
+import { EmptyState } from "../empty_state.tsx";
 
 // setting.md §Remote: + opens a (URL, optional token) modal. The URL
 // itself round-trips through PATCH /.config (added to coconote.yaml's
@@ -156,7 +158,7 @@ export function RemoteVaultsSection() {
       )}
       <div className="coconote-pages-list">
         {merged.length === 0 && !adding && (
-          <p className="coconote-settings-hint">No remote servers yet.</p>
+          <EmptyState>No remote servers yet.</EmptyState>
         )}
         {merged.map((v) => (
           <div key={v.id} className="coconote-pages-root">
@@ -164,37 +166,14 @@ export function RemoteVaultsSection() {
               <span className="coconote-pages-chevron">▸</span>
               <span className="coconote-pages-root-name">{v.label}</span>
               <span className="coconote-pages-root-path">{v.url}</span>
-              {removingId !== v.id && (
-                <button
-                  type="button"
-                  className="coconote-pages-remove"
-                  title="Remove this remote"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRemovingId(v.id);
-                  }}
-                >
-                  −
-                </button>
-              )}
-              {removingId === v.id && (
-                <span
-                  className="coconote-pages-remove-confirm"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <span className="coconote-pages-remove-prompt">Remove?</span>
-                  <button
-                    type="button"
-                    className="danger"
-                    onClick={() => confirmRemove(v)}
-                  >
-                    Yes
-                  </button>
-                  <button type="button" onClick={() => setRemovingId(null)}>
-                    No
-                  </button>
-                </span>
-              )}
+              <InlineConfirm
+                active={removingId === v.id}
+                title="Remove this remote"
+                prompt="Remove?"
+                onRequest={() => setRemovingId(v.id)}
+                onConfirm={() => confirmRemove(v)}
+                onCancel={() => setRemovingId(null)}
+              />
             </div>
           </div>
         ))}

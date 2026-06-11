@@ -31,6 +31,101 @@ $shell-gutter: max(1.5rem, calc((100% - 56rem) / 2));
   font: inherit;
 }
 
+// ---- Buttons ----------------------------------------------------------------
+// Outlined neutral button (border + transparent/neutral surface + hover).
+// Shared by the Settings add/remove + action buttons, the Sync modal +
+// merge actions, and the PDF comment buttons. Per-site differences
+// (padding / radius / surface / hover tint / :disabled treatment) are
+// arguments so each call site stays byte-equivalent. The :hover and
+// :disabled selectors are left to the caller (they differ:
+// `:hover` vs `:hover:not(:disabled)`, and some sites have no
+// :disabled); pass the surfaces/values via the helper mixins below.
+// $color defaults to `inherit` (most sites set it); the Sync modal +
+// merge buttons never declared a color, so they pass `null` to drop it
+// (a <button>'s UA color is buttontext, NOT inherited — emitting
+// `color: inherit` there would change the rendered color).
+@mixin button-outlined(
+  $padding: 0.35rem 0.9rem,
+  $radius: 5px,
+  $background: transparent,
+  $color: inherit
+) {
+  padding: $padding;
+  border: 1px solid var(--background-modifier-border);
+  background: $background;
+  @if $color {
+    color: $color;
+  }
+  border-radius: $radius;
+  cursor: pointer;
+}
+
+// Hover surface for an outlined button — emit inside the caller's chosen
+// hover selector so the `:hover` vs `:hover:not(:disabled)` split stays.
+@mixin button-hover-bg($hover-bg: var(--background-secondary-alt)) {
+  background: $hover-bg;
+}
+
+// :disabled treatment — opacity + cursor differ per site; caller emits
+// inside its own `&:disabled`.
+@mixin button-disabled($opacity: 0.4, $cursor: not-allowed) {
+  opacity: $opacity;
+  cursor: $cursor;
+}
+
+// Accent / primary variant — layered on top of an outlined button to
+// recolor it (Settings primary, Sync modal primary, PDF comment save).
+// $border defaults to the accent so the outline matches the fill; the
+// Sync primary passes `transparent` to keep its borderless look.
+@mixin button-accent(
+  $color: white,
+  $border: var(--interactive-accent)
+) {
+  background: var(--interactive-accent);
+  border-color: $border;
+  color: $color;
+}
+
+@mixin button-accent-hover {
+  background: var(--interactive-accent-hover);
+}
+
+// ---- Text inputs ------------------------------------------------------------
+// Boxed text input/textarea surface shared by the Settings add-form inputs,
+// the config-path input, the PDF comment textarea + anchor input, and the
+// prompt / pdf-meta inputs. Per-site padding / radius / surface / text +
+// font differ, so they are arguments; byte-equivalence is preserved by
+// passing each site's current values. $font defaults to var(--font-monospace);
+// callers wanting `font: inherit` pass `false` and emit the shorthand
+// themselves. Any of $border / $radius / $background / $color can be passed
+// `null` to drop that declaration entirely — the prompt / pdf-meta inputs
+// only style padding + font and rely on UA/theme defaults for the rest.
+@mixin text-input(
+  $padding: 0.4rem 0.6rem,
+  $radius: 5px,
+  $background: var(--background-primary),
+  $color: var(--text-normal),
+  $font: var(--font-monospace),
+  $border: 1px solid var(--background-modifier-border)
+) {
+  padding: $padding;
+  @if $border {
+    border: $border;
+  }
+  @if $radius {
+    border-radius: $radius;
+  }
+  @if $background {
+    background: $background;
+  }
+  @if $color {
+    color: $color;
+  }
+  @if $font {
+    font-family: $font;
+  }
+}
+
 // ---- Prose typography -------------------------------------------------------
 // One look for markdown content, consumed by the editor surface
 // (prose.scss) and the hover-preview card (hover_preview.scss).

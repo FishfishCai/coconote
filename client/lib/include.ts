@@ -4,21 +4,17 @@
 // coconote:true in `metadata` (file.md + pdf.md sidecar shape).
 
 import { authedFetch } from "./authed_fetch.ts";
-import { encodePathSegments } from "./path_url.ts";
+import { fileUrl } from "../spaces/constants.ts";
 import { setFrontmatterKey } from "./frontmatter_edit.ts";
 import { newPageId } from "./id.ts";
 import { saveSidecar, sidecarPath, type PdfSidecar } from "../pdf/notes_client.ts";
 
-function enc(p: string): string {
-  return encodePathSegments(p);
-}
-
 export async function includeMarkdown(path: string): Promise<void> {
-  const r = await authedFetch(`/.file/${enc(path)}`);
+  const r = await authedFetch(fileUrl(path));
   const body = r.ok
     ? setFrontmatterKey(await r.text(), "coconote", "true")
     : "---\ncoconote: true\n---\n";
-  const put = await authedFetch(`/.file/${enc(path)}`, {
+  const put = await authedFetch(fileUrl(path), {
     method: "PUT",
     headers: { "Content-Type": "application/octet-stream" },
     body,
@@ -31,7 +27,7 @@ export async function includePdf(pdfPath: string): Promise<void> {
   // Existing sidecar → flip the flag in place, preserving id/title/tags.
   // Only treat 404 as "no sidecar"; network errors surface to the caller
   // so a transient outage doesn't silently overwrite an existing sidecar.
-  const r = await authedFetch(`/.file/${enc(sc)}`);
+  const r = await authedFetch(fileUrl(sc));
   if (r.ok) {
     const cur = (await r.json()) as PdfSidecar;
     cur.metadata.coconote = true;

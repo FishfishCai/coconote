@@ -11,6 +11,7 @@ import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { useMenuPosition } from "../lib/menu_position.ts";
 import { useDismissOnOutside } from "../lib/dom_hooks.ts";
+import { ModalActions } from "../components/modal_actions.tsx";
 import { Modal } from "../components/modal.tsx";
 import { type Color, HIGHLIGHT_COLORS } from "./notes_client.ts";
 
@@ -37,14 +38,12 @@ function ModalShell(
         }}
       >
         {children}
-        <div class="coconote-pdf-comment-actions">
-          <button type="button" class="coconote-pdf-comment-cancel" onClick={onCancel}>
-            Cancel
-          </button>
-          <button type="button" class="coconote-pdf-comment-save" onClick={onSubmit}>
-            {submitLabel}
-          </button>
-        </div>
+        <ModalActions
+          variant="pdf"
+          onCancel={onCancel}
+          onConfirm={onSubmit}
+          confirmLabel={submitLabel}
+        />
       </div>
     </Modal>
   );

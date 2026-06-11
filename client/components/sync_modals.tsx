@@ -19,6 +19,7 @@ import {
 } from "../lib/sync_push.ts";
 import { pullRemoteToLocal, type PullOutcome } from "../lib/sync_pull.ts";
 import { MergeView } from "./merge_view.tsx";
+import { ModalActions } from "./modal_actions.tsx";
 import { Modal } from "./modal.tsx";
 
 /** Shared overwrite/skip memory for a batch queue — set when the user
@@ -72,18 +73,12 @@ function CollisionSection(
           Apply the same choice to the rest
         </label>
       )}
-      <div className="coconote-modal-actions">
-        <button type="button" onClick={() => prompt.resolve(false, applyRest)}>
-          Skip
-        </button>
-        <button
-          type="button"
-          className="coconote-modal-primary"
-          onClick={() => prompt.resolve(true, applyRest)}
-        >
-          Overwrite
-        </button>
-      </div>
+      <ModalActions
+        onCancel={() => prompt.resolve(false, applyRest)}
+        cancelLabel="Skip"
+        onConfirm={() => prompt.resolve(true, applyRest)}
+        confirmLabel="Overwrite"
+      />
     </div>
   );
 }
@@ -331,19 +326,13 @@ export function PushModal({
         {collision
           ? <CollisionSection prompt={collision} batch={!!batchChoice} />
           : (
-            <div className="coconote-modal-actions">
-              <button type="button" onClick={onClose} disabled={busy}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="coconote-modal-primary"
-                disabled={!canPush}
-                onClick={() => void onPush()}
-              >
-                {busy ? "Pushing…" : "Push"}
-              </button>
-            </div>
+            <ModalActions
+              onCancel={onClose}
+              busy={busy}
+              onConfirm={() => void onPush()}
+              disabled={!canPush}
+              confirmLabel={busy ? "Pushing…" : "Push"}
+            />
           )}
       </div>
     </Modal>
@@ -505,19 +494,13 @@ export function PullModal({
         {collision
           ? <CollisionSection prompt={collision} batch={!!batchChoice} />
           : (
-            <div className="coconote-modal-actions">
-              <button type="button" onClick={onClose} disabled={busy}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="coconote-modal-primary"
-                disabled={busy || !rootName || !!collision}
-                onClick={() => void onPull()}
-              >
-                {busy ? "Pulling…" : "Pull"}
-              </button>
-            </div>
+            <ModalActions
+              onCancel={onClose}
+              busy={busy}
+              onConfirm={() => void onPull()}
+              disabled={busy || !rootName || !!collision}
+              confirmLabel={busy ? "Pulling…" : "Pull"}
+            />
           )}
       </div>
     </Modal>

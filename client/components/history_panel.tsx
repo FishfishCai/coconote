@@ -5,7 +5,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { Modal } from "./modal.tsx";
 import { authedFetch } from "../lib/authed_fetch.ts";
-import { encodePathSegments } from "../lib/path_url.ts";
+import { fileUrl } from "../spaces/constants.ts";
 import { lineDiff } from "../lib/line_diff.ts";
 
 type SaveType = "create" | "edit" | "push" | "pull" | "pin";
@@ -90,7 +90,7 @@ export function HistoryPanel(
     Promise.all([
       authedFetch(`/.history/${encodeURIComponent(id)}?ts=${selectedTs}`)
         .then((r) => (r.ok ? r.text() : Promise.reject(r.statusText))),
-      authedFetch(`/.file/${encodePathSegments(targetPath)}`)
+      authedFetch(fileUrl(targetPath))
         .then((r) => (r.ok ? r.text() : "")),
     ])
       .then(([snap, disk]) => {

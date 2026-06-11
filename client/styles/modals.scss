@@ -1,3 +1,5 @@
+@use "shared";
+
 // Unified modal base — every popup is a native <dialog class="coconote-modal">
 // (see components/modal.tsx). Structure only; colours live in colors.scss.
 
@@ -99,10 +101,16 @@
     flex-wrap: wrap;
 
     input[type="text"] {
+      @include shared.text-input(
+        $padding: 6px 8px,
+        $radius: null,
+        $background: null,
+        $color: null,
+        $border: null,
+        $font: var(--font-monospace, monospace)
+      );
       flex: 1 1 220px;
       min-width: 0;
-      padding: 6px 8px;
-      font-family: var(--font-monospace, monospace);
       box-sizing: border-box;
     }
   }
@@ -128,10 +136,16 @@
     }
 
     > input[type="text"] {
+      @include shared.text-input(
+        $padding: 6px 8px,
+        $radius: null,
+        $background: null,
+        $color: null,
+        $border: null,
+        $font: var(--font-monospace, monospace)
+      );
       flex: 1 1 auto;
       min-width: 0;
-      padding: 6px 8px;
-      font-family: var(--font-monospace, monospace);
       box-sizing: border-box;
     }
   }

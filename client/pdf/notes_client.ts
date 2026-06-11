@@ -5,8 +5,8 @@
 
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { newPageId } from "../lib/id.ts";
-import { encodePathSegments, pdfSidecarPath } from "../lib/path_url.ts";
-import { fsEndpoint } from "../spaces/constants.ts";
+import { pdfSidecarPath } from "../lib/path_url.ts";
+import { fileUrl } from "../spaces/constants.ts";
 import { type CollabHandle, connectCollab } from "../collab/collab_extension.ts";
 
 export type Color = "yellow" | "green" | "blue" | "pink" | "orange";
@@ -70,8 +70,6 @@ export const sidecarPath = pdfSidecarPath;
 function pdfStem(pdfPath: string): string {
   return (pdfPath.split("/").pop() ?? pdfPath).replace(/\.pdf$/i, "");
 }
-
-const fileUrl = (path: string) => `${fsEndpoint}/${encodePathSegments(path)}`;
 
 function emptySidecar(): PdfSidecar {
   return {

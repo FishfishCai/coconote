@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "preact/hooks";
 import { authedFetch } from "../lib/authed_fetch.ts";
-import { encodePathSegments } from "../lib/path_url.ts";
+import { fileUrl } from "../spaces/constants.ts";
 import { ANCHOR_NAME_RE } from "../markdown/parser/constants.ts";
 import { newUuid } from "../lib/uuid.ts";
 import {
@@ -154,7 +154,7 @@ export function PdfViewer({ path, initialAnchor }: Props) {
     (async () => {
       try {
         const pdfjs = await importPdfJs();
-        const buf = await authedFetch(`/.file/${encodePathSegments(path)}`).then(
+        const buf = await authedFetch(fileUrl(path)).then(
           (r) => r.arrayBuffer(),
         );
         if (cancelled) return;

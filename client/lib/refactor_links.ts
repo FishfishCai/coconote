@@ -10,7 +10,7 @@
 
 import type { PageMeta } from "coconote/type/page";
 import { authedFetch } from "./authed_fetch.ts";
-import { encodePathSegments } from "./path_url.ts";
+import { fileUrl } from "../spaces/constants.ts";
 import { resolveWikiLink, shortestLocator } from "./wikilink.ts";
 
 type Entry = {
@@ -137,12 +137,12 @@ export async function refactorLinks(
   for (const e of entries) {
     const p = e.path ?? e.name;
     if (!p || !p.toLowerCase().endsWith(".md")) continue;
-    const r = await authedFetch(`/.file/${encodePathSegments(p)}`);
+    const r = await authedFetch(fileUrl(p));
     if (!r.ok) continue;
     const body = await r.text();
     const rewritten = rewriteOne(body, oldName, newName, before, after);
     if (rewritten === null) continue;
-    const put = await authedFetch(`/.file/${encodePathSegments(p)}`, {
+    const put = await authedFetch(fileUrl(p), {
       method: "PUT",
       headers: { "Content-Type": "text/markdown" },
       body: rewritten,

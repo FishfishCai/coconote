@@ -20,7 +20,7 @@
 //   "idMissing"      — page has no id yet (md: save it once; pdf: include
 //                       it so the sidecar exists)
 
-import { fsEndpoint } from "../spaces/constants.ts";
+import { fileUrl, fsEndpoint } from "../spaces/constants.ts";
 import { notFoundError } from "./constants.ts";
 import { authedFetch } from "./authed_fetch.ts";
 import { getRemoteSpaceById, makeRemoteSpace } from "./remote_index.ts";
@@ -29,7 +29,6 @@ import { headersToFileMeta } from "./util.ts";
 import { extractFrontmatter } from "../markdown/frontmatter.ts";
 import { fetchLocalMergeBase } from "./sync_history.ts";
 import {
-  encodePathSegments,
   mdAssetsPrefix,
   pdfSidecarPath,
   stripFirstSegment,
@@ -64,8 +63,6 @@ export type PushOutcome =
   | { kind: "remoteMissing" }
   | { kind: "idMissing" };
 
-const enc = encodePathSegments;
-
 /** Push target — either a saved vault id (history.md §Push "url list
  *  already saved under setting's Remote") or a typed URL + token
  *  (the "free-input box" half). */
@@ -76,7 +73,7 @@ export type PushTarget =
 async function readLocal(
   path: string,
 ): Promise<{ bytes: Uint8Array; hash: string } | null> {
-  const resp = await authedFetch(`${fsEndpoint}/${enc(path)}`);
+  const resp = await authedFetch(fileUrl(path));
   if (!resp.ok) return null;
   return {
     bytes: new Uint8Array(await resp.arrayBuffer()),
@@ -92,7 +89,7 @@ async function recordLocalPushRow(
   bytes: Uint8Array,
 ): Promise<void> {
   const r = await authedFetch(
-    `${fsEndpoint}/${enc(localContentPath)}?save_type=push`,
+    `${fileUrl(localContentPath)}?save_type=push`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/octet-stream" },
