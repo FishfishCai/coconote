@@ -87,10 +87,12 @@ function openExternalSafe(rawUrl) {
 ipcMain.handle("coconote_open_external", (_event, url) => openExternalSafe(url));
 
 function createWindow() {
-  // macOS Dock: a packaged app gets icon.icns from the bundle, but a dev
-  // run (`npx electron .`) uses the stock Electron binary whose bundle
-  // icon is the Electron logo — set it at runtime so dev matches.
-  if (process.platform === "darwin" && app.dock) {
+  // macOS Dock: a packaged app already shows icon.icns from the bundle (the
+  // rounded-square app icon). A dev run (`npx electron .`) uses the stock
+  // Electron binary whose bundle icon is the Electron logo, so set it at
+  // runtime there only. Doing this when packaged would override the .icns
+  // with the bare png and lose the rounded-square treatment.
+  if (process.platform === "darwin" && app.dock && !app.isPackaged) {
     try {
       app.dock.setIcon(join(__dirname, "icons/icon.png"));
     } catch { /* icon missing in a stripped build — keep the default */ }
