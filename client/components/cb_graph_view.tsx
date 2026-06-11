@@ -38,6 +38,8 @@ type GraphControls = {
   /** Depth of the tag prefix used for node colouring (1..32). */
   tagLevel: number;
   showIsolated: boolean;
+  /** content.md: hide PDF nodes so only markdown pages remain. */
+  markdownOnly: boolean;
 };
 
 const DEFAULT_CONTROLS: GraphControls = {
@@ -45,6 +47,7 @@ const DEFAULT_CONTROLS: GraphControls = {
   repulse: 8000,
   tagLevel: 1,
   showIsolated: true,
+  markdownOnly: false,
 };
 
 // Merge-with-defaults codec so adding a new control later won't read
@@ -91,7 +94,27 @@ export function CbGraphView({ client, allPages, filter }: Props) {
     () => DEFAULT_CONTROLS,
     controlsCodec,
   );
-  const { nodes, edges } = useMemo(() => buildGraph(allPages), [allPages]);
+  // Apply the panel filters to the graph DATA (not just rendering) so an
+  // excluded node leaves the force simulation entirely. `markdownOnly`
+  // drops PDF pages first, which can newly isolate markdown nodes, then
+  // `showIsolated` drops whatever has no remaining edge.
+  const { nodes, edges } = useMemo(() => {
+    let { nodes, edges } = buildGraph(allPages);
+    if (controls.markdownOnly) {
+      const isMd = (id: string) => !id.toLowerCase().endsWith(".pdf");
+      nodes = nodes.filter((n) => isMd(n.id));
+      edges = edges.filter((e) => isMd(e.from) && isMd(e.to));
+    }
+    if (!controls.showIsolated) {
+      const linked = new Set<string>();
+      for (const e of edges) {
+        linked.add(e.from);
+        linked.add(e.to);
+      }
+      nodes = nodes.filter((n) => linked.has(n.id));
+    }
+    return { nodes, edges };
+  }, [allPages, controls.markdownOnly, controls.showIsolated]);
   // We keep the nodes array as a ref so we can mutate during the
   // simulation without re-rendering on every tick. A monotonic `tick`
   // state forces React to repaint.
@@ -321,18 +344,6 @@ export function CbGraphView({ client, allPages, filter }: Props) {
   void tick;
   const ns = nodesRef.current;
 
-  // Build the set of nodes that participate in at least one edge so the
-  // "show isolated" toggle can drop the lonely ones (content.md
-  // §Graph view control panel).
-  const linked = useMemo(() => {
-    const s = new Set<string>();
-    for (const e of edges) {
-      s.add(e.from);
-      s.add(e.to);
-    }
-    return s;
-  }, [edges]);
-
   if (ns.length === 0) {
     return <p className="coconote-cb-empty">No pages found.</p>;
   }
@@ -394,6 +405,15 @@ export function CbGraphView({ client, allPages, filter }: Props) {
           />
           Show isolated nodes
         </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={controls.markdownOnly}
+            onChange={(e) =>
+              setControl("markdownOnly", e.currentTarget.checked)}
+          />
+          Markdown files only
+        </label>
       </aside>
       <svg
         ref={svgRef}
@@ -447,7 +467,6 @@ export function CbGraphView({ client, allPages, filter }: Props) {
           );
         })}
         {ns.map((n) => {
-          if (!controls.showIsolated && !linked.has(n.id)) return null;
           const isRemote = n.page.origin?.kind === "remote";
           const matched = filterMatches(n);
           const hot = highlightSet ? highlightSet.has(n.id) : false;
