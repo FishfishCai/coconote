@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { ComponentChildren, Ref } from "preact";
+import { Modal } from "./modal.tsx";
 
 export function Prompt({
   message,
@@ -19,7 +20,7 @@ export function Prompt({
     inputRef.current?.select();
   }, []);
   return (
-    <AlwaysShownModal onCancel={() => callback()}>
+    <Modal size="small" onClose={() => callback()}>
       <div className="coconote-prompt">
         <label>
           {message}
@@ -44,7 +45,7 @@ export function Prompt({
           <Button onActivate={() => callback()}>Cancel</Button>
         </div>
       </div>
-    </AlwaysShownModal>
+    </Modal>
   );
 }
 
@@ -60,8 +61,9 @@ export function Confirm({
     okButtonRef.current?.focus();
   }, []);
   const returnEl = (
-    <AlwaysShownModal
-      onCancel={() => {
+    <Modal
+      size="small"
+      onClose={() => {
         callback(false);
       }}
     >
@@ -86,7 +88,7 @@ export function Confirm({
           </Button>
         </div>
       </div>
-    </AlwaysShownModal>
+    </Modal>
   );
 
   return returnEl;
@@ -126,67 +128,3 @@ export function Button({
   );
 }
 
-export function AlwaysShownModal({
-  children,
-  onCancel,
-}: {
-  children: ComponentChildren;
-  onCancel?: () => void;
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (dialog) {
-      dialog.style.opacity = "0";
-      dialog.showModal();
-
-      // Safari: CodeMirror's flex sizing inside <dialog> needs one
-      // extra reflow. Toggle display after first paint; keep the
-      // dialog hidden until then to suppress the visible jump.
-      const fixSafariLayout = () => {
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            dialog.style.display = "flex";
-            void dialog.offsetHeight;
-            dialog.style.display = "";
-            dialog.style.opacity = "";
-          });
-        });
-      };
-
-      if (dialog.querySelector(".cm-editor")) {
-        fixSafariLayout();
-      } else {
-        const observer = new MutationObserver(() => {
-          if (dialog.querySelector(".cm-editor")) {
-            observer.disconnect();
-            fixSafariLayout();
-          }
-        });
-        observer.observe(dialog, { childList: true, subtree: true });
-        // Reveal even if no .cm-editor appears (e.g. Confirm dialogs).
-        setTimeout(() => {
-          observer.disconnect();
-          dialog.style.opacity = "";
-        }, 500);
-      }
-    }
-  }, []);
-
-  return (
-    <dialog
-      className="coconote-modal-box"
-      onCancel={(e: Event) => {
-        e.preventDefault();
-        onCancel?.();
-      }}
-      onKeyDown={(e) => {
-        e.stopPropagation();
-      }}
-      ref={dialogRef}
-    >
-      {children}
-    </dialog>
-  );
-}

@@ -1,29 +1,12 @@
-@use "shared";
+// Push / Pull + Merge bodies. The dialog box / backdrop / header come from
+// the unified Modal base (modals.scss); this file styles the form contents.
 
-// Push / Pull modals + Merge view. Triggered from the Content browser
-// right-click menu only — no floating sync chip in the editor.
-
-// ---- Generic modal overlay (reused by Push / Pull + Merge) ----
-
-.coconote-modal-overlay {
-  @include shared.modal-overlay($background: rgba(0, 0, 0, 0.4));
-  padding: 2rem;
-}
-
-.coconote-modal {
-  background: var(--background-primary);
-  color: var(--text-normal);
-  border-radius: 8px;
+.coconote-sync-form {
   padding: 1.2rem 1.4rem;
-  max-width: min(900px, 90vw);
-  max-height: 86vh;
-  overflow-y: auto;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
 
-  h2 { margin: 0 0 0.2rem; font-size: 1.1rem; }
   label {
     display: flex;
     flex-direction: column;
@@ -78,9 +61,17 @@
 
 // ---- Merge view ----
 
+// Wider than the default `wide` variant; applied via Modal className.
 .coconote-merge-modal {
-  max-width: min(1300px, 95vw);
-  width: 100%;
+  width: min(1300px, 95vw);
+  max-width: 95vw;
+}
+
+.coconote-merge-body {
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
 }
 
 .coconote-merge-head {

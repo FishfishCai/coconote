@@ -19,6 +19,7 @@ import {
 } from "../lib/sync_push.ts";
 import { pullRemoteToLocal, type PullOutcome } from "../lib/sync_pull.ts";
 import { MergeView } from "./merge_view.tsx";
+import { Modal } from "./modal.tsx";
 
 /** Shared overwrite/skip memory for a batch queue — set when the user
  *  ticks "apply the same choice to the rest" (history.md). */
@@ -272,9 +273,8 @@ export function PushModal({
   const canPush = probe.kind === "ok" && !!rootName && !busy && !collision;
 
   return (
-    <div className="coconote-modal-overlay" onClick={onClose}>
-      <div className="coconote-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Push {localPath}</h2>
+    <Modal title={`Push ${localPath}`} size="wide" onClose={onClose}>
+      <div className="coconote-sync-form">
         <label>
           Target URL
           <input
@@ -346,7 +346,7 @@ export function PushModal({
             </div>
           )}
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -490,9 +490,8 @@ export function PullModal({
   }
 
   return (
-    <div className="coconote-modal-overlay" onClick={onClose}>
-      <div className="coconote-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Pull {remotePrefixedPath}</h2>
+    <Modal title={`Pull ${remotePrefixedPath}`} size="wide" onClose={onClose}>
+      <div className="coconote-sync-form">
         <label>
           Target root (local)
           <select
@@ -521,6 +520,6 @@ export function PullModal({
             </div>
           )}
       </div>
-    </div>
+    </Modal>
   );
 }

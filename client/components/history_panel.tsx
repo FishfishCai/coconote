@@ -3,6 +3,7 @@
 // on-disk path.
 
 import { useEffect, useState } from "preact/hooks";
+import { Modal } from "./modal.tsx";
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { encodePathSegments } from "../lib/path_url.ts";
 import { lineDiff } from "../lib/line_diff.ts";
@@ -149,22 +150,15 @@ export function HistoryPanel({ id, targetPath, onClose, onRestored }: Props) {
   const diff = hasSelection ? lineDiff(current, preview) : [];
 
   return (
-    <div class="coconote-history-overlay" onClick={onClose}>
-      <div class="coconote-history-panel" onClick={(e) => e.stopPropagation()}>
-        <header>
-          <span>Version history — {targetPath}</span>
-          <button
-            type="button"
-            class="coconote-history-close"
-            onClick={onClose}
-          >
-            ×
-          </button>
-        </header>
-        <div class="coconote-history-body">
+    <Modal
+      title={`Version history — ${targetPath}`}
+      size="large"
+      onClose={onClose}
+      loading={versions === null && !error}
+    >
+      <div class="coconote-history-body">
           <div class="coconote-history-list">
             {error && <div class="coconote-history-error">{error}</div>}
-            {versions === null && !error && <div>Loading…</div>}
             {versions?.length === 0 && <div>No versions recorded yet.</div>}
             {versions?.map((v) => (
               <button
@@ -220,8 +214,7 @@ export function HistoryPanel({ id, targetPath, onClose, onRestored }: Props) {
                 </>
               )}
           </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

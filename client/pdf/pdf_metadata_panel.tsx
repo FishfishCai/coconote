@@ -4,7 +4,8 @@
 // while the PDF viewer is open.
 
 import { useEffect, useRef, useState } from "preact/hooks";
-import { AlwaysShownModal, Button } from "../components/basic_modals.tsx";
+import { Button } from "../components/basic_modals.tsx";
+import { Modal } from "../components/modal.tsx";
 import { loadSidecar, saveMetadata } from "./notes_client.ts";
 import type { PdfSidecar } from "./notes_client.ts";
 
@@ -75,16 +76,17 @@ export function PdfMetadataPanel({ pdfPath, onClose, onSaved }: Props) {
   };
 
   return (
-    <AlwaysShownModal onCancel={onClose}>
+    <Modal
+      title="PDF metadata"
+      size="default"
+      onClose={onClose}
+      loading={!sidecar && !error}
+    >
       <div className="coconote-prompt coconote-pdf-meta">
-        <div className="coconote-pdf-meta-title">PDF metadata</div>
-        {/* Outside the loaded-branch so a LOAD failure is visible too
-            (otherwise the panel shows "Loading…" forever). */}
+        {/* Shown even on load failure so the panel doesn't read as empty. */}
         {error && <div className="coconote-error">{error}</div>}
-        {!sidecar
-          ? !error && <div>Loading…</div>
-          : (
-            <>
+        {sidecar && (
+          <>
               <div className="coconote-pdf-meta-row">
                 <label htmlFor="pdf-meta-id">id</label>
                 <input
@@ -133,8 +135,8 @@ export function PdfMetadataPanel({ pdfPath, onClose, onSaved }: Props) {
                 <Button onActivate={onClose}>Cancel</Button>
               </div>
             </>
-          )}
+        )}
       </div>
-    </AlwaysShownModal>
+    </Modal>
   );
 }

@@ -6,19 +6,6 @@
 // at least 1.5rem, otherwise whatever centres a 56rem column.
 $shell-gutter: max(1.5rem, calc((100% - 56rem) / 2));
 
-// ---- Modal overlay ----------------------------------------------------------
-// Full-viewport dimmed backdrop that centres its dialog. All overlays
-// sit on the same --layer-modal rung (see theme.scss ladder).
-@mixin modal-overlay($background: var(--background-modifier-cover)) {
-  position: fixed;
-  inset: 0;
-  background: $background;
-  z-index: var(--layer-modal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 // ---- Context menu -----------------------------------------------------------
 // Scaffolding shared by the Content-browser and PDF context menus.
 // Callers add sizing (padding / min-width / shadow) and item hover.

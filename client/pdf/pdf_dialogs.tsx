@@ -10,9 +10,11 @@
 import { useEffect, useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { useMenuPosition } from "../lib/menu_position.ts";
+import { Modal } from "../components/modal.tsx";
 import { type Color, HIGHLIGHT_COLORS } from "./notes_client.ts";
 
-/** Backdrop + box + title + Cancel/Save, with Esc=cancel, Cmd/Ctrl+Enter=submit. */
+/** Title + Cancel/Save on the unified Modal base; Cmd/Ctrl+Enter submits
+ *  (Esc=cancel is handled by Modal). */
 function ModalShell(
   { title, submitLabel, onCancel, onSubmit, children }: {
     title: string;
@@ -22,28 +24,17 @@ function ModalShell(
     children: ComponentChildren;
   },
 ) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        onSubmit();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, onSubmit]);
   return (
-    <div
-      class="coconote-pdf-comment-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
-    >
-      <div class="coconote-pdf-comment-modal">
-        <h3>{title}</h3>
+    <Modal title={title} size="small" onClose={onCancel}>
+      <div
+        class="coconote-pdf-comment"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
+      >
         {children}
         <div class="coconote-pdf-comment-actions">
           <button type="button" class="coconote-pdf-comment-cancel" onClick={onCancel}>
@@ -54,7 +45,7 @@ function ModalShell(
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

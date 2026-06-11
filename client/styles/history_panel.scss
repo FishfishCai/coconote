@@ -1,38 +1,5 @@
-@use "shared";
-
-.coconote-history-overlay {
-  @include shared.modal-overlay;
-}
-
-.coconote-history-panel {
-  background: var(--background-primary);
-  color: var(--text-normal);
-  width: 80vw;
-  max-width: 1100px;
-  height: 80vh;
-  border-radius: var(--radius-m);
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.6rem 1rem;
-    border-bottom: 1px solid var(--background-modifier-border);
-    font-weight: 600;
-  }
-
-  .coconote-history-close {
-    background: transparent;
-    border: 0;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: inherit;
-  }
-}
-
+// The dialog chrome (box, header, close) comes from the unified Modal base
+// (modals.scss); this file styles only the history-specific list + preview.
 .coconote-history-body {
   display: flex;
   flex: 1;

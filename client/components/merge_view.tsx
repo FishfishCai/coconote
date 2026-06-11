@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { errMessage } from "../lib/constants.ts";
 import { merge3 } from "../lib/diff3.ts";
 import type { Chunk } from "../lib/diff3.ts";
+import { Modal } from "./modal.tsx";
 
 export type MergeViewProps = {
   /** Page label shown in the header (the local path being merged). */
@@ -92,13 +93,14 @@ export function MergeView(
   };
 
   return (
-    <div className="coconote-modal-overlay" onClick={onClose}>
-      <div
-        className="coconote-modal coconote-merge-modal"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Modal
+      title={`Merge — ${localPath}`}
+      size="wide"
+      className="coconote-merge-modal"
+      onClose={onClose}
+    >
+      <div className="coconote-merge-body">
         <header className="coconote-merge-head">
-          <h2>Merge — {localPath}</h2>
           <p>
             {baseHash && (
               <>Base: <code>{baseHash.slice(0, 12)}…</code> · </>
@@ -211,7 +213,7 @@ export function MergeView(
           </button>
         </footer>
       </div>
-    </div>
+    </Modal>
   );
 }
 
