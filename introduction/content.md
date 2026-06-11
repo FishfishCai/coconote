@@ -67,4 +67,4 @@ The graph supports the following interactions:
 - **Hover**: highlight the node's 1-hop neighbourhood.
 - **Click**: open that page.
 
-A panel on the left lets you tune: attraction strength, repulsion strength, tag colouring level (at level 1, `a/1` and `a/2` share one colour since they are both under `a`, while at level 2 they each get their own colour), and whether isolated nodes are shown.
+A panel on the left lets you tune: attraction strength, repulsion strength, tag colouring level (at level 1, `a/1` and `a/2` share one colour since they are both under `a`, while at level 2 they each get their own colour), whether isolated nodes are included, and whether to include markdown files only (hiding PDFs). Both filters rebuild the graph, so an excluded node leaves the layout entirely rather than staying in the simulation while hidden.

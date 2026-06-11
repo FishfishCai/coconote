@@ -68,3 +68,7 @@ A comment attached to a highlight:
 ## Metadata panel
 
 While the PDF reader is open, **`Cmd / Ctrl + Shift + M`** opens a floating panel for editing the four common fields (`id`, `coconote`, `title`, `tag`, see [[file]]). **Save** writes them back to the sidecar. **Cancel** closes the panel without writing.
+
+## Collaboration and history
+
+The sidecar collaborates and is versioned exactly like a markdown body, because both ride the same per-file channel. Highlights, anchors, comments, and metadata sync live across open clients (see [[editor]]), and every save records a sidecar snapshot you can restore (see [[history]]).
