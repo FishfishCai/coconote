@@ -88,7 +88,15 @@ export class MainUI {
   }
 
   setLoadedPage(path: Path, meta: PageMeta) {
-    this.setters.setCurrent({ path, meta });
+    // readPage's meta comes from response headers, which carry no page
+    // id, so prefer the richer listing entry (it has id/tags/headings)
+    // when the index already holds this page. Without this, current.meta
+    // .id stays empty until the next 10s poll refills it, and the history
+    // panel (mount gated on meta.id) cannot open right after load.
+    const listed = this.viewState.allPages.find(
+      (p) => parseToRef(p.name)?.path === path,
+    );
+    this.setters.setCurrent({ path, meta: listed ?? meta });
   }
   markPageChanged() {
     this.setters.setUnsavedChanges(true);
@@ -102,6 +110,20 @@ export class MainUI {
       const old = prevByName.get(pm.name);
       if (old?.lastOpened) pm.lastOpened = old.lastOpened;
     }
+    // Refresh current.meta from the list every call, NOT gated by the
+    // signature below: a page opened after the list last changed has a
+    // current whose meta is still the loadPage placeholder until this
+    // runs, and gating it behind a list change would leave meta.id empty
+    // until the next real change (history panel mount depends on it).
+    const cur = this.viewState.current;
+    if (cur && isMarkdownPath(cur.path)) {
+      const fresh = allPages.find(
+        (p) => parseToRef(p.name)?.path === cur.path,
+      );
+      if (fresh && fresh !== cur.meta) {
+        this.setters.setCurrent({ path: cur.path, meta: fresh });
+      }
+    }
     // The 10s poll usually returns an unchanged list: skip the
     // setAllPages re-render cascade then (the signature covers every
     // field, computed after the lastOpened carry-over).
@@ -109,13 +131,6 @@ export class MainUI {
     if (sig === this.lastPagesSig) return;
     this.lastPagesSig = sig;
     this.setters.setAllPages(allPages);
-    const cur = this.viewState.current;
-    if (cur && isMarkdownPath(cur.path)) {
-      const fresh = allPages.find(
-        (p) => parseToRef(p.name)?.path === cur.path,
-      );
-      if (fresh) this.setters.setCurrent({ path: cur.path, meta: fresh });
-    }
   }
   setUiOptionState(key: string, value: unknown) {
     this.setters.setUiOptions((prev) => ({ ...prev, [key]: value }));
