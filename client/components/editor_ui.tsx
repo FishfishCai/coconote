@@ -4,6 +4,11 @@ import { HistoryPanel } from "./history_panel.tsx";
 import { Settings } from "./settings.tsx";
 import { PdfViewer } from "../pdf/pdf_viewer.tsx";
 import { PdfMetadataPanel } from "../pdf/pdf_metadata_panel.tsx";
+import {
+  activeSidecarState,
+  sidecarPath,
+  updateSidecarSession,
+} from "../pdf/notes_client.ts";
 import type { AppViewState } from "../types/ui.ts";
 import { h, render as preactRender } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -404,7 +409,29 @@ export class MainUI {
               />
             )}
           </div>
-          {showHistory && current?.path && current?.meta?.id && (
+          {showHistory && pdfViewer && (() => {
+            // PDF history: keyed by the sidecar's page id, previewed
+            // against the live sidecar, and restored through the collab
+            // session (writing to disk directly would fight the open room).
+            const pdfPath = pdfViewer.path;
+            const sid = activeSidecarState(pdfPath)?.metadata.id;
+            if (!sid) return null;
+            return (
+              <HistoryPanel
+                id={sid}
+                targetPath={sidecarPath(pdfPath)}
+                applyRestore={(txt) => {
+                  try {
+                    const sc = JSON.parse(txt);
+                    updateSidecarSession(pdfPath, () => sc);
+                  } catch { /* skip a non-JSON snapshot */ }
+                }}
+                onClose={() => setShowHistory(false)}
+                onRestored={() => void this.client.updatePageListCache?.()}
+              />
+            );
+          })()}
+          {showHistory && !pdfViewer && current?.path && current?.meta?.id && (
             <HistoryPanel
               id={current.meta.id}
               targetPath={current.path}

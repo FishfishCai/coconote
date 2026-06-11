@@ -18,10 +18,16 @@ type Version = {
 type Props = {
   /** Frontmatter `id:` — history's join key. */
   id: string;
-  /** Current on-disk path; restore writes back here. */
+  /** Current on-disk path; restore writes back here, and the diff is
+   *  taken against this file's live content. */
   targetPath: string;
   onClose: () => void;
   onRestored: () => void;
+  /** When set, Restore hands the selected snapshot text to this callback
+   *  instead of calling the server restore endpoint. Used by the PDF
+   *  viewer so a restore flows through the live collab session rather
+   *  than a disk write that would conflict with the open room. */
+  applyRestore?: (snapshotText: string) => void;
 };
 
 function fmtTs(ms: number): string {
@@ -39,7 +45,9 @@ const TYPE_GLYPH: Record<SaveType, string> = {
   pin: "★",
 };
 
-export function HistoryPanel({ id, targetPath, onClose, onRestored }: Props) {
+export function HistoryPanel(
+  { id, targetPath, onClose, onRestored, applyRestore }: Props,
+) {
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedTs, setSelectedTs] = useState<number | null>(null);
@@ -99,6 +107,19 @@ export function HistoryPanel({ id, targetPath, onClose, onRestored }: Props) {
     if (!hasSelection) return;
     setRestoring(true);
     try {
+      if (applyRestore) {
+        // Hand the snapshot to the caller (PDF collab session) instead
+        // of a server-side disk write. Re-fetch so we restore the exact
+        // bytes even if the preview is still loading.
+        const r = await authedFetch(
+          `/.history/${encodeURIComponent(id)}?ts=${selectedTs}`,
+        );
+        if (!r.ok) throw new Error(await r.text());
+        applyRestore(await r.text());
+        onRestored();
+        onClose();
+        return;
+      }
       const r = await authedFetch(
         `/.history/${encodeURIComponent(id)}/restore?ts=${selectedTs}&path=${
           encodeURIComponent(targetPath)

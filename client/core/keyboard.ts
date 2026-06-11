@@ -14,6 +14,7 @@
 import { runScopeHandlers } from "@codemirror/view";
 import type { ClientContext as Client } from "./context.ts";
 import { authedFetch } from "../lib/authed_fetch.ts";
+import { activeSidecarState } from "../pdf/notes_client.ts";
 import { matchShortcut } from "../lib/shortcuts.ts";
 import { reconfigureMode } from "../codemirror/registry.ts";
 
@@ -51,18 +52,21 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
       return;
     }
     if (matchShortcut(ev, "historyOpen")) {
-      const cur = client.ui.viewState.current?.path;
-      if (cur) {
+      // Works for a markdown page or an open PDF (its sidecar).
+      if (client.ui.viewState.current?.path || client.ui.viewState.pdfViewer) {
         ev.preventDefault();
         hooks.openHistory();
       }
       return;
     }
     if (matchShortcut(ev, "pinVersion")) {
-      const meta = client.ui.viewState.current?.meta;
-      if (meta?.id) {
+      const pv = client.ui.viewState.pdfViewer;
+      const id = pv
+        ? activeSidecarState(pv.path)?.metadata.id
+        : client.ui.viewState.current?.meta?.id;
+      if (id) {
         ev.preventDefault();
-        void authedFetch(`/.history/${encodeURIComponent(meta.id)}/pin`, {
+        void authedFetch(`/.history/${encodeURIComponent(id)}/pin`, {
           method: "POST",
         }).catch((e) => console.error(`Pin failed: ${e}`));
       }
