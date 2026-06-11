@@ -90,6 +90,16 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
       globalThis.history.back();
       return;
     }
+    if (matchShortcut(ev, "forwardNext")) {
+      ev.preventDefault();
+      globalThis.history.forward();
+      return;
+    }
+    if (matchShortcut(ev, "openSettings")) {
+      ev.preventDefault();
+      client.navigateRoute({ kind: "setting" });
+      return;
+    }
 
     // Fall-through: forward editor-scope shortcuts when the editor
     // doesn't have focus but the keystroke wasn't grabbed by a real

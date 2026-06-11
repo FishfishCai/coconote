@@ -5,12 +5,7 @@
 // Rename rewrites every [[wikilink]] pointing at the old name.
 // Dispatch-only: the multi-step transactions live in lib/page_ops.ts.
 
-import {
-  deletePage,
-  removeMarkdownFromIndex,
-  renamePage,
-} from "../lib/page_ops.ts";
-import { loadSidecar, saveSidecar } from "../pdf/notes_client.ts";
+import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
 import { ContextMenuShell } from "./context_menu_shell.tsx";
 import type { ClientContext as Client } from "../core/context.ts";
 
@@ -57,20 +52,12 @@ export function ContentContextMenu(
     ? pageName
     : pageName + ".md";
   const isMd = fullPath.toLowerCase().endsWith(".md");
-  const isPdf = fullPath.toLowerCase().endsWith(".pdf");
 
-  // Remove flips the include flag; the file stays on disk. Branches by
-  // extension since md keeps the flag in frontmatter and pdf keeps it in
-  // the sidecar JSON.
+  // Remove flips the include flag (md frontmatter / pdf sidecar); the
+  // file stays on disk.
   const onRemove = async () => {
     try {
-      if (isMd) {
-        await removeMarkdownFromIndex(fullPath);
-      } else if (isPdf) {
-        const cur = await loadSidecar(fullPath);
-        cur.metadata.coconote = false;
-        await saveSidecar(fullPath, cur);
-      }
+      await removeFromIndex(fullPath);
       onChanged();
     } catch (e) {
       console.error(`Remove failed: ${e}`);
@@ -79,16 +66,23 @@ export function ContentContextMenu(
   };
 
   const onRename = async () => {
+    // The leading root name is fixed: show and edit only the path within
+    // the root, then re-attach the same root prefix. The user can move the
+    // file inside the root but cannot change which root it lives in.
+    const slash = pageName.indexOf("/");
+    const rootPrefix = slash < 0 ? "" : pageName.slice(0, slash + 1);
+    const restName = slash < 0 ? pageName : pageName.slice(slash + 1);
     const rawNew = await client.ui.prompt(
       isMd ? "New page name:" : "New file path:",
-      pageName,
+      restName,
     );
     if (!rawNew) return onClose();
     const cleanedNew = rawNew.trim().replace(/^\/+/, "");
-    if (!cleanedNew || cleanedNew === pageName) return onClose();
-    const newFullPath = isMd
+    if (!cleanedNew || cleanedNew === restName) return onClose();
+    const newRest = isMd
       ? cleanedNew.replace(/\.md$/i, "") + ".md"
       : cleanedNew;
+    const newFullPath = rootPrefix + newRest;
     if (newFullPath === fullPath) return onClose();
     try {
       await renamePage(fullPath, newFullPath);

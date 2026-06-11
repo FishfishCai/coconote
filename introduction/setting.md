@@ -46,6 +46,8 @@ Rebindable actions:
 - **Open PDF metadata panel** (only active in the PDF viewer, see [[pdf]]): default `Cmd / Ctrl + Shift + M`.
 - **Back to Content page**: default `Cmd / Ctrl + Shift + C`.
 - **Back to previous page**: default `Cmd / Ctrl + Shift + B`.
+- **Forward to next page**: default `Cmd / Ctrl + Shift + F`.
+- **Open Settings**: default `Cmd / Ctrl + Shift + S`.
 
 ## Local
 

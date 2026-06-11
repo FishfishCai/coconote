@@ -53,6 +53,7 @@ export function HistoryPanel(
   const [selectedTs, setSelectedTs] = useState<number | null>(null);
   const [preview, setPreview] = useState<string>("");
   const [current, setCurrent] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -79,9 +80,11 @@ export function HistoryPanel(
     if (!hasSelection) {
       setPreview("");
       setCurrent("");
+      setPreviewLoading(false);
       return;
     }
     let cancelled = false;
+    setPreviewLoading(true);
     // Diff against the current on-disk content (history.md §Diff).
     // Refetch per-selection so a save mid-session shows up.
     Promise.all([
@@ -94,9 +97,13 @@ export function HistoryPanel(
         if (cancelled) return;
         setPreview(snap);
         setCurrent(disk);
+        setPreviewLoading(false);
       })
       .catch(() => {
-        if (!cancelled) setPreview("(failed to load)");
+        if (!cancelled) {
+          setPreview("(failed to load)");
+          setPreviewLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -200,6 +207,8 @@ export function HistoryPanel(
           <div class="coconote-history-preview">
             {!hasSelection
               ? <em>Click a snapshot to preview it.</em>
+              : previewLoading
+              ? <em>Loading…</em>
               : (
                 <>
                   <pre class="coconote-history-diff">

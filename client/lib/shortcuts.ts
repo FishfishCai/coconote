@@ -9,6 +9,8 @@ export const SHORTCUT_NAMES = [
   "pdfMetadataPanel",
   "backToContent",
   "backPrev",
+  "forwardNext",
+  "openSettings",
 ] as const;
 export type ShortcutName = (typeof SHORTCUT_NAMES)[number];
 
@@ -19,6 +21,8 @@ export const SHORTCUT_LABELS: Record<ShortcutName, string> = {
   pdfMetadataPanel: "Open PDF metadata panel",
   backToContent: "Back to Content page",
   backPrev: "Back to previous page",
+  forwardNext: "Forward to next page",
+  openSettings: "Open Settings",
 };
 
 export const DEFAULT_SHORTCUTS: Record<ShortcutName, string> = {
@@ -28,6 +32,8 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutName, string> = {
   pdfMetadataPanel: "Mod+Shift+M",
   backToContent: "Mod+Shift+C",
   backPrev: "Mod+Shift+B",
+  forwardNext: "Mod+Shift+F",
+  openSettings: "Mod+Shift+S",
 };
 
 type Combo = {

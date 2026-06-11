@@ -8,7 +8,7 @@ import { encodePathSegments } from "./path_url.ts";
 import { refactorLinks } from "./refactor_links.ts";
 import { setFrontmatterKey } from "./frontmatter_edit.ts";
 import { stripFrontmatter } from "../markdown/frontmatter.ts";
-import { sidecarPath } from "../pdf/notes_client.ts";
+import { loadSidecar, saveSidecar, sidecarPath } from "../pdf/notes_client.ts";
 
 function enc(p: string): string {
   return encodePathSegments(p);
@@ -40,6 +40,50 @@ export async function removeMarkdownFromIndex(path: string): Promise<void> {
   if (!r.ok) throw new Error(`read ${r.status}`);
   const next = setFrontmatterKey(await r.text(), "coconote", "false");
   await putFileBody(path, next);
+}
+
+/** content.md §Remove: flip a page out of the index, by file kind. The
+ *  file stays on disk (md frontmatter / pdf sidecar `coconote: false`). */
+export async function removeFromIndex(fullPath: string): Promise<void> {
+  const lower = fullPath.toLowerCase();
+  if (lower.endsWith(".md")) {
+    await removeMarkdownFromIndex(fullPath);
+  } else if (lower.endsWith(".pdf")) {
+    const cur = await loadSidecar(fullPath);
+    cur.metadata.coconote = false;
+    await saveSidecar(fullPath, cur);
+  }
+}
+
+/** Folder Rename: move every page under `oldFolder` to `newFolder`,
+ *  reusing renamePage so each file's wikilinks, assets, and sidecar
+ *  follow. `fullPaths` are the affected pages' on-disk paths. */
+export async function renameFolder(
+  oldFolder: string,
+  newFolder: string,
+  fullPaths: string[],
+): Promise<void> {
+  for (const fp of fullPaths) {
+    await renamePage(fp, newFolder + fp.slice(oldFolder.length));
+  }
+}
+
+/** Folder Remove: flip every page under the folder out of the index. */
+export async function removeFolderFromIndex(fullPaths: string[]): Promise<void> {
+  for (const fp of fullPaths) await removeFromIndex(fp);
+}
+
+/** Folder Delete: physically delete every page under the folder (with its
+ *  assets / sidecar), then best-effort remove the now-empty directory. */
+export async function deleteFolder(
+  folderPath: string,
+  fullPaths: string[],
+): Promise<void> {
+  for (const fp of fullPaths) await deletePage(fp);
+  // The server only deletes empty dirs; ignore failure when subdirs remain.
+  try {
+    await authedFetch(`/.file/${enc(folderPath)}`, { method: "DELETE" });
+  } catch { /* non-empty or already gone */ }
 }
 
 /** Rename / move a page: read old → probe target (refuse to clobber) →

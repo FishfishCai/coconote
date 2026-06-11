@@ -11,9 +11,10 @@
   display: flex;
   flex-direction: column;
 
-  // One dim for the whole app — depth tracks the theme, not the call site.
+  // No dimming — just the centered box floats over the page. (The
+  // backdrop still exists and captures the click-outside-to-close.)
   &::backdrop {
-    background: var(--background-modifier-cover);
+    background: transparent;
   }
 
   @media only screen and (max-width: 600px) {

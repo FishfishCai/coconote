@@ -24,6 +24,8 @@ The bindings below are the defaults. Some can be overridden in setting.
 - `Cmd / Ctrl + Shift + M`: open the PDF metadata panel (only active in the PDF viewer, see [[pdf]]).
 - `Cmd / Ctrl + Shift + C`: go back to the Content page.
 - `Cmd / Ctrl + Shift + B`: return to the previous page.
+- `Cmd / Ctrl + Shift + F`: go forward to the next page (inverse of Shift + B).
+- `Cmd / Ctrl + Shift + S`: open Settings.
 - `Cmd / Ctrl + Click` a link: open in a new tab (browser) / new window (desktop app).
 - `Cmd / Ctrl + C / X / V`: copy / cut / paste. When pasting an image from the clipboard, Coconote automatically saves it to the current file's `.<filename>.assets/` folder and inserts a wikilink at the cursor.
 - `Cmd / Ctrl + Left/Right`: jump to line start / end.
