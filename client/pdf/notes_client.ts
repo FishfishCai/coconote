@@ -7,6 +7,7 @@ import { authedFetch } from "../lib/authed_fetch.ts";
 import { newPageId } from "../lib/id.ts";
 import { encodePathSegments } from "../lib/path_url.ts";
 import { fsEndpoint } from "../spaces/constants.ts";
+import { type CollabHandle, connectCollab } from "../collab/collab_extension.ts";
 
 export type Color = "yellow" | "green" | "blue" | "pink" | "orange";
 export const HIGHLIGHT_COLORS: Color[] = [
@@ -232,4 +233,127 @@ export function nextAutoAnchorName(existing: Anchor[]): string {
   const taken = new Set(existing.map((a) => a.name));
   while (taken.has(`anchor-${n}`)) n++;
   return `anchor-${n}`;
+}
+
+// --- Live collaboration on the sidecar (pdf.md: same channel as md) ---
+//
+// The whole sidecar JSON rides one Y.Text over /.collab/<sidecar>, exactly
+// like a markdown body. The server seeds it from disk, fans updates out,
+// checkpoints to disk every 5s, and records history. One session is shared
+// by the PDF viewer and the metadata panel via ref-counting so they edit
+// the same in-memory sidecar. Concurrent structural edits merge at the text
+// level (last consistent state wins), acceptable for the single-user /
+// few-peer case this targets.
+
+type SidecarListener = (s: PdfSidecar) => void;
+
+type SidecarSession = {
+  pdfPath: string;
+  handle: CollabHandle;
+  current: PdfSidecar;
+  listeners: Set<SidecarListener>;
+  refs: number;
+};
+
+let activeSidecar: SidecarSession | null = null;
+
+function parseSidecarText(raw: string): PdfSidecar {
+  if (!raw.trim()) return emptySidecar();
+  try {
+    return normalizeSidecar(JSON.parse(raw));
+  } catch {
+    return emptySidecar();
+  }
+}
+
+function emitSidecar(s: SidecarSession): void {
+  for (const l of s.listeners) l(s.current);
+}
+
+/** Open (or join) the collab session for `pdfPath`'s sidecar. `onChange`
+ *  fires immediately with the current state and again on every remote
+ *  update. Returns a release fn; the session closes when the last holder
+ *  releases. */
+export function openSidecarSession(
+  pdfPath: string,
+  onChange: SidecarListener,
+): { release: () => void; handle: CollabHandle } {
+  if (activeSidecar && activeSidecar.pdfPath === pdfPath) {
+    const s = activeSidecar;
+    s.listeners.add(onChange);
+    s.refs += 1;
+    onChange(s.current);
+    return { release: () => releaseSidecar(s, onChange), handle: s.handle };
+  }
+  if (activeSidecar) closeSidecar(activeSidecar);
+  const handle = connectCollab(sidecarPath(pdfPath));
+  const yText = handle.doc.getText("content");
+  const session: SidecarSession = {
+    pdfPath,
+    handle,
+    current: emptySidecar(),
+    listeners: new Set([onChange]),
+    refs: 1,
+  };
+  activeSidecar = session;
+  // Remote (and initial-sync) updates re-parse the JSON. Our own writes
+  // carry the "local" origin and are skipped to avoid an echo loop.
+  yText.observe((_e, tx) => {
+    if (tx.origin === "local") return;
+    session.current = parseSidecarText(yText.toString());
+    emitSidecar(session);
+  });
+  onChange(session.current);
+  return { release: () => releaseSidecar(session, onChange), handle };
+}
+
+function releaseSidecar(s: SidecarSession, cb: SidecarListener): void {
+  s.listeners.delete(cb);
+  s.refs -= 1;
+  if (s.refs <= 0) closeSidecar(s);
+}
+
+function closeSidecar(s: SidecarSession): void {
+  s.handle.disconnect();
+  if (activeSidecar === s) activeSidecar = null;
+}
+
+/** Current in-memory sidecar for `pdfPath`, or null if no session. */
+export function activeSidecarState(pdfPath: string): PdfSidecar | null {
+  return activeSidecar && activeSidecar.pdfPath === pdfPath
+    ? activeSidecar.current
+    : null;
+}
+
+/** Mutate the live sidecar and broadcast it. Replaces the whole Y.Text
+ *  with the new JSON under a "local" origin so the observer skips it. */
+export function updateSidecarSession(
+  pdfPath: string,
+  mutate: (s: PdfSidecar) => PdfSidecar,
+): void {
+  const s = activeSidecar;
+  if (!s || s.pdfPath !== pdfPath) return;
+  let next = mutate(s.current);
+  // Heal a freshly-created sidecar so its identity is stable: without an
+  // id every checkpoint write would have the server inject a new one,
+  // churning the page_id and fragmenting history. Mirrors the old
+  // HTTP save path (id anchors history; title defaults to the filename).
+  if (!next.metadata.id) {
+    next = {
+      ...next,
+      metadata: {
+        ...next.metadata,
+        id: newPageId(),
+        title: next.metadata.title || pdfStem(pdfPath),
+      },
+    };
+  }
+  s.current = next;
+  const json = JSON.stringify(s.current, null, 2);
+  const yText = s.handle.doc.getText("content");
+  s.handle.doc.transact(() => {
+    yText.delete(0, yText.length);
+    yText.insert(0, json);
+  }, "local");
+  emitSidecar(s);
 }

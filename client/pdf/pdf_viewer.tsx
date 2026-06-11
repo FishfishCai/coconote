@@ -15,10 +15,10 @@ import {
   type Comment as PdfComment,
   type Highlight,
   HIGHLIGHT_COLORS,
-  loadNotes,
   nextAutoAnchorName,
+  openSidecarSession,
   type PdfNotes,
-  saveNotes,
+  updateSidecarSession,
 } from "./notes_client.ts";
 import {
   capturePdfSelection,
@@ -102,48 +102,40 @@ export function PdfViewer({ path, initialAnchor }: Props) {
     { highlight: Highlight; initial: string; editing: boolean } | null
   >(null);
 
-  // Load notes.
-  useEffect(() => {
-    let cancelled = false;
-    loadNotes(path)
-      .then((n) => {
-        if (!cancelled) setNotes(n);
-      })
-      .catch((e) => setError(String(e)));
-    return () => {
-      cancelled = true;
-    };
-  }, [path]);
-
-  // Debounce note saves so a rapid burst (colour cycling, bulk delete)
-  // collapses to a single PUT.
+  // Debounce a rapid burst (colour cycling, bulk delete) into one write.
   const saveTimerRef = useRef<number | null>(null);
   const pendingNotesRef = useRef<PdfNotes | null>(null);
+  const flushNotes = () => {
+    if (saveTimerRef.current !== null) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    const pending = pendingNotesRef.current;
+    pendingNotesRef.current = null;
+    if (pending) updateSidecarSession(path, (s) => ({ ...s, ...pending }));
+  };
   const persist = (next: PdfNotes) => {
     setNotes(next);
     pendingNotesRef.current = next;
     if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = self.setTimeout(() => {
-      saveTimerRef.current = null;
-      const toSave = pendingNotesRef.current;
-      pendingNotesRef.current = null;
-      if (!toSave) return;
-      saveNotes(path, toSave).catch((e) => setError(`Save failed: ${e}`));
-    }, SAVE_DEBOUNCE_MS);
+    saveTimerRef.current = self.setTimeout(flushNotes, SAVE_DEBOUNCE_MS);
   };
-  // Flush pending save on unmount or path change so a hot exit doesn't
-  // lose the user's last highlight.
+
+  // Live sidecar session: real-time collab plus server-side persistence
+  // and history (pdf.md). The callback fires on the initial sync and on
+  // every remote change. Flush a pending local edit before releasing so
+  // the last change reaches the doc and the server checkpoint.
   useEffect(() => {
+    const { release } = openSidecarSession(path, (sc) => {
+      setNotes({
+        highlights: sc.highlights,
+        anchors: sc.anchors,
+        comments: sc.comments,
+      });
+    });
     return () => {
-      if (saveTimerRef.current !== null) {
-        clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = null;
-      }
-      const toSave = pendingNotesRef.current;
-      pendingNotesRef.current = null;
-      if (toSave) {
-        void saveNotes(path, toSave).catch(() => {});
-      }
+      flushNotes();
+      release();
     };
   }, [path]);
 
