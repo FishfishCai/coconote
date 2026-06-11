@@ -69,6 +69,12 @@
   // (server-rs/src/history.rs: create / edit / push / pull / pin).
   .coconote-history-chip {
     font-size: 0.7em;
+    // Fixed width + centered content so every kind's badge is the same
+    // size regardless of label length (widest is "create").
+    display: inline-flex;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 6.5em;
     padding: 0.08em 0.5em;
     border-radius: var(--radius-s);
     color: var(--text-on-accent);

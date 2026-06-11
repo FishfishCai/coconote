@@ -1,4 +1,5 @@
 import type { AppViewState } from "../../types/ui.ts";
+import { useMemo } from "preact/hooks";
 import { ColorRow } from "./color_row.tsx";
 import { FontRow } from "./font_row.tsx";
 import { SettingRow, SettingToggle } from "./setting_row.tsx";
@@ -25,6 +26,17 @@ export function AppearanceSection(props: {
   set: (k: string, v: unknown) => void;
 }) {
   const { uiOptions, set } = props;
+  // Read the live theme font stacks (styles/theme.scss --font-*-theme) so the
+  // inputs show the real current default instead of a hardcoded, drifting copy.
+  const themeFonts = useMemo(() => {
+    const cs = getComputedStyle(document.documentElement);
+    const read = (v: string) => cs.getPropertyValue(v).trim();
+    return {
+      text: read("--font-text-theme"),
+      interface: read("--font-interface-theme"),
+      monospace: read("--font-monospace-theme"),
+    };
+  }, []);
   return (
     <section>
       <h2>Appearance</h2>
@@ -109,19 +121,19 @@ export function AppearanceSection(props: {
 
       <FontRow
         label="Prose font"
-        placeholder="CodeNewRoman Nerd Font, CodeNewRoman, sans-serif"
+        defaultValue={themeFonts.text}
         value={uiOptions.fontText}
         onChange={(v) => set("fontText", v)}
       />
       <FontRow
         label="UI font"
-        placeholder="Inter, system-ui, sans-serif"
+        defaultValue={themeFonts.interface}
         value={uiOptions.fontInterface}
         onChange={(v) => set("fontInterface", v)}
       />
       <FontRow
         label="Monospace font"
-        placeholder="CodeNewRoman Nerd Font Mono, CodeNewRoman Mono, monospace"
+        defaultValue={themeFonts.monospace}
         value={uiOptions.fontMonospace}
         onChange={(v) => set("fontMonospace", v)}
       />

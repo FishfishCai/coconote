@@ -139,7 +139,7 @@ export function PagesSection(props: { client: Client }) {
             <input
               type="text"
               autoFocus
-              placeholder="papers"
+              placeholder="vault name"
               value={addName}
               onInput={(e) => setAddName(e.currentTarget.value)}
             />
@@ -148,7 +148,7 @@ export function PagesSection(props: { client: Client }) {
             <span>Absolute path</span>
             <input
               type="text"
-              placeholder="/Users/me/notes"
+              placeholder="absolute path to a folder"
               value={addPath}
               onInput={(e) => setAddPath(e.currentTarget.value)}
             />

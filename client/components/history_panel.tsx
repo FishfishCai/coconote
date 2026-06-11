@@ -28,12 +28,14 @@ function fmtTs(ms: number): string {
   return d.toLocaleString();
 }
 
+// One monochrome typographic glyph per save type — pin uses a star rather
+// than the 📌 emoji so all five share the same flat, single-color style.
 const TYPE_GLYPH: Record<SaveType, string> = {
   create: "✱",
   edit: "•",
   push: "↑",
   pull: "↓",
-  pin: "📌",
+  pin: "★",
 };
 
 export function HistoryPanel({ id, targetPath, onClose, onRestored }: Props) {

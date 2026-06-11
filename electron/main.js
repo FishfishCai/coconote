@@ -6,7 +6,7 @@
 // config dir (welcome.md §coconote.yaml). The shell never asks for a
 // vault path.
 
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
@@ -155,6 +155,12 @@ function createWindow() {
 }
 
 async function bootstrap() {
+  // The renderer only ever talks to the loopback sidecar; external links
+  // open in the system browser. Force direct connections so Chromium skips
+  // system-proxy / PAC resolution, which otherwise adds a one-time stall to
+  // the first request to the server (felt as a slow first panel open).
+  await session.defaultSession.setProxy({ mode: "direct" });
+
   const probeResult = await probe();
   if (probeResult === "foreign") {
     dialog.showErrorBox(

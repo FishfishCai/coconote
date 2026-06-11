@@ -127,7 +127,7 @@ export function RemoteVaultsSection() {
             <input
               type="text"
               autoFocus
-              placeholder="http://192.168.1.5:40704"
+              placeholder="http://host:40704"
               value={url}
               onInput={(e) => setUrl(e.currentTarget.value)}
             />
@@ -136,7 +136,7 @@ export function RemoteVaultsSection() {
             <span>Token</span>
             <input
               type="password"
-              placeholder="optional bearer token (stays in localStorage)"
+              placeholder="optional bearer token"
               value={token}
               onInput={(e) => setToken(e.currentTarget.value)}
             />
