@@ -6,7 +6,7 @@ title: markdown
 
 # Markdown
 
-The markdown editor supports the following basic features.
+The markdown syntax Coconote renders. Each section pairs the source with its rendered result.
 
 ## Headings
 Four levels of headings.
@@ -31,21 +31,10 @@ Four inline marks:
 - `~~strike~~`: ~~strike~~
 - `==highlight==`: ==highlight==
 
-Bold, italic and strike can be combined in any order:
+Bold, italic, and strike nest in any order, with either marker spelling:
 - `***bold italic***`: ***bold italic***
-- `**_bold italic_**`: **_bold italic_**
 - `**~~bold strike~~**`: **~~bold strike~~**
-- `__*bold italic*__`: __*bold italic*__
-- `___bold italic___`: ___bold italic___
-- `__~~bold strike~~__`: __~~bold strike~~__
-- `*__italic bold__*`: *__italic bold__*
-- `*~~italic strike~~*`: *~~italic strike~~*
-- `_**italic bold**_`: _**italic bold**_
-- `_~~italic strike~~_`: _~~italic strike~~_
-- `~~**strike bold**~~`: ~~**strike bold**~~
-* `~~__strike bold__~~`: ~~__strike bold__~~
-* `~~*strike italic*~~`: ~~*strike italic*~~
-* `~~_strike italic_~~`: ~~_strike italic_~~
+- `~~_strike italic_~~`: ~~_strike italic_~~
 
 Highlight cannot be combined with the other three inline marks.
 
@@ -54,7 +43,7 @@ Backslash escapes a marker so it renders literally:
 
 ## Lists
 
-Unordered uses `-`; ordered uses `1.`. Nesting = 4 spaces. Unordered counter cycles `• ◦ ▪ ‣`; ordered counter cycles `1. a. i. A.`.
+Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four spaces. Each level uses the next marker in a cycle: unordered runs `• ◦ ▪ ‣`, ordered runs `1. a. i. A.`. Ordered items are numbered by position, so the exact digits you type are ignored (this is why the rendered numbers below differ from the source).
 
 ```markdown
 - one
@@ -80,7 +69,7 @@ Unordered uses `-`; ordered uses `1.`. Nesting = 4 spaces. Unordered counter cyc
 
 ## Quote Block
 
-A quote block uses `>`. Only the first `>` on each line is rendered. Click a quote block to reveal all of its `>` markers.
+A quote block uses `>`, and stacking `>` markers nests it deeper. The rendered block shows the nesting without the raw markers. Click a quote block to reveal its `>` markers.
 
 ```markdown
 > outer
@@ -108,7 +97,7 @@ ___
 
 ## Code
 
-Inline code is wrapped in a single `` ` ``; block code is wrapped in triple ` ``` `.
+Inline code is wrapped in a single `` ` ``. Block code is wrapped in three or more ` ``` `.
 
 Inline:
 - `` `code` ``: `code`
@@ -116,7 +105,7 @@ Inline:
 If the code itself contains a backtick, use more backticks for the fence: ``` `` `inner` `` ```: `` `inner` ``.
 
 Block:
-Code block opens with three+ backticks. The language tag enables syntax highlighting. Currently supported: `yaml`, `json`, `javascript`/`js`, `typescript`/`ts`, `python`/`py`, `rust`/`rs`, `c`, `cpp`/`c++`, `java`, `csharp`/`cs`, `go`/`golang`, `sh`/`bash`/`zsh`/`fish`, `sql`, `css`, `xml`, `swift`, `kotlin`, `scala`, `dart`, `ruby`, `perl`, `r`, `toml`, `protobuf`, `diff`, `powershell`, `dockerfile`, `cmake`, `nix`.
+A language tag after the opening fence enables syntax highlighting. Supported tags: `yaml`, `json`, `javascript`/`js`, `typescript`/`ts`, `python`/`py`, `rust`/`rs`, `c`, `cpp`/`c++`, `java`, `csharp`/`cs`, `go`/`golang`, `sh`/`bash`/`zsh`/`fish`, `sql`, `css`, `xml`, `swift`, `kotlin`, `scala`, `dart`, `ruby`, `perl`, `r`, `toml`, `protobuf`, `diff`, `powershell`, `dockerfile`, `cmake`, `nix`.
 
 ````markdown
 ```python
@@ -146,7 +135,7 @@ multiple lines kept verbatim
 
 ## Math
 
-Inline math is wrapped in a single `$`; block math is wrapped in `$$`.
+Inline math is wrapped in a single `$`. Block math is wrapped in `$$`.
 
 Inline:
 - `$\sum_{i=1}^n i = \tfrac{n(n+1)}{2}$`: $\sum_{i=1}^n i = \tfrac{n(n+1)}{2}$
@@ -164,59 +153,27 @@ $$
 
 ## Callout
 
-Callout begins with `::: keyword[:label]` and closes with `:::` or more than 4 colons. The `:label` after the keyword shows in the title chip as `(label)`. Twelve kinds of callouts: `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`. `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example` share one auto-incrementing counter. `theorem`, `proposition`, `lemma`, `corollary`, `proof` render their body in italic; the rest stay upright. `proof` ends with `∎`.
+A callout opens with `::: keyword`, optionally followed by `:label`, and closes with `:::` (or a run of more than four colons). The optional `:label` shows in the callout's title as `(label)`. There are twelve kinds: `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six (`definition` through `example`) share one counter that numbers them in order of appearance. `theorem`, `proposition`, `lemma`, `corollary`, and `proof` render their body in italic, the rest upright. `proof` ends with `∎`.
 
-Examples:
+One example per behavior (the other keywords look like one of these):
 
 ::: definition
-Body of a definition.
+Body of a counter callout, upright.
 :::
 
 ::: theorem
-Body of a theorem.
-:::
-
-::: proposition
-Body of a proposition.
-:::
-
-::: lemma
-Body of a lemma.
-:::
-
-::: corollary
-Body of a corollary.
-:::
-
-::: example
-Body of an example.
+Body of a counter callout, italic.
 :::
 
 ::: proof
-Body of a proof.
-:::
-
-::: remark
-Body of a remark.
+Body of a proof, italic, ending in a tombstone.
 :::
 
 ::: note
-Body of a note.
+Body of a plain callout (also remark, warning, tip, info).
 :::
 
-::: warning
-Body of a warning.
-:::
-
-::: tip
-Body of a tip.
-:::
-
-::: info
-Body of an info.
-:::
-
-Callout with label:
+With a label:
 
 ::: definition:label
 Body of a definition.
@@ -226,7 +183,7 @@ Body of a definition.
 
 Image uses `![[filename|alt|size|alignment]]`. Alignment supports `left`, `center`, and `right`.
 
-Local images must live in the file's accompanying `.<name>.assets/` folder (basename without the `.md` extension; see [[file]]).
+Local images must live in the file's `.<name>.assets/` folder, where `<name>` is the filename without `.md` (see [[file]]).
 
 ![[test.png|sample|120x60|center]]
 
