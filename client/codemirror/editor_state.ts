@@ -129,9 +129,11 @@ export function createEditorState(
       markdownLanguageExtension,
       syntaxHighlighting(customMarkdownStyle()),
       EditorView.contentAttributes.of({
-        spellcheck: "true",
-        autocorrect: "on",
-        autocapitalize: "on",
+        // No browser spellcheck: the red squiggle under "misspelled" words
+        // is noise in technical / markdown notes.
+        spellcheck: "false",
+        autocorrect: "off",
+        autocapitalize: "off",
       }),
       highlightSpecialChars(),
       undoHistory,
