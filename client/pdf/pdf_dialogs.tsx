@@ -7,9 +7,10 @@
 // no-ops window.prompt, so the anchor flow (which used to call it) would
 // silently fail in the desktop build.
 
-import { useEffect, useState } from "preact/hooks";
+import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
 import { useMenuPosition } from "../lib/menu_position.ts";
+import { useDismissOnOutside } from "../lib/dom_hooks.ts";
 import { Modal } from "../components/modal.tsx";
 import { type Color, HIGHLIGHT_COLORS } from "./notes_client.ts";
 
@@ -147,23 +148,17 @@ export function HighlightContextMenu({
   onRemove(): void;
 }) {
   const { ref, x: mx, y: my } = useMenuPosition(x, y);
-  // Dismiss on click outside the menu. Deferred a tick so the click that
-  // opened it (on the highlight) doesn't immediately close it again.
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    const t = self.setTimeout(() => document.addEventListener("click", onDocClick), 0);
-    return () => {
-      clearTimeout(t);
-      document.removeEventListener("click", onDocClick);
-    };
-  }, [onClose, ref]);
+  // Same dismissal as the content-browser menus (shared hook): outside
+  // click / right-click / Escape close it; clicks inside are swallowed
+  // by stopPropagation so they don't self-dismiss.
+  useDismissOnOutside(onClose);
   return (
     <div
       ref={ref}
       class="coconote-pdf-context-menu"
       style={{ left: `${mx}px`, top: `${my}px` }}
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <button type="button" onClick={onAnchor}>
         {hasAnchor ? "Rename anchor" : "Set anchor"}

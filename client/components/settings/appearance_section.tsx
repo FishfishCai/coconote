@@ -1,8 +1,6 @@
 import type { AppViewState } from "../../types/ui.ts";
 import { useMemo } from "preact/hooks";
-import { ColorRow } from "./color_row.tsx";
-import { FontRow } from "./font_row.tsx";
-import { SettingRow, SettingToggle } from "./setting_row.tsx";
+import { OverrideRow, SettingRow, SettingToggle } from "./setting_row.tsx";
 
 type UiOptions = AppViewState["uiOptions"];
 
@@ -88,50 +86,58 @@ export function AppearanceSection(props: {
         />
       </SettingRow>
 
-      <ColorRow
+      <OverrideRow
+        variant="color"
         label="Accent"
         defaultValue={DEFAULT_ACCENT}
         value={uiOptions.accentColor}
         onChange={(v) => set("accentColor", v)}
       />
-      <ColorRow
+      <OverrideRow
+        variant="color"
         label="Highlight"
         defaultValue={DEFAULT_HIGHLIGHT}
         value={uiOptions.highlightColor}
         onChange={(v) => set("highlightColor", v)}
       />
-      <ColorRow
+      <OverrideRow
+        variant="color"
         label="Missing link"
         defaultValue={DEFAULT_LINK_MISSING}
         value={uiOptions.linkMissingColor}
         onChange={(v) => set("linkMissingColor", v)}
       />
-      <ColorRow
+      <OverrideRow
+        variant="color"
         label="Code background"
         defaultValue={DEFAULT_CODE_BG}
         value={uiOptions.codeBackgroundColor}
         onChange={(v) => set("codeBackgroundColor", v)}
       />
-      <ColorRow
+      <OverrideRow
+        variant="color"
         label="Hover background"
         defaultValue={DEFAULT_HOVER_BG}
         value={uiOptions.hoverBackgroundColor}
         onChange={(v) => set("hoverBackgroundColor", v)}
       />
 
-      <FontRow
+      <OverrideRow
+        variant="text"
         label="Prose font"
         defaultValue={themeFonts.text}
         value={uiOptions.fontText}
         onChange={(v) => set("fontText", v)}
       />
-      <FontRow
+      <OverrideRow
+        variant="text"
         label="UI font"
         defaultValue={themeFonts.interface}
         value={uiOptions.fontInterface}
         onChange={(v) => set("fontInterface", v)}
       />
-      <FontRow
+      <OverrideRow
+        variant="text"
         label="Monospace font"
         defaultValue={themeFonts.monospace}
         value={uiOptions.fontMonospace}

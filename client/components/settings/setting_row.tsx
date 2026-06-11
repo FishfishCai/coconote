@@ -56,3 +56,57 @@ export function SettingToggle({
     </SettingRow>
   );
 }
+
+type OverrideProps = {
+  label: string;
+  /** Theme default shown (and submitted on edit) when there is no override. */
+  defaultValue: string;
+  /** The user's override, or "" to fall back to defaultValue. */
+  value: string;
+  onChange(next: string): void;
+  variant: "color" | "text";
+};
+
+// One "value with a theme default + reset" row, shared by the colour and
+// font settings. Empty value means "use the default"; the input shows the
+// effective value either way, and reset clears the override.
+export function OverrideRow(
+  { label, defaultValue, value, onChange, variant }: OverrideProps,
+) {
+  const current = value || defaultValue;
+  return (
+    <SettingRow label={label}>
+      <div className="coconote-color-row">
+        {variant === "color"
+          ? (
+            <>
+              <input
+                type="color"
+                value={current}
+                onInput={(e) => onChange(e.currentTarget.value)}
+              />
+              <span className="coconote-value">{current}</span>
+            </>
+          )
+          : (
+            <input
+              type="text"
+              className="coconote-font-input"
+              value={current}
+              onInput={(e) => onChange(e.currentTarget.value)}
+            />
+          )}
+        {value && (
+          <button
+            type="button"
+            className="coconote-color-reset"
+            onClick={() => onChange("")}
+            title="Reset to default"
+          >
+            reset
+          </button>
+        )}
+      </div>
+    </SettingRow>
+  );
+}

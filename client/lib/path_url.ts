@@ -22,14 +22,6 @@ export function basename(path: string): string {
   return path.split("/").pop() ?? path;
 }
 
-/** `"notes/foo.md"` → `"foo"`. Strips a trailing `.md` from the
- *  basename — the form `[[wikilink]]` resolves against for markdown.
- *  PDFs keep their `.pdf` extension because PDF wikilinks reference
- *  it explicitly (`[[paper.pdf]]`). */
-export function basenameNoExt(path: string): string {
-  return basename(path).replace(/\.md$/i, "");
-}
-
 /** `"papers/foo.pdf"` → `"papers/.foo.json"` (file.md §PDF sidecar). */
 export function pdfSidecarPath(pdfPath: string): string {
   const i = pdfPath.lastIndexOf("/");
