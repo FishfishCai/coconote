@@ -1,6 +1,6 @@
 name: release
 
-# Trigger: push a `v*` tag (e.g. `v1.0.0`) — or `Run workflow` manually.
+# Trigger: push a `v*` tag (e.g. `v1.0.0`) or `Run workflow` manually.
 # Produces 6 server binaries + 3 desktop installers and attaches them to
 # the GitHub release page. The version job gates everything: the tag must
 # match package.json, electron/package.json and server-rs/Cargo.toml.
@@ -36,13 +36,13 @@ jobs:
           CARGO=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' server-rs/Cargo.toml | head -n1)
           echo "package.json=$PKG electron/package.json=$ELECTRON_PKG server-rs/Cargo.toml=$CARGO"
           if [ "$PKG" != "$ELECTRON_PKG" ] || [ "$PKG" != "$CARGO" ]; then
-            echo "::error::Version mismatch: package.json=$PKG, electron/package.json=$ELECTRON_PKG, server-rs/Cargo.toml=$CARGO — align all three before releasing."
+            echo "::error::Version mismatch: package.json=$PKG, electron/package.json=$ELECTRON_PKG, server-rs/Cargo.toml=$CARGO - align all three before releasing."
             exit 1
           fi
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
             if [ "$VERSION" != "$PKG" ]; then
-              echo "::error::Tag $GITHUB_REF_NAME (version $VERSION) does not match the manifests ($PKG) — bump package.json / electron/package.json / server-rs/Cargo.toml, or retag."
+              echo "::error::Tag $GITHUB_REF_NAME (version $VERSION) does not match the manifests ($PKG) - bump package.json / electron/package.json / server-rs/Cargo.toml, or retag."
               exit 1
             fi
           else
@@ -159,7 +159,7 @@ jobs:
           stage=$(mktemp -d)
           cp "server-rs/target/${{ matrix.triple }}/release/${{ matrix.bin }}" "$stage/"
           # No per-user yaml shipped: the server auto-creates one at the
-          # standard config dir on first launch (welcome.md §coconote.yaml).
+          # standard config dir on first launch (welcome.md coconote.yaml).
           cp introduction/welcome.md "$stage/README.md"
           mkdir -p dist/server
           (cd "$stage" && zip -q "$GITHUB_WORKSPACE/dist/server/$OUT" ${{ matrix.bin }} README.md)
@@ -170,7 +170,7 @@ jobs:
           path: dist/server/*.zip
 
   # ---------------------------------------------------------------------------
-  # 3 desktop installers — electron-builder must run on each target OS for
+  # 3 desktop installers - electron-builder must run on each target OS for
   # native bundling (dmg, deb/AppImage, NSIS exe). The Rust sidecar is built
   # per-host and staged under electron/binaries/<platform-arch>/.
   # ---------------------------------------------------------------------------
@@ -254,10 +254,10 @@ jobs:
         env:
           # No Developer ID cert: don't let electron-builder grab a stray
           # keychain identity. macOS still gets a clean ad-hoc re-sign via
-          # `mac.identity: null` in builder.config.json — required so the
+          # `mac.identity: null` in builder.config.json - required so the
           # bundle's signature actually covers our injected sidecar +
           # trimmed locales (a SKIPPED sign leaves Electron's original
-          # signature mismatching the modified bundle → "damaged").
+          # signature mismatching the modified bundle -> "damaged").
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: ${{ matrix.electron_build_cmd }}
 
@@ -293,9 +293,46 @@ jobs:
           name: app-${{ matrix.label }}
           path: dist/app/*
 
+  # ---------------------------------------------------------------------------
+  # Companion zips: the user manual (introduction/*.md, no test fixtures)
+  # and the prebuilt MCP server bundle. The release job globs *.zip from
+  # gathered artifacts, so these attach automatically.
+  # ---------------------------------------------------------------------------
+  extras:
+    name: manual + mcp zips
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build mcp bundle
+        working-directory: mcp
+        run: |
+          npm ci
+          npm run build
+      - name: Stage zips
+        shell: bash
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          mkdir -p dist/extras
+          stage=$(mktemp -d) && mkdir "$stage/introduction"
+          cp introduction/*.md "$stage/introduction/"
+          (cd "$stage" && zip -qr "$GITHUB_WORKSPACE/dist/extras/coconote-introduction-v${VERSION}.zip" introduction)
+          stage2=$(mktemp -d) && mkdir "$stage2/coconote-mcp"
+          # dist ships two files: the bundle plus the pdfjs worker it
+          # resolves relative to itself.
+          cp mcp/dist/index.js mcp/dist/pdf.worker.mjs mcp/README.md "$stage2/coconote-mcp/"
+          (cd "$stage2" && zip -qr "$GITHUB_WORKSPACE/dist/extras/coconote-mcp-v${VERSION}.zip" coconote-mcp)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extras
+          path: dist/extras/*.zip
+
   release:
     name: Publish release
-    needs: [server, app]
+    needs: [server, app, extras]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:

@@ -58,7 +58,11 @@ The desktop app bundles a sidecar server, so no separate server install is neede
 
 ## Documentation
 
-The user manual and walkthrough live in the [`introduction/`](./introduction/) folder of this repository. Download that folder, drop it under your vault root, and open it in Coconote to read every feature page. A good starting point is [`introduction/welcome.md`](./introduction/welcome.md), which lists the recommended reading order.
+The user manual and walkthrough live in the [`introduction/`](./introduction/) folder of this repository. Download that folder (each release also attaches it prepackaged as `coconote-introduction-vX.Y.Z.zip`), drop it under your vault root, and open it in Coconote to read every feature page. A good starting point is [`introduction/welcome.md`](./introduction/welcome.md), which lists the recommended reading order.
+
+## AI access (MCP)
+
+The repository ships an MCP server under [`mcp/`](./mcp/) that lets AI agents work on your vault through the same HTTP + WebSocket API the app uses. Edits travel over the live collab channel, so an agent behaves like a second collaborator: its changes appear in open editors in real time, are checkpointed to disk, and show up in version history. Register the bundle (built from `mcp/`, or grab `coconote-mcp-vX.Y.Z.zip` from a release) with any MCP client such as Claude Code or Claude Desktop, point `COCONOTE_URL` at your server (`COCONOTE_TOKEN` for non-local servers), and the agent gets tools for reading, editing, importing files, annotating PDFs, version history, and cross-vault push / pull. Setup details are in [`mcp/README.md`](./mcp/README.md).
 
 ## License
 
