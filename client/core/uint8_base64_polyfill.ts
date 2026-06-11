@@ -1,13 +1,7 @@
-// Polyfills for TC39 Stage-3 proposals pdf.js v6 depends on. Electron
-// 36 / Chromium 136 ships without some of these, killing PDF open with
-// errors like "a.toHex is not a function" or "...getOrInsertComputed
-// is not a function". Each shim guards on `typeof !== "function"` so
-// the engine's native implementation wins where it exists.
-//
-//   - Uint8Array to/from base64 and hex
-//     https://github.com/tc39/proposal-arraybuffer-base64
-//   - Map / WeakMap getOrInsert + getOrInsertComputed
-//     https://github.com/tc39/proposal-upsert
+// TC39 Stage-3 polyfills pdf.js v6 depends on. Electron 36 / Chromium 136
+// ships without some, killing PDF open ("a.toHex is not a function").
+// Each shim guards on `typeof !== "function"` so native wins where it
+// exists. Proposals: tc39/proposal-arraybuffer-base64, tc39/proposal-upsert.
 
 declare global {
   interface Uint8Array {
@@ -70,7 +64,7 @@ if (typeof proto.toBase64 !== "function") {
     this: Uint8Array,
     options?: { alphabet?: "base64" | "base64url" },
   ): string {
-    // btoa wants a binary string; chunk to avoid String.fromCharCode
+    // btoa wants a binary string - chunk to avoid String.fromCharCode
     // stack-overflowing on large buffers.
     let bin = "";
     const CHUNK = 0x8000;
@@ -93,7 +87,6 @@ if (typeof ctor.fromBase64 !== "function") {
     let s = input;
     if (options?.alphabet === "base64url") {
       s = s.replaceAll("-", "+").replaceAll("_", "/");
-      // Pad back to a multiple of 4.
       while (s.length % 4) s += "=";
     }
     const bin = atob(s);
@@ -103,7 +96,7 @@ if (typeof ctor.fromBase64 !== "function") {
   };
 }
 
-// Map / WeakMap upsert helpers. Same shape for both — guard each
+// Map / WeakMap upsert helpers. Same shape for both - guard each
 // separately to handle engines that ship one method but not the other.
 const mapProto = Map.prototype as unknown as Record<string, unknown>;
 const weakMapProto = WeakMap.prototype as unknown as Record<string, unknown>;
@@ -136,13 +129,13 @@ function patchUpsert(proto: Record<string, unknown>) {
 patchUpsert(mapProto);
 patchUpsert(weakMapProto);
 
-// Math.sumPrecise — TC39 Stage 3, accurate summation of an iterable of
-// numbers (kahan-style; the spec mandates no rounding error).
+// Math.sumPrecise - TC39 Stage 3, accurate summation of an iterable of
+// numbers (kahan-style, the spec mandates no rounding error).
 const mathObj = Math as unknown as Record<string, unknown>;
 if (typeof mathObj.sumPrecise !== "function") {
-  // Neumaier compensated summation — gives the spec-mandated
-  // double-precision result for typical inputs; pdf.js uses this to
-  // sum glyph widths so a tiny imprecision is benign.
+  // Neumaier compensated summation - gives the spec-mandated
+  // double-precision result for typical inputs. pdf.js uses this to
+  // sum glyph widths, so a tiny imprecision is benign.
   mathObj.sumPrecise = function sumPrecise(iterable: Iterable<number>): number {
     let sum = 0;
     let c = 0;

@@ -1,9 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Strips a leading `/` and percent-decodes. ONLY for raw URI paths
-/// (the ssr fallback); values captured by axum's `Path` extractor are
-/// already decoded, and decoding twice corrupts names containing a
-/// literal `%HH`.
+/// Strips a leading `/` and percent-decodes. ONLY for raw URI paths (the
+/// ssr fallback): axum `Path` captures are already decoded, and decoding
+/// twice corrupts names containing a literal `%HH`.
 pub fn decode_path(p: &str) -> String {
     let trimmed = p.trim_start_matches('/');
     percent_encoding::percent_decode_str(trimmed)
@@ -12,14 +11,12 @@ pub fn decode_path(p: &str) -> String {
         .unwrap_or_else(|_| trimmed.to_string())
 }
 
-/// Lowercase hex BLAKE3 of `bytes` — the wire `X-Content-Hash` /
-/// history blob-key format.
+/// Lowercase hex BLAKE3: the wire `X-Content-Hash` / history blob-key format.
 pub fn blake3_hex(bytes: &[u8]) -> String {
     blake3::hash(bytes).to_hex().to_string()
 }
 
-/// Wall-clock milliseconds since the Unix epoch. Returns 0 if the
-/// system clock is before the epoch (should not happen in practice).
+/// Wall-clock ms since the Unix epoch, 0 if the clock is before it.
 pub fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -34,8 +31,8 @@ pub fn system_time_ms(t: SystemTime) -> i64 {
         .unwrap_or(0)
 }
 
-/// `Foo.MD` → `Foo`; `bar.md` → `bar`; otherwise return as-is.
-/// Case-insensitive `.md` strip used by md asset-prefix derivation.
+/// Case-insensitive `.md` strip (else as-is), used by md asset-prefix
+/// derivation.
 pub fn strip_md_extension(base: &str) -> &str {
     if base.len() >= 3 && base[base.len() - 3..].eq_ignore_ascii_case(".md") {
         &base[..base.len() - 3]
@@ -44,9 +41,9 @@ pub fn strip_md_extension(base: &str) -> &str {
     }
 }
 
-/// MIME type from a file extension, or None when unknown. Shared by the
-/// `/.file` GET handler and the embedded-bundle SSR fallback so the two
-/// don't drift. Not authoritative — clients mostly ignore it.
+/// MIME from extension, None when unknown. Shared by the `/.file` GET
+/// handler and the embedded-bundle SSR fallback so the two don't drift.
+/// Not authoritative: clients mostly ignore it.
 pub fn content_type(path: &str) -> Option<&'static str> {
     let p = path.to_ascii_lowercase();
     let ct = if p.ends_with(".html") {
@@ -79,10 +76,9 @@ pub fn content_type(path: &str) -> Option<&'static str> {
     Some(ct)
 }
 
-/// Per-page assets directory prefix for an md path. file.md spec:
-/// images live in `<dir>/.<stem>.assets/` where `<stem>` is the md
-/// basename without its `.md` extension. Returns the prefix WITH a
-/// trailing slash so callers can append asset names directly.
+/// Per-page assets prefix for an md path (file.md: images live in
+/// `<dir>/.<stem>.assets/`, `<stem>` = md basename without `.md`).
+/// Returned WITH a trailing slash so callers append asset names directly.
 pub fn assets_prefix_for(md_path: &str) -> String {
     let (dir, base) = match md_path.rfind('/') {
         Some(i) => (&md_path[..i + 1], &md_path[i + 1..]),

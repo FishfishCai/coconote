@@ -1,15 +1,7 @@
-// Global keyboard wiring. Splits two responsibilities:
-//
-//  (1) the 6 spec-named rebindable actions (setting.md §Shortcut) —
-//      mode switch / open history / pin / PDF metadata / back-to-content
-//      / back-prev;
-//  (2) bubbling unfocused keystrokes back into the CodeMirror keymap so
-//      typing while focus has drifted to a button still does the right
-//      thing in the editor.
-//
-// Lives here, not in MainUI, so the editor shell only re-renders for
-// UI state changes; keyboard wiring sets up once at boot and reads
-// state through callbacks.
+// Global keyboard wiring: (1) the spec-named rebindable actions
+// (setting.md Shortcut), (2) bubbling unfocused keystrokes back into
+// the CodeMirror keymap. Lives outside MainUI so it wires once at boot
+// and the editor shell only re-renders for UI state changes.
 
 import { runScopeHandlers } from "@codemirror/view";
 import type { ClientContext as Client } from "./context.ts";
@@ -28,7 +20,7 @@ export type KeyboardHooks = {
 export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
   globalThis.addEventListener("keydown", (ev) => {
     // Someone closer to the event (CodeMirror keymaps, a modal) already
-    // handled it — never double-fire an action on top.
+    // handled it - never double-fire an action on top.
     if (ev.defaultPrevented) return;
     const target = ev.target as HTMLElement | null;
     const inEditable = !!target && (
@@ -40,7 +32,7 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
       target.isContentEditable
     );
     // A modifier-less custom binding (e.g. bare "p") must not hijack
-    // typing in inputs / the editor; Cmd//Ctrl combos stay global.
+    // typing in inputs / the editor - Cmd/Ctrl combos stay global.
     if (inEditable && !ev.metaKey && !ev.ctrlKey) return;
     if (matchShortcut(ev, "modeSwitch")) {
       ev.preventDefault();
@@ -73,7 +65,7 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
       return;
     }
     if (matchShortcut(ev, "pdfMetadataPanel")) {
-      // pdf.md §Metadata panel: only active while the PDF viewer is up.
+      // pdf.md Metadata panel: only active while the PDF viewer is up.
       if (client.ui.viewState.pdfViewer) {
         ev.preventDefault();
         hooks.openPdfMetadata();
@@ -101,14 +93,13 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
       return;
     }
 
-    // Fall-through: forward editor-scope shortcuts when the editor
-    // doesn't have focus but the keystroke wasn't grabbed by a real
-    // form control or another editable region. NEVER while an overlay
-    // view is shown — the editor is hidden then and still points at the
-    // previous page; forwarding Backspace/Enter would silently edit it.
+    // Fall-through: forward editor-scope shortcuts when the editor lacks
+    // focus and no editable region grabbed the keystroke. NEVER while an
+    // overlay view is shown - the editor is hidden then and still points
+    // at the previous page, so forwarding Backspace/Enter would silently
+    // edit it.
     const vs = client.ui.viewState;
     if (vs.showContentBrowser || vs.showSettings || vs.pdfViewer) return;
-    if (!client.editorView) return;
     if (client.editorView.hasFocus) return;
     if (!target || inEditable) return;
     if (runScopeHandlers(client.editorView, ev, "editor")) {
@@ -121,7 +112,6 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
   // re-evaluate. Skipped elsewhere to avoid a full reconcile on every
   // chrome click.
   globalThis.addEventListener("mouseup", (ev) => {
-    if (!client.editorView) return;
     const target = ev.target as Element | null;
     if (!target || !target.closest?.(".cm-content")) return;
     setTimeout(() => client.editorView.dispatch({}));

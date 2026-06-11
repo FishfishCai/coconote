@@ -1,6 +1,6 @@
-// Pure force-directed layout for the Graph view (content.md §Graph
+// Pure force-directed layout for the Graph view (content.md Graph
 // view): node seeding, prereq/wikilink edge construction, and the
-// per-frame integrator. No DOM / Preact here — cb_graph_view.tsx owns
+// per-frame integrator. No DOM / Preact here - cb_graph_view.tsx owns
 // rendering and interaction.
 
 import type { PageMeta } from "coconote/type/page";
@@ -19,9 +19,9 @@ export type Node = {
 export type Edge = { from: string; to: string };
 
 export type SimParams = {
-  /** content.md §Graph view "attraction strength" — edge spring constant. */
+  /** content.md Graph view "attraction strength" - edge spring constant. */
   attract: number;
-  /** content.md §Graph view "repulsion strength" — pairwise Coulomb. */
+  /** content.md Graph view "repulsion strength" - pairwise Coulomb. */
   repulse: number;
 };
 
@@ -33,7 +33,7 @@ function seedPosition(
   i: number,
   n: number,
 ): { x: number; y: number } {
-  // Use index for the dominant angle (uniform around the circle); hash
+  // Use index for the dominant angle (uniform around the circle), hash
   // for the radial jitter (so the ring isn't perfectly circular).
   const angle = (i / Math.max(n, 1)) * Math.PI * 2;
   let h = 0;
@@ -46,7 +46,7 @@ function seedPosition(
 export function buildGraph(
   pages: PageMeta[],
 ): { nodes: Node[]; edges: Edge[] } {
-  // Only local pages contribute edges — remote prereqs would need a
+  // Only local pages contribute edges - remote prereqs would need a
   // cross-vault resolver we don't have. Remote pages still appear as
   // nodes (greyed) if they are reachable as prereq targets.
   const nodes: Node[] = pages.map((p, i) => {
@@ -68,7 +68,7 @@ export function buildGraph(
   };
   for (const p of pages) {
     if (p.origin?.kind === "remote") continue;
-    // content.md §Graph view: "driven by both the `prereq:` field
+    // content.md Graph view: "driven by both the `prereq:` field
     // in frontmatter and wikilinks". Dedup happens via edgeKey so
     // a target named in both prereq and the body counts once.
     for (const q of p.prereq ?? []) addEdge(p.name, q);
@@ -88,18 +88,16 @@ export function step(
 ): number {
   const REPULSE = params.repulse;
   const SPRING = params.attract;
-  const REST_LEN = 110; // spring rest length
+  const REST_LEN = 110;
   const GRAVITY = 0.001; // weak pull toward centre so disconnected components don't drift off
   const DAMPING = 0.78;
   const MAX_STEP = 18; // clamp per-tick movement to avoid runaway nodes
 
-  // Coulomb repulsion — O(N²). Adequate for single-user vault sizes.
-  // Fixed nodes (under the user's cursor while dragging) must still
-  // EXERT force on neighbours so the rest of the layout reacts in real
-  // time; they just don't move themselves. The previous `if (a.fixed)
-  // continue;` short-circuit dropped both halves of every pair where
-  // the dragged node was the lower-indexed one — Obsidian-style live
-  // physics depends on the dragged node continuing to repel.
+  // Coulomb repulsion - O(N^2), adequate for single-user vault sizes.
+  // Fixed (dragged) nodes must still EXERT force so the layout reacts
+  // live - they just don't move themselves. Don't short-circuit with
+  // `if (a.fixed) continue`: that drops both halves of every pair where
+  // the dragged node is lower-indexed, killing the live drag physics.
   for (let i = 0; i < nodes.length; i++) {
     const a = nodes[i];
     for (let j = i + 1; j < nodes.length; j++) {

@@ -1,24 +1,22 @@
-// Push a local page to a chosen remote root (history.md §Push).
+// Push a local page to a chosen remote root (history.md Push).
 //
-// Identity travels via the page id — frontmatter `id:` for markdown,
-// sidecar `metadata.id` for PDFs (history.md). The synced CONTENT is the
-// md body for markdown pages and the sidecar JSON for PDF pages (the PDF
-// binary is frozen on import and only uploaded on first transfer);
-// a markdown page's assets folder is mirrored alongside the body.
-// Merge base = local latest push/pull row's content (history.md §Merge).
+// Identity travels via the page id: frontmatter `id:` for markdown,
+// sidecar `metadata.id` for PDFs (history.md). Synced CONTENT is the md
+// body, or the sidecar JSON for PDFs (the PDF binary is frozen on import
+// and only uploaded on first transfer). An md page's assets folder is
+// mirrored alongside the body. Merge base = local latest push/pull row's
+// content (history.md Merge).
 //
 // Outcomes:
-//   "noop"           — bytes already identical (still records a push row,
-//                       per history.md "appends one save_type = push row")
-//   "clean"          — remote unchanged since base; write goes through
-//   "autoMerged"     — both sides moved, diff3 merged without conflict
-//   "conflict"       — diff3 found a conflict; UI pops MergeView and
-//                       commits via the carried `commitMerged` closure
-//   "pathCollision"  — something already occupies the landing path; the
-//                       caller must confirm before `confirmOverwrite`
-//   "remoteMissing"  — target vault no longer configured / unreachable
-//   "idMissing"      — page has no id yet (md: save it once; pdf: include
-//                       it so the sidecar exists)
+//   "noop"          - bytes already identical (still records a push row,
+//                     history.md "appends one save_type = push row")
+//   "clean"         - remote unchanged since base, write goes through
+//   "autoMerged"    - both sides moved, diff3 merged without conflict
+//   "conflict"      - UI pops MergeView, commits via `commitMerged`
+//   "pathCollision" - landing path occupied, confirm then `confirmOverwrite`
+//   "remoteMissing" - target vault no longer configured / unreachable
+//   "idMissing"     - page has no id yet (md: save it once, pdf: include
+//                     it so the sidecar exists)
 
 import { fileUrl, fsEndpoint } from "../spaces/constants.ts";
 import { notFoundError } from "./constants.ts";
@@ -33,7 +31,7 @@ import {
   pdfSidecarPath,
   stripFirstSegment,
 } from "./path_url.ts";
-import { merge3Strategy } from "./sync_core.ts";
+import { merge3Strategy, type SyncListings } from "./sync_core.ts";
 
 export type PushOutcome =
   | { kind: "noop" }
@@ -47,12 +45,12 @@ export type PushOutcome =
     remotePath: string;
     remoteLabel: string;
     /** Writes the merged result remote-first, mirrors it locally, and
-     *  records the push rows (history.md §MergeView submit). */
+     *  records the push rows (history.md MergeView submit). */
     commitMerged: (merged: Uint8Array) => Promise<void>;
   }
   | {
     /** Something already occupies the proposed remote path (history.md
-     *  §Push "same relative path holds a same-named file" — confirm
+     *  Push "same relative path holds a same-named file" - confirm
      *  per file before overwriting). */
     kind: "pathCollision";
     remotePath: string;
@@ -63,7 +61,7 @@ export type PushOutcome =
   | { kind: "remoteMissing" }
   | { kind: "idMissing" };
 
-/** Push target — either a saved vault id (history.md §Push "url list
+/** Push target - either a saved vault id (history.md Push "url list
  *  already saved under setting's Remote") or a typed URL + token
  *  (the "free-input box" half). */
 export type PushTarget =
@@ -82,7 +80,7 @@ async function readLocal(
 }
 
 // Mirror the synced bytes back to the local content path with
-// save_type=push so the local history records the sync point — this is
+// save_type=push so the local history records the sync point - this is
 // what fast-forward checks against on the next sync (history.md).
 async function recordLocalPushRow(
   localContentPath: string,
@@ -99,7 +97,7 @@ async function recordLocalPushRow(
   if (!r.ok) throw new Error(`local push row failed: HTTP ${r.status}`);
 }
 
-/** True when ANY file occupies `path` on the remote (admitted or not —
+/** True when ANY file occupies `path` on the remote (admitted or not -
  *  the listing only carries admitted pages, so probe the path itself). */
 async function remotePathOccupied(
   sp: HttpSpacePrimitives,
@@ -118,25 +116,25 @@ async function remotePathOccupied(
  *  matching remote folder. Runs BEFORE the remote md write so the
  *  remote's push row snapshots the fresh assets (history.md: a page's
  *  file set = md body + assets images). Remote-only extras are left in
- *  place — push mirrors content, it doesn't garbage-collect. */
+ *  place - push mirrors content, it doesn't garbage-collect. */
 async function pushAssets(
   localMdPath: string,
   sp: HttpSpacePrimitives,
   remoteMdPath: string,
 ): Promise<void> {
+  // Assets live in a dot-dir, which the plain listing prunes - only
+  // the ?prefix= endpoint can see them.
   const prefix = mdAssetsPrefix(localMdPath);
-  const listResp = await authedFetch(fsEndpoint);
+  const listResp = await authedFetch(
+    `${fsEndpoint}?prefix=${encodeURIComponent(prefix)}`,
+  );
   if (!listResp.ok) return;
-  const rows = (await listResp.json()) as Array<{ type: string; path: string }>;
+  const paths = (await listResp.json()) as string[];
   const remotePrefix = mdAssetsPrefix(remoteMdPath);
-  for (const row of rows) {
-    if (row.type !== "file" || !row.path.startsWith(prefix)) continue;
-    const local = await readLocal(row.path);
+  for (const p of paths) {
+    const local = await readLocal(p);
     if (!local) continue;
-    await sp.writeFile(
-      remotePrefix + row.path.slice(prefix.length),
-      local.bytes,
-    );
+    await sp.writeFile(remotePrefix + p.slice(prefix.length), local.bytes);
   }
 }
 
@@ -144,9 +142,11 @@ export async function pushLocalToRemote(
   localPath: string,
   target: PushTarget,
   /** Root prefix on the remote where a NEW file lands (history.md
-   *  "Target url root" — second-level pick in the modal). An existing
+   *  "Target url root" - second-level pick in the modal). An existing
    *  same-id file is matched vault-wide regardless of this root. */
   targetRootName: string,
+  /** Set by folder batches to share one remote listing per batch. */
+  listings?: SyncListings,
 ): Promise<PushOutcome> {
   const isPdf = localPath.toLowerCase().endsWith(".pdf");
   // The synced content: md body, or the PDF's sidecar JSON (file.md).
@@ -169,13 +169,17 @@ export async function pushLocalToRemote(
     });
   if (!r) return { kind: "remoteMissing" };
 
-  // Locate the existing remote sibling by id, vault-wide — history.md's
+  // Locate the existing remote sibling by id, vault-wide - history.md's
   // branch condition is "a remote file exists with the same page_id",
-  // not "…under the chosen root".
-  const remoteList = await r.sp.fetchFileList();
+  // not "...under the chosen root".
+  let remoteList = listings?.remote?.get(r.sp.url);
+  if (!remoteList) {
+    remoteList = await r.sp.fetchFileList();
+    if (listings) (listings.remote ??= new Map()).set(r.sp.url, remoteList);
+  }
   const candidate = remoteList.find((f) => f.id === id);
 
-  // Direct upload — no remote with this id yet (history.md).
+  // Direct upload - no remote with this id yet (history.md).
   if (!candidate) {
     const remotePath = `${targetRootName}/${stripFirstSegment(localPath)}`;
     const remoteContentPath = isPdf ? pdfSidecarPath(remotePath) : remotePath;
@@ -192,8 +196,8 @@ export async function pushLocalToRemote(
       await recordLocalPushRow(localContentPath, local.bytes);
       return { kind: "clean", remotePath };
     };
-    // history.md §Push: same relative path already holds a file →
-    // confirm overwrite. Probe the path itself — the listing only
+    // history.md Push: same relative path already holds a file ->
+    // confirm overwrite. Probe the path itself - the listing only
     // carries admitted pages, but ANY occupant counts.
     if (await remotePathOccupied(r.sp, remotePath)) {
       return {
@@ -223,7 +227,7 @@ export async function pushLocalToRemote(
   );
 
   if (decision.kind === "noop") {
-    // Bytes already identical — still append the push row so the merge
+    // Bytes already identical - still append the push row so the merge
     // base advances to the converged content (history.md: "the local
     // history appends one save_type = push row", no exception).
     await recordLocalPushRow(localContentPath, local.bytes);

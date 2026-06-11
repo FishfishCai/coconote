@@ -4,16 +4,16 @@ import { OverrideRow, SettingRow, SettingToggle } from "./setting_row.tsx";
 
 type UiOptions = AppViewState["uiOptions"];
 
-// "Reset to default" swatch values, kept in lockstep with the real
-// theme defaults in styles/theme.scss (light palette):
-//   accent     — hsl(254 80% 68%)            (--accent-h/s/l)
-//   highlight  — rgba(255, 208, 0, 0.4) base (--text-highlight-bg)
-//   missing    — #e93147 = var(--color-red)  (colors.scss fallback)
-//   code bg    — #eceef1                     (--editor-code-background-color)
-//   hover bg   — #e3e3e3 = --color-base-25   (--background-secondary-alt)
+// "Reset to default" swatch values, kept in lockstep with the theme
+// defaults in styles/theme.scss (light palette):
+//   accent    - hsl(254 80% 68%)            (--accent-h/s/l)
+//   highlight - rgba(255, 208, 0, 0.4) base (--text-highlight-bg)
+//   missing   - #e93147 = var(--color-red)  (colors.scss fallback)
+//   code bg   - #eceef1                     (--editor-code-background-color)
+//   hover bg  - #e3e3e3 = --color-base-25   (--background-secondary-alt)
 // The <input type=color> swatch can't carry alpha or hsl() syntax, so
 // each is the equivalent #rrggbb.
-const DEFAULT_ACCENT = "#8b6cef"; // hexToHsl → exactly (254, 80%, 68%)
+const DEFAULT_ACCENT = "#8b6cef"; // hexToHsl -> exactly (254, 80%, 68%)
 const DEFAULT_HIGHLIGHT = "#ffd000";
 const DEFAULT_LINK_MISSING = "#e93147";
 const DEFAULT_CODE_BG = "#eceef1";

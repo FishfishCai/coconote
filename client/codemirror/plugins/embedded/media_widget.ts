@@ -16,8 +16,8 @@ export interface MediaWidgetOptions {
 
 export class MediaWidget extends CachedWidget {
   readonly cacheKey: string;
-  // Images/PDFs/iframes — block widgets, usually ≥ 120 px. Overshoot
-  // is cheap (one transaction settles to actual on render); undershoot
+  // Images/PDFs/iframes - block widgets, usually >= 120 px. Overshoot
+  // is cheap (one transaction settles to actual on render), undershoot
   // creates the "scroll jump" we want to avoid.
   protected override readonly fallbackHeight = 200;
 

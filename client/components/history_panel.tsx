@@ -1,8 +1,9 @@
-// Floating right-side timeline for one page id. History is id-keyed,
-// so renames don't break the chain; Restore writes back to the current
+// Floating right-side timeline for one page id. History is id-keyed so
+// renames don't break the chain. Restore writes back to the current
 // on-disk path.
 
 import { useEffect, useState } from "preact/hooks";
+import type { ClientContext as Client } from "../core/context.ts";
 import { Modal } from "./modal.tsx";
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { fileUrl } from "../spaces/constants.ts";
@@ -16,17 +17,18 @@ type Version = {
 };
 
 type Props = {
-  /** Frontmatter `id:` — history's join key. */
+  client: Client;
+  /** Frontmatter `id:` - history's join key. */
   id: string;
-  /** Current on-disk path; restore writes back here, and the diff is
+  /** Current on-disk path: restore writes back here, and the diff is
    *  taken against this file's live content. */
   targetPath: string;
   onClose: () => void;
   onRestored: () => void;
-  /** When set, Restore hands the selected snapshot text to this callback
-   *  instead of calling the server restore endpoint. Used by the PDF
-   *  viewer so a restore flows through the live collab session rather
-   *  than a disk write that would conflict with the open room. */
+  /** When set, Restore hands the snapshot text to this callback instead
+   *  of the server restore endpoint. The PDF viewer uses it so a restore
+   *  flows through the live collab session rather than a disk write
+   *  that would conflict with the open room. */
   applyRestore?: (snapshotText: string) => void;
 };
 
@@ -35,8 +37,8 @@ function fmtTs(ms: number): string {
   return d.toLocaleString();
 }
 
-// One monochrome typographic glyph per save type — pin uses a star rather
-// than the 📌 emoji so all five share the same flat, single-color style.
+// One monochrome typographic glyph per save type - pin uses a star, not
+// the pin emoji, so all five share the same flat single-color style.
 const TYPE_GLYPH: Record<SaveType, string> = {
   create: "✱",
   edit: "•",
@@ -46,7 +48,7 @@ const TYPE_GLYPH: Record<SaveType, string> = {
 };
 
 export function HistoryPanel(
-  { id, targetPath, onClose, onRestored, applyRestore }: Props,
+  { client, id, targetPath, onClose, onRestored, applyRestore }: Props,
 ) {
   const [versions, setVersions] = useState<Version[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export function HistoryPanel(
     }
     let cancelled = false;
     setPreviewLoading(true);
-    // Diff against the current on-disk content (history.md §Diff).
+    // Diff against the current on-disk content (history.md Diff).
     // Refetch per-selection so a save mid-session shows up.
     Promise.all([
       authedFetch(`/.history/${encodeURIComponent(id)}?ts=${selectedTs}`)
@@ -145,11 +147,9 @@ export function HistoryPanel(
 
   const remove = async () => {
     if (!hasSelection) return;
-    // Same modal path the context menus use (client.ui.confirm) instead
-    // of the bare window.confirm. The panel receives no `client` prop —
-    // its call site predates one — so reach through the boot-time
-    // global (core/client.ts `declare global`).
-    const ok = await globalThis.client.ui.confirm(
+    // Same modal path the context menus use, not the bare
+    // window.confirm (which Electron no-ops by default).
+    const ok = await client.ui.confirm(
       "Delete this version row from the history database? This cannot be undone.",
     );
     if (!ok) return;
@@ -160,7 +160,6 @@ export function HistoryPanel(
         { method: "DELETE" },
       );
       if (!r.ok) throw new Error(await r.text());
-      // Re-fetch the list so the deleted row drops out + selection clears.
       const ls = await authedFetch(`/.history/${encodeURIComponent(id)}`);
       if (ls.ok) setVersions(await ls.json());
       setSelectedTs(null);
@@ -171,10 +170,10 @@ export function HistoryPanel(
     }
   };
 
-  // Preview-centric orientation (history.md §Version history panel):
+  // Preview-centric orientation (history.md Version history panel):
   // GREEN (add) marks lines the selected version would bring back on
-  // Restore; RED (del) marks lines that exist only in the current
-  // on-disk text and would be replaced.
+  // Restore, RED (del) marks lines only in the current on-disk text
+  // that would be replaced.
   const diff = hasSelection ? lineDiff(current, preview) : [];
 
   return (

@@ -31,7 +31,7 @@ export function listBulletPlugin() {
         if (om) {
           const n = parseInt(om[1], 10);
           const depth = orderedDepth(node);
-          // Replace only the digits — keep trailing `.`/`)` so source
+          // Replace only the digits - keep trailing `.`/`)` so source
           // width is preserved.
           const display = formatOrderedMarker(n, depth);
           widgets.push(
@@ -71,7 +71,7 @@ function toRoman(n: number): string {
   return out;
 }
 function toAlpha(n: number, upper: boolean): string {
-  // Wraps past 26 (z → aa) for safety.
+  // Wraps past 26 (z -> aa) for safety.
   if (n <= 0) return String(n);
   let s = "";
   let x = n;
@@ -83,7 +83,7 @@ function toAlpha(n: number, upper: boolean): string {
   return s;
 }
 
-// Matches LaTeX `enumerate` defaults: arabic / lower-α / roman / upper-α.
+// Matches LaTeX `enumerate` defaults: arabic / lower-alpha / roman / upper-alpha.
 // markdown.md: the counter CYCLES (`1. a. i. A.`), so depth 5 wraps
 // back to arabic instead of saturating at uppercase alpha.
 function formatOrderedMarker(n: number, depth: number): string {
@@ -123,8 +123,8 @@ class BulletWidget extends WidgetType {
 }
 
 // Replaces the source digits with a span holding the depth-styled
-// counter text (1 / a / i / A); the trailing `.`/`)` stays as real
-// document text. The span doubles as the click hit-target — mousedown
+// counter text (1 / a / i / A), the trailing `.`/`)` stays as real
+// document text. The span doubles as the click hit-target - mousedown
 // re-seats the caret at the marker.
 class OrderedWidget extends WidgetType {
   constructor(readonly display: string, readonly caretPos: number) {

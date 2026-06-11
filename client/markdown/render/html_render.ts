@@ -8,9 +8,9 @@ export type Tag =
     }
   | string;
 
-/** Escape `s` for inclusion in HTML body text. Newlines become <br/>;
+/** Escape `s` for inclusion in HTML body text. Newlines become <br/>,
  *  runs of two+ spaces are preserved with non-breaking spaces. */
-export function htmlEscape(s: string): string {
+function htmlEscape(s: string): string {
   if (typeof s !== "string") {
     return s;
   }
@@ -24,7 +24,7 @@ export function htmlEscape(s: string): string {
 }
 
 /** Escape `s` for inclusion in a double-quoted HTML attribute. No
- *  <br/> substitution — newlines must stay literal so consumers can
+ *  <br/> substitution - newlines must stay literal so consumers can
  *  preserve textarea/title-style multi-line values. */
 export function htmlEscapeAttr(s: string): string {
   if (typeof s !== "string") {

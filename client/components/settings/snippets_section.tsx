@@ -4,8 +4,8 @@ export function SnippetsSection(props: {
   value: string;
   onChange: (v: string) => void;
 }) {
-  // Buffer the textarea locally; commit on blur (spec: snippet edits
-  // only persist once the user leaves the field, not on every keystroke).
+  // Buffer the textarea locally, commit on blur (spec: snippet edits
+  // persist only when the user leaves the field, not per keystroke).
   const [draft, setDraft] = useState(props.value);
   useEffect(() => {
     setDraft(props.value);
@@ -21,7 +21,7 @@ export function SnippetsSection(props: {
           value={draft}
           onInput={(e) => setDraft(e.currentTarget.value)}
           onBlur={(e) => {
-            // Read straight from the DOM target so a raw `ta.value=...;
+            // Read from the DOM target so a raw `ta.value=...;
             // dispatchEvent('blur')` sequence (no input event) still
             // commits.
             const v = e.currentTarget.value;

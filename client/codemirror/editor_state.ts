@@ -76,18 +76,18 @@ export function createEditorState(
   const regularKeyBindings = createRegularKeyBindings(client);
 
   client.undoHistoryCompartment = new Compartment();
-  // With a live collab session, Yjs owns undo (editor.md) — CM history
+  // With a live collab session, Yjs owns undo (editor.md) - CM history
   // would let Cmd+Z revert remote peers' edits.
   const collabAlive = client.collabHandle?.path === toPath(pageName);
   const undoHistory = client.undoHistoryCompartment.of(
     collabAlive ? [] : [history()],
   );
 
-  // collab extension slot — populated by content_manager.loadPage when
+  // collab extension slot - populated by content_manager.loadPage when
   // collab is enabled for the active page. If there's already a live
   // handle bound to THIS page (rebuildEditorState scenario), reseed
   // with it so a font/theme change doesn't kill the WebSocket session.
-  // NB: collabHandle.path carries the .md extension, pageName doesn't —
+  // NB: collabHandle.path carries the .md extension, pageName doesn't -
   // compare via toPath or the live session is silently dropped on every
   // rebuild while its WS stays "connected" (saves then no-op forever).
   if (!client.collabCompartment) {
@@ -100,10 +100,10 @@ export function createEditorState(
 
   client.markdownLanguageCompartment = new Compartment();
   const markdownLanguageExtension = client.markdownLanguageCompartment.of(
-    buildMarkdownLanguageExtension(client),
+    buildMarkdownLanguageExtension(),
   );
 
-  // Read from config not viewState — React may lag right after setUiOption.
+  // Read from config not viewState - React may lag right after setUiOption.
   const editorMode = client.config.get<string>(
     ["ui", "editorMode"],
     "render",
@@ -119,7 +119,7 @@ export function createEditorState(
     doc: text,
     selection,
     extensions: [
-      // `{}` so CM measures heightMap from real CSS font metrics —
+      // `{}` so CM measures heightMap from real CSS font metrics -
       // setting fontSize/lineHeight here drifts selection if CSS differs.
       EditorView.theme({}, { dark: client.ui.viewState.uiOptions.darkMode }),
 
@@ -142,7 +142,7 @@ export function createEditorState(
         placeholderText: "…",
       }),
       // 4 spaces per indent level. Outside of lists Tab inserts this
-      // verbatim; inside lists indentMore/indentLess shift by it.
+      // verbatim, inside lists indentMore/indentLess shift by it.
       indentUnit.of("    "),
       indentOnInput(),
       ...collectModuleExtensions(client),
@@ -176,7 +176,7 @@ export function createEditorState(
 
               const distanceX = touch.clientX - view.coordsAtPos(pos)!.left;
               // Live-preview-expanded regions register taps far from
-              // the actual char position — guard with width threshold.
+              // the actual char position - guard with width threshold.
               if (distanceX <= view.defaultCharacterWidth) {
                 client.onPageClick?.(potentialClickEvent);
               }
@@ -189,11 +189,11 @@ export function createEditorState(
           if (event.button !== 0) return;
           if (event.altKey) return;
           if (!(event.target instanceof Element)) return;
-          // Raw `[[..]]` source isn't an <a> — those are editing clicks.
+          // Raw `[[..]]` source isn't an <a> - those are editing clicks.
           const anchor = event.target.closest("a") as HTMLAnchorElement | null;
           if (!anchor) return;
           // editor.md: Cmd/Ctrl+Click opens the link in a new tab
-          // (browser) / system browser (desktop shell — Electron's
+          // (browser) / system browser (desktop shell - Electron's
           // preload.cjs intercepts target=_blank clicks).
           if (event.metaKey || event.ctrlKey) {
             event.stopPropagation();
@@ -217,7 +217,7 @@ export function createEditorState(
           });
         },
         paste: (event: ClipboardEvent, view: EditorView) => {
-          // editor.md: image in clipboard → save to assets folder
+          // editor.md: image in clipboard -> save to assets folder
           // and insert a wikilink at the cursor.
           const items = event.clipboardData?.items;
           if (!items) return;
@@ -245,7 +245,7 @@ export function createEditorState(
                 return;
               }
 
-              // Defer save during IME — flush at composition end.
+              // Defer save during IME - flush at composition end.
               if (update.view.composing) {
                 this.composingDirty = true;
                 client.ui.markPageChanged();
@@ -276,8 +276,8 @@ export function editModeExtensionsFor(
     editorMode === "read" ||
     client.config.get<boolean>(["_boot", "readOnly"], false);
   return [
-    // Widgets/decorations read this off the EditorState (read mode ⇒
-    // permanently folded); reconfiguring the edit-mode compartment on
+    // Widgets/decorations read this off the EditorState (read mode =>
+    // permanently folded). Reconfiguring the edit-mode compartment on
     // a mode switch refreshes it.
     readModeFacet.of(editorMode === "read"),
     isRO
@@ -304,10 +304,10 @@ function createRegularKeyBindings(_client: Client): Extension {
     search({ top: true }),
     keymap.of([
       { key: "Mod-d", run: selectNextOccurrence, preventDefault: true },
-      // editor.md: Cmd/Ctrl+←/→ = line start/end, Alt+←/→ = word jump.
-      // macOS defaults already match; bind explicitly so Windows/Linux
-      // (where Ctrl+arrow is conventionally a word jump) follow the
-      // spec too.
+      // editor.md: Cmd/Ctrl+Left/Right = line start/end, Alt+Left/Right
+      // = word jump. macOS defaults already match. Bind explicitly so
+      // Windows/Linux (where Ctrl+arrow is conventionally a word jump)
+      // follow the spec too.
       {
         key: "Mod-ArrowLeft",
         run: cursorLineBoundaryBackward,
@@ -330,7 +330,7 @@ function createRegularKeyBindings(_client: Client): Extension {
   ];
 }
 
-export function buildMarkdownLanguageExtension(client: Client): Extension[] {
+export function buildMarkdownLanguageExtension(): Extension[] {
   const markdownLanguage = buildExtendedMarkdownLanguage();
   return [
     markdown({
@@ -359,10 +359,10 @@ export function buildMarkdownLanguageExtension(client: Client): Extension[] {
         { key: "Backspace", run: deleteMarkupBackward },
         { key: "Enter", run: insertNewlineContinueMarkup },
         { key: "Mod-a", run: smartSelectAll },
-        // Tab inside a list → indent the item one level
-        // (sub-list); outside a list → insert 4 spaces. The
-        // explicit insert beats CodeMirror's "focus next tabbable"
-        // default behaviour which is surprising inside an editor.
+        // Tab inside a list -> indent the item one level (sub-list),
+        // outside a list -> insert 4 spaces. The explicit insert beats
+        // CodeMirror's "focus next tabbable" default behaviour which
+        // is surprising inside an editor.
         {
           key: "Tab",
           run: (view) => {
@@ -373,14 +373,14 @@ export function buildMarkdownLanguageExtension(client: Client): Extension[] {
         },
         {
           // editor.md: "Shift + Tab: outdent inside a list; no-op
-          // otherwise." Consume the key even outside a list — returning
+          // otherwise." Consume the key even outside a list - returning
           // false would let the browser move focus out of the editor.
           key: "Shift-Tab",
           run: (view) => insideList(view) ? indentLess(view) : true,
         },
       ]),
     ),
-    // editor.md §Autocomplete: `$$` → `$$|$$`. closeBrackets pairs the
+    // editor.md Autocomplete: `$$` -> `$$|$$`. closeBrackets pairs the
     // first `$` into `$|$`, but its symmetric-close handling would let
     // the SECOND typed `$` merely type over the auto-closer (`$$|`).
     // Intercept that second `$` while the caret sits in an empty `$|$`
@@ -408,8 +408,8 @@ export function buildMarkdownLanguageExtension(client: Client): Extension[] {
       }),
     ),
     markdownLanguage.data.of({
-      // editor.md §AutoPair: ( [ { " ` $ auto-close in markdown. `[[`
-      // nests to `[[]]` since `[`≠`]`; `$` covers inline math. Display
+      // editor.md AutoPair: ( [ { " ` $ auto-close in markdown. `[[`
+      // nests to `[[]]` since `[` != `]`. `$` covers inline math. Display
       // `$$` pairs via the inputHandler above, which grows an empty
       // auto-paired `$|$` into `$$|$$` when the second `$` is typed.
       closeBrackets: { brackets: ["(", "[", "{", '"', "`", "$"] },

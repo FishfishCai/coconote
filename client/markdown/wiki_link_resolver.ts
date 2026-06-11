@@ -1,16 +1,12 @@
-// Order of attempts:
-//   1. Exact match in known files.
-//   2. Prepend the current page's root and re-check.
-//   3. Basename match across known files (1 hit = resolved; ≥2 = ambiguous;
-//      0 = missing).
-//
-// Keep free of Client/DOM imports so it stays trivially testable.
+// Resolution order: (1) exact match in known files, (2) current page's
+// root prepended, (3) basename match (1 hit = resolved, >=2 = ambiguous,
+// 0 = missing). Keep free of Client/DOM imports so it stays testable.
 export type WikiLinkResolveResult =
   | { kind: "resolved"; path: string }
   | { kind: "missing"; path: string }
   | { kind: "ambiguous"; path: string; candidates: string[] };
 
-export function resolveWikiLinkPathDetailed(
+function resolveWikiLinkPathDetailed(
   targetPath: string,
   currentPath: string | undefined,
   allKnownFiles: ReadonlySet<string>,

@@ -1,11 +1,7 @@
-// `coconote` — binary entry point.
-//
-// Boot order (welcome.md, server.md, file.md):
-//   1. resolve coconote.yaml
-//   2. open every local root → MultiRootSpacePrimitives
-//   3. sweep each root for orphan `.<name>.json` / `.<name>.assets/`
-//   4. open per-vault SQLite history (or warn if disabled)
-//   5. listen, drain on SIGINT/SIGTERM
+// `coconote` binary entry point. Boot order (welcome.md, server.md,
+// file.md): resolve coconote.yaml -> open local roots (MultiRoot) -> sweep
+// each root for orphan `.<name>.json` / `.<name>.assets/` -> open per-vault
+// SQLite history (or warn) -> listen, drain on SIGINT/SIGTERM.
 
 use clap::Parser;
 use coconote::config::{ensure_default_config, FileConfig, DEFAULT_PORT};
@@ -25,14 +21,13 @@ use tokio::sync::Notify;
 use tracing::info;
 
 #[derive(Parser, Debug)]
-#[command(about = "Coconote — self-hosted markdown notebook server")]
+#[command(about = "Coconote - self-hosted markdown notebook server")]
 struct Args {
     /// Host or address to listen on.
     #[arg(short = 'L', long = "listen", default_value = "127.0.0.1")]
     host: String,
 
-    /// Listen port (overrides coconote.yaml; default 40704).
-    /// `None` ⇒ use yaml or default. `Some(0)` ⇒ ephemeral.
+    /// Listen port (overrides coconote.yaml, default 40704). 0 = ephemeral.
     #[arg(short = 'p', long = "port")]
     port: Option<u16>,
 
@@ -63,11 +58,11 @@ async fn main() {
 async fn run(args: Args) -> Result<(), String> {
     let mut cfg_loaded: Option<FileConfig> = None;
     let mut config_path: Option<String> = None;
-    // welcome.md §coconote.yaml: the yaml lives in the effective config
-    // dir (standard config dir, optionally redirected by `config-path`
-    // pointer). On every boot we make sure a usable yaml exists there —
-    // if missing or unparseable, ensure_default_config writes a default.
-    // --folder bypasses this and uses the CLI-supplied root only.
+    // welcome.md coconote.yaml: the yaml lives in the effective config dir
+    // (standard dir, optionally redirected by the `config-path` pointer).
+    // Every boot ensures a usable yaml there: ensure_default_config writes
+    // a default when missing or unparseable. --folder bypasses this and
+    // uses the CLI-supplied root only.
     let cfg_path = if args.folder.is_some() {
         None
     } else {
@@ -93,9 +88,9 @@ async fn run(args: Args) -> Result<(), String> {
         .map(|r| (r.name.clone(), r.path.to_string_lossy().into_owned()))
         .collect();
 
-    // Empty roots is OK: the server boots with an empty space and the
-    // user adds roots via Setting → Local at runtime. `--folder` still
-    // wins when explicitly passed (single-vault CLI use).
+    // Empty roots is OK: boot with an empty space, the user adds roots
+    // via Setting -> Local at runtime. `--folder` still wins when passed
+    // (single-vault CLI use).
     let base: DynSpace = if let Some(folder) = args.folder.as_ref() {
         Arc::new(DiskSpacePrimitives::new(folder).map_err(|e| format!("vault: {e}"))?)
     } else {
@@ -110,8 +105,8 @@ async fn run(args: Args) -> Result<(), String> {
         base
     };
 
-    // Orphan sweep on every configured root (file.md). Empty roots
-    // configuration = nothing to sweep.
+    // Orphan sweep on every configured root (file.md). Empty roots =
+    // nothing to sweep.
     {
         let scan_roots: Vec<PathBuf> = if let Some(folder) = args.folder.as_ref() {
             vec![folder.clone()]
@@ -149,13 +144,11 @@ async fn run(args: Args) -> Result<(), String> {
     let history = match coconote::history::HistoryDb::open(&history_scope).await {
         Ok(db) => {
             let arc = Arc::new(db);
-            // Drop history rows for page_ids that no on-disk file
-            // claims (user-deleted-the-file-but-DB-retained-rows).
-            // Has to run after the space is fully opened, so we
-            // walk it for the current id set. None = the listing was
-            // empty or failed (e.g. no roots configured) — skip the
-            // sweep; wiping the whole DB on an empty boot is never
-            // right.
+            // Drop history rows for page_ids no on-disk file claims.
+            // Must run after the space is fully open (we walk it for
+            // the live id set). None = listing empty or failed (e.g.
+            // no roots): skip the sweep, wiping the whole DB on an
+            // empty boot is never right.
             match collect_live_page_ids(&space).await {
                 Some(live_ids) => match arc.drop_orphan_page_ids(&live_ids).await {
                     Ok((rows, blobs)) if rows + blobs > 0 => {
@@ -205,7 +198,7 @@ async fn run(args: Args) -> Result<(), String> {
     let listener = tokio::net::TcpListener::bind(addr).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::AddrInUse {
             format!(
-                "port {port} already in use — quit the other process \
+                "port {port} already in use - quit the other process \
                  (try `lsof -i :{port}`) or pass -p to choose another port"
             )
         } else {
@@ -219,9 +212,9 @@ async fn run(args: Args) -> Result<(), String> {
     };
     info!("coconote running: {visible}");
 
-    // Distinguish "shut down for good" from "shut down so we can
-    // re-exec with a new config dir". restart_notify fires the latter;
-    // we set the flag, drain axum, then exec ourselves.
+    // Distinguish "shut down for good" from "shut down to re-exec with a
+    // new config dir". restart_notify fires the latter: set the flag,
+    // drain axum, then exec ourselves.
     let restart_requested = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let shutdown = {
         let restart_notify = restart_notify.clone();
@@ -270,10 +263,10 @@ async fn run(args: Args) -> Result<(), String> {
     Ok(())
 }
 
-/// Replace the current process with a fresh copy of the same binary
-/// (same args). Triggered by Setting → Config file via `PATCH /.config`
-/// with `{configDir}` so the new yaml location takes effect. Unix uses
-/// `exec()` to keep the same PID; Windows spawns a child and exits.
+/// Replace the current process with a fresh copy (same args). Triggered
+/// by Setting -> Config file via `PATCH /.config` with `{configDir}` so
+/// the new yaml location takes effect. Unix exec() keeps the PID,
+/// Windows spawns a child and exits.
 fn restart_self() -> Result<(), String> {
     let exe = std::env::current_exe()
         .map_err(|e| format!("current_exe: {e}"))?;
@@ -296,11 +289,10 @@ fn restart_self() -> Result<(), String> {
     }
 }
 
-/// Walk the live space and collect every page_id (frontmatter /
-/// sidecar), INCLUDING pages currently excluded (`coconote: false`) —
-/// excluding a page must not delete its history. Returns None when the
-/// listing fails or comes back empty (no roots / empty roots), so the
-/// caller skips the orphan sweep instead of dropping every row.
+/// Collect every page_id in the live space (frontmatter / sidecar),
+/// INCLUDING excluded pages (`coconote: false`): excluding a page must
+/// not delete its history. None when the listing fails or is empty (no
+/// roots), so the caller skips the sweep instead of dropping every row.
 async fn collect_live_page_ids(
     space: &coconote::state::DynSpace,
 ) -> Option<std::collections::HashSet<String>> {

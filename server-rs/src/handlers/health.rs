@@ -1,7 +1,6 @@
-// GET /.health (server.md). Returns `{app, version, pid, startedAt,
-// rootPath}`. `rootPath` is the local-roots map ({name → absolute path})
-// — spec spells the field "rootPath" but welcome.md describes multiple
-// local roots, so the value is a map keyed by yaml's root names.
+// GET /.health (server.md): {app, version, pid, startedAt, rootPath}.
+// Spec spells "rootPath" but welcome.md allows multiple local roots, so
+// the value is a map {name -> absolute path} keyed by yaml root names.
 
 use crate::state::AppState;
 use axum::extract::State;

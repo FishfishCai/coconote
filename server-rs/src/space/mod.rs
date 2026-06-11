@@ -1,4 +1,5 @@
 pub mod disk;
+mod scan;
 pub mod embed;
 pub mod multiroot;
 pub mod readonly;

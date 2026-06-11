@@ -27,6 +27,7 @@ import {
 import { Space } from "./space.ts";
 import { absFsBase } from "../spaces/constants.ts";
 import { writeUserPrefs } from "../lib/user_prefs.ts";
+import { nameToFsPath } from "../lib/path_url.ts";
 import { HttpSpacePrimitives } from "../spaces/http_space_primitives.ts";
 import { wireModuleLifecycle } from "./lifecycle.ts";
 import { getAuthToken } from "../lib/authed_fetch.ts";
@@ -52,12 +53,12 @@ export class Client implements ClientContext {
   ui!: MainUI;
 
   editorView!: EditorView;
-  undoHistoryCompartment?: Compartment;
-  markdownLanguageCompartment?: Compartment;
-  renderModeCompartment?: Compartment;
-  editModeCompartment?: Compartment;
-  collabCompartment?: Compartment;
-  // Live collab session — kept so loadPage can disconnect before the
+  undoHistoryCompartment!: Compartment;
+  markdownLanguageCompartment!: Compartment;
+  renderModeCompartment!: Compartment;
+  editModeCompartment!: Compartment;
+  collabCompartment!: Compartment;
+  // Live collab session - kept so loadPage can disconnect before the
   // doc swap AND rebuildEditorState can reseed the compartment with
   // the same yCollab extension instead of dropping it.
   collabHandle?: AttachedCollabHandle;
@@ -66,20 +67,18 @@ export class Client implements ClientContext {
   // Seeds CM's heightMap via WidgetType.estimatedHeight before async measure.
   widgetMeta = new Map<string, WidgetMeta>();
 
-  // Opt-in page index. Used by wiki link rendering to mark missing /
-  // ambiguous targets. Populated by updatePageListCache.
+  // Opt-in page index (filled by updatePageListCache). Wiki link
+  // rendering uses it to mark missing/ambiguous targets.
   readonly allKnownFiles = new Set<string>();
   knownFilesLoaded = false;
 
   systemReady = false;
-  readonly fullIndexCompleted = true;
-  readonly pageListLoaded = true;
 
-  /** Session-only map of cursor/scroll per page; drives back/forward restore. */
+  /** Session-only cursor/scroll per page - drives back/forward restore. */
   openLocations: OpenLocations = new Map();
   onLoadRef: Ref | null;
 
-  // Single-slot lifecycle callbacks — each event has exactly one owner.
+  // Single-slot lifecycle callbacks - each event has exactly one owner.
   onEditorInit?: () => void;
   onPageClick?: (event: ClickEvent) => void;
   onPageSaved?: () => void;
@@ -117,10 +116,9 @@ export class Client implements ClientContext {
     }
 
     // Must run before initNavigator: in multi-root mode the initial URL
-    // (`/test-page`) lacks a root prefix, and resolveWikiLinkPath needs
-    // allKnownFiles to map it to the real `<root>/test-page.md`. Without
-    // this await the first navigate races the page-list fetch and the
-    // server returns 404.
+    // (`/test-page`) lacks a root prefix and resolveWikiLinkPath needs
+    // allKnownFiles to find `<root>/test-page.md`. Without the await the
+    // first navigate races the page-list fetch and 404s.
     await this.updatePageListCache();
 
     await initNavigator(this);
@@ -130,14 +128,14 @@ export class Client implements ClientContext {
     this.onEditorInit?.();
 
     // Drop boot-time undo entries so Cmd+Z can't revert the initial doc
-    // load. Under a live collab session Yjs owns undo — leave the CM
+    // load. Under a live collab session Yjs owns undo - leave the CM
     // history disabled then (attach_to_editor manages it).
     this.editorView.dispatch({
-      effects: this.undoHistoryCompartment?.reconfigure([]),
+      effects: this.undoHistoryCompartment.reconfigure([]),
     });
     if (!this.collabHandle) {
       this.editorView.dispatch({
-        effects: this.undoHistoryCompartment?.reconfigure([history()]),
+        effects: this.undoHistoryCompartment.reconfigure([history()]),
       });
     }
 
@@ -157,7 +155,7 @@ export class Client implements ClientContext {
           location.href = actionOrRedirectHeader;
         }
       },
-      // welcome.md: remote browser clients present the auth token —
+      // welcome.md: remote browser clients present the auth token -
       // boot.ts's token gate stored it and seeded the module state.
       getAuthToken(),
     );
@@ -168,19 +166,13 @@ export class Client implements ClientContext {
     try {
       const [localPages, remotePages] = await Promise.all([
         this.space.fetchPageList(),
-        // Lazy: imported here so the bundle doesn't pull remote code on
-        // boot if no remote vaults are configured.
+        // Lazy import: don't pull remote-vault code at boot.
         import("../lib/remote_index.ts").then((m) => m.fetchAllRemotePages()),
       ]);
       const allPages = localPages.concat(remotePages);
       this.allKnownFiles.clear();
       for (const p of allPages) {
-        // md page names are extensionless; pdf names keep .pdf — naively
-        // appending .md would index phantom "doc.pdf.md" entries and
-        // break unqualified [[doc.pdf]] navigation.
-        this.allKnownFiles.add(
-          p.name.toLowerCase().endsWith(".pdf") ? p.name : `${p.name}.md`,
-        );
+        this.allKnownFiles.add(nameToFsPath(p.name));
       }
       this.knownFilesLoaded = true;
       this.ui.updatePageList(allPages);
@@ -208,13 +200,11 @@ export class Client implements ClientContext {
   }
 
   reconfigureLanguage() {
-    if (this.markdownLanguageCompartment) {
-      this.editorView.dispatch({
-        effects: this.markdownLanguageCompartment.reconfigure(
-          buildMarkdownLanguageExtension(this),
-        ),
-      });
-    }
+    this.editorView.dispatch({
+      effects: this.markdownLanguageCompartment.reconfigure(
+        buildMarkdownLanguageExtension(),
+      ),
+    });
   }
 
   setUiOption(key: string, value: unknown) {
@@ -228,7 +218,7 @@ export class Client implements ClientContext {
     try {
       const prefs = { ...(this.config.get("ui") ?? {}) };
       writeUserPrefs(prefs);
-    } catch (_) { /* quota / disabled — ignore */ }
+    } catch (_) { /* quota / disabled - ignore */ }
   }
 
   rebuildEditorState() {
@@ -245,9 +235,9 @@ export class Client implements ClientContext {
       ),
     );
     editorView.scrollDOM.scrollTop = previousScrollTop;
-    // Block widgets from the old state can linger in the DOM after setState;
-    // requestMeasure forces the view to reconcile decorations against the
-    // new state's StateFields.
+    // Block widgets from the old state can linger in the DOM after
+    // setState. requestMeasure forces the view to reconcile decorations
+    // against the new state's StateFields.
     editorView.requestMeasure();
     queueMicrotask(() => {
       editorView.requestMeasure();
@@ -265,8 +255,7 @@ export class Client implements ClientContext {
   }
 
   focus() {
-    const vs = this.ui?.viewState;
-    if (!vs) return;
+    const vs = this.ui.viewState;
     if (vs.showConfirm || vs.showPrompt) return;
     this.editorView.focus();
   }
@@ -280,7 +269,7 @@ export class Client implements ClientContext {
   }
 
   openUrl(url: string) {
-    return openUrlFn(this, url);
+    return openUrlFn(url);
   }
 }
 

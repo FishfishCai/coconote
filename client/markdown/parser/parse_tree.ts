@@ -26,7 +26,7 @@ function lezerToParseTree(
     const newChildren: ParseTree[] = [];
     let startIndex = n.from + offset;
     for (const child of children) {
-      // Indices are shifted by `offset`; shift back to slice original text.
+      // Indices are shifted by `offset` - shift back to slice original text.
       const s = text.substring(startIndex - offset, child.from! - offset);
       if (s) {
         newChildren.push({

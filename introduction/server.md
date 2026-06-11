@@ -23,6 +23,7 @@ These endpoints can be called directly from a script (no native binding or IPC n
 
 - `GET /.health`: returns `{app, version, pid, startedAt, rootPath}`. The desktop shell uses this to probe an existing server. Clients use it to verify a remote url is actually a coconote server.
 - `GET /.file`: lists every entry in the current vault. Returns an array. Each item is `{type: "file"|"dir", path, ...}`. File items also carry `page_id` (empty if none), `title`, `tag`, size, and mtime, but no body or hash. Dir items carry only `type` and `path`.
+- `GET /.file?prefix=<path-prefix>`: lists every file path that starts with the prefix, as a flat array of strings. Unlike the plain listing, dot-prefixed folders (assets folders, sidecars) are included.
 - `GET /.file/<path>`: reads a file. Body + `X-*` metadata headers.
 - `HEAD /.file/<path>`: same as GET but returns headers only (cheap, use when only metadata is needed).
 - `PUT /.file/<path>`: writes a file. Query: `save_type=edit|push|pull` tags the history type for this write (defaults to `edit`, with push / pull set by the cross-server caller). `type=dir` creates an empty directory (no body).

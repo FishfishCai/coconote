@@ -6,10 +6,6 @@ import {
   traverseTree,
 } from "coconote/lib/tree";
 import { parseToRef, sliceByRef } from "coconote/lib/ref";
-import {
-  getHoverHandler,
-  registerHoverHandler,
-} from "../../../lib/detail_renderers.ts";
 import { parseTransclusion } from "coconote/lib/transclusion";
 import type { ClientContext as Client } from "../../../core/context.ts";
 import { resolveWikiLink } from "../../../lib/wikilink.ts";
@@ -160,7 +156,7 @@ export function hoverPreviewPlugin(client: Client) {
       }
 
       // MainUI.updatePageList replaces allPages on every refresh, so
-      // identity change ⇒ a page may have been edited/renamed.
+      // identity change => a page may have been edited/renamed.
       private maybeInvalidateCache() {
         const cur = client.ui.viewState.allPages;
         if (cur !== this.lastAllPagesRef) {
@@ -175,19 +171,20 @@ export function hoverPreviewPlugin(client: Client) {
         const ref = parseToRef(stringRef);
         if (!ref) return null;
 
-        // Detail-kind registry: pdfAnchor (today), audio/video bookmark
-        // (future) etc. plug in via registerHoverHandler so this file
-        // doesn't grow new if/else branches per type.
-        if (ref.details) {
-          const handler = getHoverHandler(ref.details.type);
-          if (handler) {
-            const resolvedPath = resolvePdfWikiLinkPath(
-              ref.path,
-              client.currentPath(),
-              client.allKnownFiles,
-              client.ui.viewState.allPages,
+        // PDF anchor card (page + excerpt + comments). Falls through to
+        // the default flow when the target doesn't resolve.
+        if (ref.details?.type === "pdfAnchor") {
+          const resolvedPath = resolvePdfWikiLinkPath(
+            ref.path,
+            client.currentPath(),
+            client.allKnownFiles,
+            client.ui.viewState.allPages,
+          );
+          if (resolvedPath.endsWith(".pdf")) {
+            const html = await renderPdfAnchorPreview(
+              resolvedPath,
+              ref.details.anchor,
             );
-            const html = await handler(ref, { resolvedPath });
             if (html !== null) return html;
           }
         }
@@ -206,7 +203,7 @@ export function hoverPreviewPlugin(client: Client) {
         }
         const isSelfRef = pagePath === currentPath;
 
-        // Self-refs skip the cache — buffer mutates per keystroke and
+        // Self-refs skip the cache - buffer mutates per keystroke and
         // the cache invalidator only fires on allPages flips.
         const cacheKey = isSelfRef ? null : stringRef;
         if (cacheKey) {
@@ -263,15 +260,6 @@ export function hoverPreviewPlugin(client: Client) {
   );
 }
 
-// Register the pdfAnchor → preview handler at module-load time so the
-// registry-driven branch above finds it. Anchor card: page + excerpt
-// + comments. Returns null on missing data so the popup stays hidden.
-registerHoverHandler("pdfAnchor", async (ref, ctx) => {
-  if (ref.details?.type !== "pdfAnchor") return null;
-  if (!ctx.resolvedPath.endsWith(".pdf")) return null;
-  return renderPdfAnchorPreview(ctx.resolvedPath, ref.details.anchor);
-});
-
 // Fetch <pdfPath>.notes.json, locate the anchor, and emit a tiny
 // HTML card (page number + highlight text + first comment, if any).
 // Returns null when the PDF or anchor doesn't resolve so the popup
@@ -322,7 +310,6 @@ function resolveImageRefs(
     if (!t) return true;
     const resolved = resolveTransclusion(
       t,
-      "",
       targetPath,
       client.allKnownFiles,
       client.ui.viewState.allPages,

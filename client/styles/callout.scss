@@ -1,10 +1,8 @@
-// Frame built from per-line border edges (CM emits one DOM line per row).
+// Callout frame from per-line border edges (CM emits one DOM line per row).
 // Scoped under `#coconote-main .cm-editor` to outrank blockquote's border-left.
-//
-// HEIGHT INVARIANT: keep callout lines at the editor's default
-// line-height. The frame is drawn with `box-shadow` insets, not
-// padding-top/bottom, so CodeMirror's heightMap stays accurate;
-// padding-left/right is fine.
+// HEIGHT INVARIANT: keep callout lines at the editor's default line-height -
+// no padding-top/bottom (padding-left/right is fine) so CodeMirror's
+// heightMap stays accurate.
 #coconote-main .cm-editor {
   .coconote-callout {
     --callout-frame-color: var(--background-modifier-border-hover);
@@ -15,12 +13,12 @@
     padding-right: 1.4rem !important;
     font-family: "STIXTwoText", "Latin Modern Roman", Cambria, Georgia,
       "Times New Roman", serif;
-    // Override blockquote italic — body templates control italics.
+    // Override blockquote italic - body templates control italics.
     font-style: normal;
   }
-  // Body padding zeroed — visual breathing room comes from first/last
-  // line padding only, kept small so the heightMap re-measure when
-  // scrolling into the section is barely visible.
+  // Body padding zeroed - breathing room comes from first/last line
+  // padding only, kept small so the heightMap re-measure on scroll-in
+  // is barely visible.
   .coconote-callout.coconote-callout-body {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
@@ -39,7 +37,7 @@
   }
   .coconote-callout-head { font-weight: 700; }
 
-  // Opener span inherits bold+serif from head; closer has no span — style line.
+  // Opener span inherits bold+serif from head. Closer has no span - style the line.
   .coconote-callout-head .coconote-meta,
   .coconote-callout-closer {
     color: var(--editor-meta-color);
@@ -79,12 +77,11 @@
   margin-left: 0.5em;
 }
 .coconote-callout-closer-hidden {
-  // Hides the `:::` closer line without removing it from layout —
-  // `display: none` made CodeMirror's heightMap allocate a full line
-  // for the closer at first paint, then shrink to 0 after measuring,
-  // pushing every callout below by ~24 px and chopping off content
-  // past the viewport until the user scrolled it into view. Zero-box
-  // collapse keeps heightMap honest from the start.
+  // Hide the `:::` closer line without removing it from layout.
+  // `display: none` made CodeMirror's heightMap allocate a full line at
+  // first paint, then shrink to 0 after measuring, pushing every callout
+  // below by ~24 px and chopping content past the viewport until
+  // scrolled. Zero-box collapse keeps heightMap honest from the start.
   height: 0 !important;
   min-height: 0 !important;
   line-height: 0 !important;

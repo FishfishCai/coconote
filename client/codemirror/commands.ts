@@ -14,12 +14,12 @@ import {
 } from "../lib/callout.ts";
 
 // Cmd/Ctrl-A inside code/math/callout selects only the inner content.
-// Returns false → caller falls back to default whole-doc select-all.
+// Returns false -> caller falls back to default whole-doc select-all.
 export function smartSelectAll(view: EditorView): boolean {
   const state = view.state;
   const pos = state.selection.main.from;
 
-  // No single AST node spans the callout body → scan fenced-div lines.
+  // No single AST node spans the callout body -> scan fenced-div lines.
   const cr = calloutInnerRange(state, pos);
   if (cr) {
     view.dispatch({
@@ -67,7 +67,7 @@ export function smartSelectAll(view: EditorView): boolean {
   return false;
 }
 
-// Range = label (if any) → last body line. `::: keyword` and closing
+// Range = label (if any) -> last body line. `::: keyword` and closing
 // `:::` always excluded. null when pos isn't inside a well-formed callout.
 function calloutInnerRange(
   state: EditorState,

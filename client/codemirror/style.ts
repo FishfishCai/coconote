@@ -7,7 +7,7 @@ export default function highlightStyles() {
     /* Headings (all 4 spec levels) are styled per-line via the
        `coconote-line-h1..h4` classes in registry.ts, not here. */
     /* `t.link` / `t.url`: no source styling. WikiLinks are the only
-       navigable form; raw URLs stay plain so they don't "look clickable". */
+       navigable form, raw URLs stay plain so they don't "look clickable". */
     { tag: t.meta, class: "coconote-meta" },
     { tag: t.quote, class: "coconote-quote" },
     { tag: t.monospace, class: "coconote-code" },

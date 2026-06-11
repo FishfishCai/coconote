@@ -16,8 +16,7 @@ import { errMessage } from "coconote/constants";
 
 export type MarkdownRenderOptions = {
   shortWikiLinks?: boolean;
-  translateUrls?: (url: string, type: "link" | "image") => string;
-  expand?: true;
+  translateUrls?: (url: string, type: "link") => string;
 };
 
 // Allow only safe URL schemes on rendered links. The output HTML is
@@ -25,7 +24,6 @@ export type MarkdownRenderOptions = {
 // `vbscript:` href would execute. Control chars are stripped first
 // because browsers ignore them when parsing the scheme (`java\tscript:`).
 function safeHref(url: string): string {
-  // Strip the control chars browsers ignore when parsing a URL scheme.
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional
   const cleaned = url.replace(/[\u0000-\u0020]+/g, "");
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(cleaned);
@@ -73,8 +71,8 @@ function render(t: ParseTree, options: MarkdownRenderOptions = {}): Tag | null {
     case "ATXHeading3":
     case "ATXHeading4": {
       // markdown.md: "Four levels of headings." H5 / H6 are not in
-      // spec — they hit the default branch and render as raw text
-      // (including the `#####` marks), since those levels don't exist.
+      // spec - they hit the default branch and render as raw text
+      // (including the `#####` marks).
       const level = t.type.slice(-1);
       return { name: `h${level}`, body: cleanTags(mapRender(t.children!)) };
     }
@@ -87,8 +85,8 @@ function render(t: ParseTree, options: MarkdownRenderOptions = {}): Tag | null {
     case "FencedCode":
     case "CodeBlock": {
       const lang = findNodeOfType(t, "CodeInfo");
-      // Drop whitespace text nodes between fence markers/info/text; local
-      // filtered copy avoids mutating the shared parse tree.
+      // Drop whitespace text nodes between fence markers/info/text. The
+      // local filtered copy avoids mutating the shared parse tree.
       const codeChildren = t.children!.filter((c) => c.type);
       return {
         name: "pre",
@@ -217,7 +215,7 @@ function render(t: ParseTree, options: MarkdownRenderOptions = {}): Tag | null {
 function traverseTag(t: Tag, fn: (t: Tag) => void) {
   fn(t);
   if (typeof t === "string") return;
-  // body is `Tag[] | string`; iterating a string here yields chars.
+  // body is `Tag[] | string` - iterating a string here yields chars.
   if (Array.isArray(t.body)) for (const child of t.body) traverseTag(child, fn);
 }
 
@@ -226,7 +224,7 @@ export function renderMarkdownToHtml(
   options: MarkdownRenderOptions = {},
 ) {
   // The Highlight case walks t.parent, and callers on the render path
-  // (hover preview) don't run addParentPointers — set them here or the
+  // (hover preview) don't run addParentPointers - set them here or the
   // guard is a no-op. The emitted Tag tree is separate from the parse
   // tree, so the cycles this introduces are never serialized.
   addParentPointers(t);
@@ -234,9 +232,6 @@ export function renderMarkdownToHtml(
   if (htmlTree) {
     traverseTag(htmlTree, (t) => {
       if (typeof t === "string") return;
-      if (t.name === "img" && options.translateUrls) {
-        t.attrs!.src = options.translateUrls!(t.attrs!.src!, "image");
-      }
       if (t.name === "a" && t.attrs!.href) {
         if (options.translateUrls) {
           t.attrs!.href = options.translateUrls!(t.attrs!.href, "link");

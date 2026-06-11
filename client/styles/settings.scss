@@ -1,7 +1,7 @@
 @use "shared";
 
-// Edits route through client.setUiOption and persist to localStorage;
-// multi-root mutations hit PATCH /.config (addRoot / removeRoot).
+// Edits route through client.setUiOption and persist to localStorage.
+// Multi-root mutations hit PATCH /.config (addRoot / removeRoot).
 .coconote-settings {
   // Layout shell must mirror .coconote-content-browser byte-for-byte so the
   // Setting/Content toggle button stays at the same coordinate
@@ -35,15 +35,6 @@
   }
 
   section { margin-bottom: 1.8rem; }
-
-  dl {
-    display: grid;
-    grid-template-columns: 8rem 1fr;
-    gap: 0.4rem 1rem;
-    margin: 0;
-  }
-  dt { color: var(--text-muted); }
-  dd { margin: 0; }
 
   .coconote-settings-head {
     display: flex;
@@ -245,12 +236,11 @@
       font-size: 0.9em;
       color: var(--text-muted);
     }
-    // Apply to every text-like input — without `type=password` the
+    // Apply to every text-like input: without `type=password` the
     // Token field on the Remote add-form rendered with the browser
     // default (chunky border, no monospace).
     input[type="text"],
-    input[type="password"],
-    input[type="url"] {
+    input[type="password"] {
       @include shared.text-input;
       box-sizing: border-box;
       width: 100%;
@@ -258,8 +248,7 @@
       transition: border-color 0.12s ease, box-shadow 0.12s ease;
     }
     input[type="text"]:focus,
-    input[type="password"]:focus,
-    input[type="url"]:focus {
+    input[type="password"]:focus {
       outline: none;
       border-color: var(--text-accent);
       box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 22%, transparent);
@@ -351,7 +340,7 @@
     color: var(--text-muted);
   }
 
-  // Per-row inline hint (setting_row.tsx) — same muted look as the
+  // Per-row inline hint (setting_row.tsx): same muted look as the
   // page-level .coconote-settings-hint, but inline after the label.
   .coconote-setting-hint {
     margin-left: 0.5rem;
@@ -411,8 +400,8 @@
     &:hover { color: var(--text-normal); }
   }
 
-  // setting.md §Config file: single input + outlined Reset button. The
-  // input fills the row; the button keeps the same outlined look as the
+  // setting.md "Config file": single input + outlined Reset button. The
+  // input fills the row. The button keeps the same outlined look as the
   // +/- in Local / Remote (.coconote-pages-add) but widens to fit text.
   .coconote-config-path-row {
     display: flex;

@@ -1,11 +1,10 @@
-// Right-click menu shown on a content-browser Path-view file row
-// (Tag view is read-only). Per content.md §Right-click menu:
-// Folder → New Markdown / New Folder; .md or .pdf → Rename / Remove /
-// Delete (Push/Pull also appear depending on local vs remote).
-// Rename rewrites every [[wikilink]] pointing at the old name.
-// Dispatch-only: the multi-step transactions live in lib/page_ops.ts.
+// Right-click menu for a content-browser Path-view file row (Tag view
+// is read-only). content.md Right-click menu: .md or .pdf -> Rename /
+// Remove / Delete, plus Push (local) or Pull (remote). Rename rewrites
+// every [[wikilink]] to the old name. Dispatch-only: lib/page_ops.ts.
 
 import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
+import { nameToFsPath } from "../lib/path_url.ts";
 import { ContextMenuShell } from "./context_menu_shell.tsx";
 import type { ClientContext as Client } from "../core/context.ts";
 
@@ -14,17 +13,16 @@ type Props = {
   pageName: string;
   x: number;
   y: number;
-  showRename?: boolean;
-  /** Local files get a `Push`, remote files get a `Pull`. content.md §push/pull. */
-  isRemote?: boolean;
+  /** Local files get `Push`, remote files `Pull` (content.md push/pull). */
+  isRemote: boolean;
   /** Set by "show all supported files" mode for non-admitted rows.
    *  content.md: only "Include in Coconote" is offered. */
-  isExcluded?: boolean;
+  isExcluded: boolean;
   onClose(): void;
   onChanged(): void;
-  onPush?(localPath: string): void;
-  onPull?(remotePrefixedPath: string): void;
-  onInclude?(fsPath: string): void;
+  onPush(localPath: string): void;
+  onPull(remotePrefixedPath: string): void;
+  onInclude(fsPath: string): void;
 };
 
 export function ContentContextMenu(
@@ -33,9 +31,8 @@ export function ContentContextMenu(
     pageName,
     x,
     y,
-    showRename = false,
-    isRemote = false,
-    isExcluded = false,
+    isRemote,
+    isExcluded,
     onClose,
     onChanged,
     onPush,
@@ -43,17 +40,10 @@ export function ContentContextMenu(
     onInclude,
   }: Props,
 ) {
-  // pageName drops the .md extension for markdown pages, so only a
-  // literal .md / .pdf suffix counts as "already has one" — a dotted
-  // page name like "notes.v2" is still a markdown page whose on-disk
-  // path appends .md (same rule as cb_path_view's onInclude).
-  const lower = pageName.toLowerCase();
-  const fullPath = lower.endsWith(".md") || lower.endsWith(".pdf")
-    ? pageName
-    : pageName + ".md";
+  const fullPath = nameToFsPath(pageName);
   const isMd = fullPath.toLowerCase().endsWith(".md");
 
-  // Remove flips the include flag (md frontmatter / pdf sidecar); the
+  // Remove flips the include flag (md frontmatter / pdf sidecar), the
   // file stays on disk.
   const onRemove = async () => {
     try {
@@ -66,9 +56,9 @@ export function ContentContextMenu(
   };
 
   const onRename = async () => {
-    // The leading root name is fixed: show and edit only the path within
-    // the root, then re-attach the same root prefix. The user can move the
-    // file inside the root but cannot change which root it lives in.
+    // The root prefix is fixed: edit only the path within the root,
+    // then re-attach it. The user can move the file inside the root
+    // but cannot change roots.
     const slash = pageName.indexOf("/");
     const rootPrefix = slash < 0 ? "" : pageName.slice(0, slash + 1);
     const restName = slash < 0 ? pageName : pageName.slice(slash + 1);
@@ -108,19 +98,18 @@ export function ContentContextMenu(
   };
 
   const onSync = () => {
-    if (isRemote) onPull?.(pageName);
-    else onPush?.(fullPath);
+    if (isRemote) onPull(pageName);
+    else onPush(fullPath);
     onClose();
   };
 
   const onIncludeClick = () => {
-    onInclude?.(fullPath);
+    onInclude(fullPath);
     onClose();
   };
 
-  // file.md / content.md: excluded rows (default-mode is filtered out
-  // already; here we're in "show all supported files") expose only one
-  // action — Include in Coconote.
+  // file.md / content.md: excluded rows (visible only in "show all
+  // supported files" mode) expose a single action - Include in Coconote.
   if (isExcluded) {
     return (
       <ContextMenuShell x={x} y={y} onClose={onClose}>
@@ -131,8 +120,7 @@ export function ContentContextMenu(
     );
   }
 
-  // Remote rows are read-only locally: spec only authorizes `pull` on
-  // them. Drop the mutating actions when isRemote.
+  // Remote rows are read-only locally: the spec authorizes only `pull`.
   return (
     <ContextMenuShell x={x} y={y} onClose={onClose}>
       {isRemote
@@ -141,9 +129,7 @@ export function ContentContextMenu(
         )
         : (
           <>
-            {showRename && (
-              <button type="button" onClick={onRename}>Rename</button>
-            )}
+            <button type="button" onClick={onRename}>Rename</button>
             <button type="button" onClick={onRemove}>Remove</button>
             <button type="button" onClick={onSync}>Push</button>
             <button type="button" className="danger" onClick={onDelete}>

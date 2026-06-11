@@ -44,7 +44,6 @@
   }
 }
 
-/* Modal boxes */
 .coconote-modal {
   color: var(--modal-color);
   background-color: var(--modal-background-color);
@@ -56,11 +55,9 @@
   }
 }
 
-/* Editor */
-
 #coconote-editor {
   // .cm-content font-family lives in editor_state.ts EditorView.theme()
-  // — CM measures char width there, moving it here drifts selections.
+  // - CM measures char width there, moving it here drifts selections.
   .cm-selectionBackground {
     background-color: var(--editor-selection-background-color);
   }
@@ -114,7 +111,7 @@
     color: var(--editor-list-bullet-color);
   }
 
-  // Only h1–h4 line classes exist (registry.ts; markdown.md spec).
+  // Only h1-h4 line classes exist (registry.ts, markdown.md spec).
   .coconote-line-h1,
   .coconote-line-h2,
   .coconote-line-h3,
@@ -156,7 +153,7 @@ tbody tr:nth-of-type(even) {
 }
 
 // Blockquote / code-line / inline-code surfaces are styled once in
-// prose.scss (higher specificity; the only CM editor lives under
+// prose.scss (higher specificity - the only CM editor lives under
 // #coconote-main, so those rules always apply).
 .coconote-line-fenced-code .coconote-code {
   color: var(--editor-code-color);

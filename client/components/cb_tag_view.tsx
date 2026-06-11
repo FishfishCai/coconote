@@ -1,7 +1,7 @@
 // Tag view: pages grouped by their frontmatter `tag:` declarations
-// into a slash-nested folder tree. No right-click menu — per design,
-// tag organization is metadata-driven, edited in frontmatter, not
-// through Finder-style CRUD.
+// into a slash-nested folder tree. No right-click menu - by design,
+// tag organization is metadata-driven (edited in frontmatter), not
+// Finder-style CRUD.
 
 import { useMemo } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
@@ -40,7 +40,18 @@ function buildTagTree(pages: PageMeta[]): TagNode {
       cur.pages.push(p);
     }
   }
+  sortTree(root);
   return root;
+}
+
+/** Render order: child tags A-Z with (untagged) last, pages by name.
+ *  Sorting once inside the useMemo'd build keeps per-keystroke filter
+ *  renders sort-free. */
+function sortTree(node: TagNode) {
+  node.pages.sort((a, b) => a.name.localeCompare(b.name));
+  const kids = [...node.children.values()].sort(sortTagNodes);
+  node.children = new Map(kids.map((c) => [c.label, c]));
+  for (const c of kids) sortTree(c);
 }
 
 // `p.tags` deliberately NOT consulted: the page is already placed under
@@ -110,7 +121,7 @@ export function CbTagView({ client, allPages, filter }: Props) {
   }
   return (
     <>
-      {[...tree.children.values()].sort(sortTagNodes).map((node) => (
+      {[...tree.children.values()].map((node) => (
         <TagFolder
           key={node.path}
           node={node}
@@ -160,7 +171,7 @@ function TagFolder({ node, openTags, toggle, q, counts, client }: FolderProps) {
       </div>
       {expanded && (
         <div className="coconote-cb-folder-body">
-          {[...node.children.values()].sort(sortTagNodes).map((child) => (
+          {[...node.children.values()].map((child) => (
             <TagFolder
               key={child.path}
               node={child}
@@ -171,10 +182,7 @@ function TagFolder({ node, openTags, toggle, q, counts, client }: FolderProps) {
               client={client}
             />
           ))}
-          {filteredPages
-            .slice()
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((p) => <PageRow key={p.ref} p={p} client={client} />)}
+          {filteredPages.map((p) => <PageRow key={p.ref} p={p} client={client} />)}
         </div>
       )}
     </div>
@@ -184,9 +192,9 @@ function TagFolder({ node, openTags, toggle, q, counts, client }: FolderProps) {
 function PageRow({ p, client }: { p: PageMeta; client: Client }) {
   const isRemote = p.origin?.kind === "remote";
   return (
-    // Use a button to avoid the <a href> right-click navigation race
-    // that the path view also fixed; tag view is read-only so there's
-    // no extra context-menu plumbing to preserve.
+    // Button to avoid the <a href> right-click navigation race the
+    // path view also fixed. Tag view is read-only, so no context-menu
+    // plumbing.
     <button
       type="button"
       className={"coconote-cb-page" +

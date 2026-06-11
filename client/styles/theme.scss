@@ -1,5 +1,5 @@
-// Design tokens, app-wide. Base ramp + accent + semantic tiers first;
-// the `--editor-*` / `--modal-*` / `--top-*` variables further down are
+// Design tokens, app-wide. Base ramp + accent + semantic tiers first.
+// The `--editor-*` / `--modal-*` / `--top-*` variables further down are
 // semantic aliases over those tokens. editor_ui.tsx flips `data-theme`
 // on <html> for dark mode and writes user overrides (accent, colour
 // rows, fonts) as inline custom properties on the root.
@@ -84,7 +84,7 @@ html {
   --radius-m: 8px;
 
   // --- Typography ------------------------------------------------------------
-  // CodeNewRoman has no CJK glyphs — fall back to system CJK fonts.
+  // CodeNewRoman has no CJK glyphs: fall back to system CJK fonts.
   // Nerd Font variants preferred when locally installed (icon glyphs).
   --font-text-theme:
     "CodeNewRoman Nerd Font", "CodeNewRoman", -apple-system, BlinkMacSystemFont,
@@ -100,7 +100,7 @@ html {
   --font-interface: var(--font-interface-theme);
   --font-monospace: var(--font-monospace-theme);
 
-  // h5/h6 share the h5 scale — markdown.md spec stops at four levels.
+  // h5/h6 share the h5 scale (markdown.md spec stops at four levels).
   --h1-size: 1.75em;
   --h2-size: 1.4em;
   --h3-size: 1.2em;
@@ -201,7 +201,7 @@ html[data-theme="light"] { color-scheme: light; }
 html[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Inverted base ramp — high index = light. */
+  /* Inverted base ramp: high index = light. */
   --color-base-00: #1e1e1e;
   --color-base-05: #232323;
   --color-base-10: #262626;

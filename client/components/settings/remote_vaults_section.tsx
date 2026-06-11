@@ -12,10 +12,10 @@ import { errMessage } from "../../lib/constants.ts";
 import { InlineConfirm } from "./inline_confirm.tsx";
 import { EmptyState } from "../empty_state.tsx";
 
-// setting.md §Remote: + opens a (URL, optional token) modal. The URL
-// itself round-trips through PATCH /.config (added to coconote.yaml's
-// `url:` list); the optional token stays in localStorage so it's never
-// committed to a yaml on disk (welcome.md `url:` is just URLs).
+// setting.md Remote: + opens a (URL, optional token) modal. The URL
+// round-trips through PATCH /.config (coconote.yaml's `url:` list).
+// The token stays in localStorage so it's never committed to a yaml
+// on disk (welcome.md `url:` is just URLs).
 
 async function fetchYamlUrls(): Promise<string[]> {
   return (await getConfig()).url ?? [];
@@ -60,9 +60,9 @@ export function RemoteVaultsSection() {
       setError(errMessage(e));
       return;
     }
-    // setting.md: the spec only asks for URL + optional token. The
-    // display label is derived deterministically from the URL hostname
-    // so listings stay scannable; no extra user input needed.
+    // setting.md: the spec asks only for URL + optional token. The
+    // display label derives from the URL hostname so listings stay
+    // scannable, no extra user input.
     const v: RemoteVault = {
       id: newUuid(),
       label: safeHostname(u),
@@ -92,8 +92,8 @@ export function RemoteVaultsSection() {
     setRemovingId(null);
   };
 
-  // Merge: anything in coconote.yaml that isn't in localStorage gets
-  // surfaced as a token-less vault — keeps "real" yaml authoritative.
+  // Anything in coconote.yaml but not in localStorage surfaces as a
+  // token-less vault - keeps the yaml authoritative.
   const merged: RemoteVault[] = [
     ...vaults,
     ...yamlUrls
@@ -182,9 +182,9 @@ export function RemoteVaultsSection() {
   );
 }
 
-// new URL(...) throws on malformed input — a hand-edited yaml line like
-// `localhost:40704` (no scheme) would otherwise crash the entire
-// settings tree. Fall back to the raw string as a label.
+// new URL(...) throws on malformed input - a hand-edited yaml line like
+// `localhost:40704` (no scheme) would crash the entire settings tree.
+// Fall back to the raw string as a label.
 function safeHostname(u: string): string {
   try {
     return new URL(u).hostname;

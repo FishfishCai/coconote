@@ -1,8 +1,7 @@
-// Floating panel for editing a PDF sidecar's four metadata fields
-// (id / coconote / title / tag). pdf.md: opened via the pdfMetadataPanel
-// shortcut (default Cmd / Ctrl + Shift + M) while the PDF reader is open.
-// It joins the same live sidecar session the viewer uses, so edits sync
-// and persist through collab just like the annotations.
+// Panel for the PDF sidecar's metadata fields (id / coconote / title /
+// tag). pdf.md: opened via the pdfMetadataPanel shortcut (default
+// Cmd/Ctrl+Shift+M) while the reader is open. Joins the viewer's live
+// sidecar session, so edits sync and persist like the annotations.
 
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Button } from "../components/basic_modals.tsx";
@@ -12,7 +11,7 @@ import { openSidecarSession, updateSidecarSession } from "./notes_client.ts";
 type Props = {
   pdfPath: string;
   onClose(): void;
-  onSaved?(): void;
+  onSaved(): void;
 };
 
 export function PdfMetadataPanel({ pdfPath, onClose, onSaved }: Props) {
@@ -23,9 +22,8 @@ export function PdfMetadataPanel({ pdfPath, onClose, onSaved }: Props) {
   const [tagsText, setTagsText] = useState("");
   const idInputRef = useRef<HTMLInputElement>(null);
 
-  // Join the live sidecar session. The first callback fires synchronously
-  // with the current state, so the fields fill in immediately. Later
-  // (remote) callbacks are ignored so they can't clobber in-progress edits.
+  // The first session callback fires synchronously and seeds the fields.
+  // Later (remote) callbacks are ignored so they can't clobber edits.
   useEffect(() => {
     let seeded = false;
     const { release } = openSidecarSession(pdfPath, (sc) => {
@@ -57,7 +55,7 @@ export function PdfMetadataPanel({ pdfPath, onClose, onSaved }: Props) {
         tag: tagsText.split(",").map((t) => t.trim()).filter(Boolean),
       },
     }));
-    onSaved?.();
+    onSaved();
     onClose();
   };
 

@@ -1,10 +1,7 @@
-// /.history endpoints (server.md):
-//
-//   GET    /.history/<page_id>                    — list snapshots [{ts, save_type}, ...]
-//   GET    /.history/<page_id>?ts=<ms>            — preview the main md text at that snapshot
-//   DELETE /.history/<page_id>?ts=<ms>            — delete one row (any save_type)
-//   POST   /.history/<page_id>/restore?ts=<ms>    — write the manifest back; append edit row
-//   POST   /.history/<page_id>/pin                — clone latest row as save_type=pin
+// /.history endpoints (server.md): GET <page_id> lists [{ts, save_type}],
+// GET ?ts=<ms> previews the main md text, DELETE ?ts=<ms> deletes one row
+// (any save_type), POST /restore?ts=<ms> writes the manifest back and
+// appends an edit row, POST /pin clones the latest row as save_type=pin.
 
 use crate::error::{Error, Result};
 use crate::history::SaveType;
@@ -26,8 +23,8 @@ pub async fn list_or_preview(
     Query(q): Query<TsQuery>,
 ) -> Result<Response> {
     let Some(h) = &app.history else {
-        // History disabled: list returns []; preview must 404 — clients
-        // wait for octet-stream and would mis-parse a JSON array.
+        // History disabled: list returns [], preview must 404 (clients
+        // expect octet-stream and would mis-parse a JSON array).
         if q.ts.is_some() {
             return Err(Error::NotFound);
         }
@@ -71,17 +68,16 @@ pub async fn delete_at(
     Ok((StatusCode::OK, "OK").into_response())
 }
 
-/// POST /.history/<page_id>/restore?ts=<ms> — write every blob in the
-/// snapshot's manifest back to disk (history.md §Restore). Spec takes
-/// only `?ts=`; destination resolves by scanning the vault for the
-/// current `page_id`. Callers that already know the path (history
-/// panel) may pass `?path=<rel>` to skip the scan.
+/// POST /.history/<page_id>/restore?ts=<ms>: write every blob in the
+/// snapshot's manifest back to disk (history.md Restore). Spec takes only
+/// `?ts=`, destination resolves by scanning the vault for the current
+/// `page_id`. Callers that already know the path (history panel) may
+/// pass `?path=<rel>` to skip the scan.
 #[derive(Deserialize)]
 pub struct RestoreQuery {
     ts: i64,
-    /// Optional override. Useful when the page_id is no longer on disk
-    /// (e.g. the file was deleted) and the caller still wants to land
-    /// the snapshot somewhere specific.
+    /// Optional override, useful when the page_id is no longer on disk
+    /// (file deleted) and the caller wants the snapshot somewhere specific.
     #[serde(default)]
     path: Option<String>,
 }
@@ -112,17 +108,16 @@ pub async fn restore(
                 ))
             })?
     };
-    // Each entry's on-disk destination derives from the CURRENT page
-    // path (the page may have been renamed since the snapshot):
-    //   main `*.md`             → the resolved page path
-    //   main `.<old>.json`      → `.<current_stem>.json` beside the pdf
-    //   asset `.<old>.assets/f` → `<dir>/.<current_stem>.assets/f`
-    // In particular the manifest main of a PDF page is the sidecar —
-    // never the listing's .pdf path itself.
+    // Each entry's destination derives from the CURRENT page path (the
+    // page may have been renamed since the snapshot): main `*.md` -> the
+    // resolved page path, main `.<old>.json` -> `.<current_stem>.json`
+    // beside the pdf, asset `.<old>.assets/f` ->
+    // `<dir>/.<current_stem>.assets/f`. The manifest main of a PDF page
+    // is the sidecar, never the listing's .pdf path itself.
     let assets_prefix = crate::util::assets_prefix_for(&target_path);
     // Stage 1: fetch every blob up front so a missing one aborts with
     // 500 before any disk write. Stage 2's per-file writes are each
-    // atomic (tmp+rename) but the set as a whole is not transactional —
+    // atomic (tmp+rename) but the set as a whole is not transactional:
     // an I/O failure midway can still leave a partial restore.
     let mut writes: Vec<(String, Vec<u8>)> = Vec::new();
     for (name, hash) in manifest.files.iter() {
@@ -143,19 +138,19 @@ pub async fn restore(
         writes.push((dest, bytes));
     }
     for (dest, bytes) in &writes {
-        sp.write_file(dest, bytes, None).await?;
+        sp.write_file(dest, bytes).await?;
     }
 
-    // Record a new edit row mirroring the restored manifest so its
-    // asset blobs stay referenced even if the source row later decays
-    // out of the per-id history cap.
+    // Record a new edit row mirroring the restored manifest so its asset
+    // blobs stay referenced even if the source row later decays out of
+    // retention.
     h.record(&page_id, Some(SaveType::Edit), &manifest, &[])
         .await
         .map_err(|e| Error::Other(e.to_string()))?;
     Ok((StatusCode::OK, "OK").into_response())
 }
 
-/// `<dir>/foo.pdf` → `<dir>/.foo.json` (file.md sidecar naming).
+/// `<dir>/foo.pdf` -> `<dir>/.foo.json` (file.md sidecar naming).
 fn sidecar_path_for(pdf_path: &str) -> String {
     let (dir, base) = match pdf_path.rfind('/') {
         Some(i) => (&pdf_path[..i + 1], &pdf_path[i + 1..]),
@@ -168,9 +163,8 @@ fn sidecar_path_for(pdf_path: &str) -> String {
     format!("{dir}.{stem}.json")
 }
 
-/// Manifest asset keys are `.<old_stem>.assets/<f>` (current writer) or
-/// a bare `<f>` (older rows); both land under the CURRENT page's
-/// assets dir.
+/// Manifest asset keys are `.<old_stem>.assets/<f>` (current writer) or a
+/// bare `<f>` (older rows). Both land under the CURRENT page's assets dir.
 fn asset_rel_name(name: &str) -> &str {
     if let Some((first, rest)) = name.split_once('/') {
         if first.starts_with('.') && first.ends_with(".assets") && !rest.is_empty() {
@@ -180,7 +174,7 @@ fn asset_rel_name(name: &str) -> &str {
     name
 }
 
-/// POST /.history/<page_id>/pin — clone the latest row's manifest with a
+/// POST /.history/<page_id>/pin: clone the latest row's manifest with a
 /// fresh ts and save_type=pin (history.md).
 pub async fn pin(
     State(app): State<AppState>,
@@ -192,7 +186,7 @@ pub async fn pin(
         .await
         .map_err(|e| Error::Other(e.to_string()))?
         .ok_or(Error::NotFound)?;
-    // Empty blob list — manifest references blobs already in the pool.
+    // Empty blob list: the manifest references blobs already in the pool.
     h.record(&page_id, Some(SaveType::Pin), &manifest, &[])
         .await
         .map_err(|e| Error::Other(e.to_string()))?;

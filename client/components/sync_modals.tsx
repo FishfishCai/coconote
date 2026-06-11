@@ -1,10 +1,7 @@
-// Push / Pull modals invoked from the content-browser right-click menu
-// (content.md §push/pull). Push picks (url, root) on a remote; pull
-// picks a local root for the landing page. Batch flows (folder push /
-// pull) reuse the same modals: the first item lets the user pick the
-// target, later items auto-run with it, and the path-collision dialog
-// offers "apply the same choice to the rest" across the queue
-// (history.md §Push / §Pull).
+// Push / Pull modals for the content-browser right-click menu (content.md
+// push/pull): push picks (url, root) on a remote, pull picks a local root.
+// Folder batches reuse them - the first item picks the target, later items
+// auto-run, collisions offer "apply to the rest" (history.md Push / Pull).
 
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
@@ -18,15 +15,16 @@ import {
   type PushTarget,
 } from "../lib/sync_push.ts";
 import { pullRemoteToLocal, type PullOutcome } from "../lib/sync_pull.ts";
+import type { SyncListings } from "../lib/sync_core.ts";
 import { MergeView } from "./merge_view.tsx";
 import { ModalActions } from "./modal_actions.tsx";
 import { Modal } from "./modal.tsx";
 
-/** Shared overwrite/skip memory for a batch queue — set when the user
+/** Shared overwrite/skip memory for a batch queue, set when the user
  *  ticks "apply the same choice to the rest" (history.md). */
 export type BatchChoice = { current: "overwrite" | "skip" | null };
 
-/** The push target the user picked; a batch remembers it so items
+/** The push target the user picked. A batch remembers it so items
  *  after the first auto-run without re-prompting. */
 export type PushTargetChoice = { url: string; token?: string; rootName: string };
 
@@ -90,6 +88,7 @@ export function PushModal({
   initialTarget,
   autoRun = false,
   batchChoice,
+  listings,
   onTargetChosen,
 }: {
   client: Client;
@@ -101,6 +100,8 @@ export function PushModal({
   autoRun?: boolean;
   /** Shared overwrite/skip memory across a batch queue. */
   batchChoice?: BatchChoice;
+  /** Shared listing cache across a batch queue. */
+  listings?: SyncListings;
   /** Reports the target actually used, so the batch can remember it. */
   onTargetChosen?(t: PushTargetChoice): void;
 }) {
@@ -118,9 +119,8 @@ export function PushModal({
     Extract<PushOutcome, { kind: "conflict" }> | null
   >(null);
 
-  // Re-probe whenever the URL or token changes — keeps the second-level
-  // "Target root" dropdown in sync with the URL the user is typing /
-  // picking.
+  // Re-probe on URL/token change so the "Target root" dropdown tracks
+  // the URL the user is typing / picking.
   useEffect(() => {
     const u = normalizeUrl(url);
     if (!u || !/^https?:\/\//i.test(u)) {
@@ -221,15 +221,17 @@ export function PushModal({
       const u = normalizeUrl(explicit?.url ?? url);
       const tok = (explicit?.token ?? token) || undefined;
       const root = explicit?.rootName ?? rootName;
-      // Use the saved vault id when the URL exactly matches one of the
-      // saved entries (preserves identity for the in-memory cache);
-      // otherwise treat it as a typed URL.
+      // Use the saved vault id when the URL exactly matches a saved
+      // entry (preserves identity for the in-memory cache), otherwise
+      // treat it as a typed URL.
       const matched = saved.find((v) => v.url === u);
       const target: PushTarget = matched
         ? { kind: "saved", vaultId: matched.id }
         : { kind: "url", url: u, token: tok };
       onTargetChosen?.({ url: u, token: tok, rootName: root });
-      await handleOutcome(await pushLocalToRemote(localPath, target, root));
+      await handleOutcome(
+        await pushLocalToRemote(localPath, target, root, listings),
+      );
     } catch (e: unknown) {
       setError(errMessage(e));
     } finally {
@@ -238,7 +240,7 @@ export function PushModal({
   };
 
   // Batch items after the first run straight away with the remembered
-  // target; the modal stays up only as a progress/conflict surface.
+  // target, the modal stays up only as a progress/conflict surface.
   useEffect(() => {
     if (autoRun && initialTarget) void onPush(initialTarget);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
@@ -251,11 +253,10 @@ export function PushModal({
         baseText={merge.baseText}
         localText={merge.localText}
         remoteText={merge.remoteText}
-        baseHash=""
         direction="push"
         commitMerged={async (bytes) => {
           await merge.commitMerged(bytes);
-          void client.contentManager?.loadPage({ path: toPath(localPath) });
+          void client.contentManager.loadPage({ path: toPath(localPath) });
         }}
         onClose={() => {
           setMerge(null);
@@ -265,7 +266,7 @@ export function PushModal({
     );
   }
 
-  const canPush = probe.kind === "ok" && !!rootName && !busy && !collision;
+  const canPush = probe.kind === "ok" && !!rootName && !busy;
 
   return (
     <Modal title={`Push ${localPath}`} size="wide" onClose={onClose}>
@@ -346,6 +347,7 @@ export function PullModal({
   initialRoot,
   autoRun = false,
   batchChoice,
+  listings,
   onRootChosen,
 }: {
   client: Client;
@@ -358,6 +360,8 @@ export function PullModal({
   autoRun?: boolean;
   /** Shared overwrite/skip memory across a batch queue. */
   batchChoice?: BatchChoice;
+  /** Shared listing cache across a batch queue. */
+  listings?: SyncListings;
   /** Reports the root actually used, so the batch can remember it. */
   onRootChosen?(root: string): void;
 }) {
@@ -444,7 +448,9 @@ export function PullModal({
     try {
       const root = explicitRoot ?? rootName;
       onRootChosen?.(root);
-      await handleOutcome(await pullRemoteToLocal(remotePrefixedPath, root));
+      await handleOutcome(
+        await pullRemoteToLocal(remotePrefixedPath, root, listings),
+      );
     } catch (e: unknown) {
       setError(errMessage(e));
     } finally {
@@ -464,11 +470,10 @@ export function PullModal({
         baseText={merge.baseText}
         localText={merge.localText}
         remoteText={merge.remoteText}
-        baseHash=""
         direction="pull"
         commitMerged={async (bytes) => {
           await merge.commitMerged(bytes);
-          void client.contentManager?.loadPage({ path: toPath(merge.localPath) });
+          void client.contentManager.loadPage({ path: toPath(merge.localPath) });
         }}
         onClose={() => {
           setMerge(null);
@@ -498,7 +503,7 @@ export function PullModal({
               onCancel={onClose}
               busy={busy}
               onConfirm={() => void onPull()}
-              disabled={busy || !rootName || !!collision}
+              disabled={busy || !rootName}
               confirmLabel={busy ? "Pulling…" : "Pull"}
             />
           )}

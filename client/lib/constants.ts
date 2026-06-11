@@ -11,7 +11,7 @@ export function errMessage(e: unknown): string {
 }
 
 // Browser-specific offline error messages vary (Firefox "NetworkError",
-// Safari "Load failed", Chrome "Failed to fetch") — match all of them.
+// Safari "Load failed", Chrome "Failed to fetch") - match all of them.
 export function isNetworkError(e: unknown): boolean {
   const msg = errMessage(e).toLowerCase();
   return (

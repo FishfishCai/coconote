@@ -1,7 +1,7 @@
 // Graph view: pages and their `prereq:` declarations as a directed
-// graph (A → B reads "A has B as a prerequisite"). The hand-rolled
-// force-directed layout (seeding / edge construction / integrator)
-// lives in lib/graph_layout.ts; this file owns rendering + interaction.
+// graph (A -> B reads "A has B as a prerequisite"). The force-directed
+// layout (seeding / edges / integrator) lives in lib/graph_layout.ts,
+// this file owns rendering + interaction.
 
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
@@ -25,7 +25,7 @@ type Props = {
 };
 
 // Max per-tick displacement (px) below which the layout counts as
-// settled and the RAF loop parks itself.
+// settled and the RAF loop parks.
 const SETTLE_EPS = 0.05;
 
 const CONTROLS_KEY = "coconote.graphControls";
@@ -51,8 +51,8 @@ const DEFAULT_CONTROLS: GraphControls = {
   markdownOnly: false,
 };
 
-// Merge-with-defaults codec so adding a new control later won't read
-// `undefined` from previously-persisted state.
+// Merge with defaults so a later-added control won't read `undefined`
+// from previously-persisted state.
 const controlsCodec = {
   parse: (raw: string): GraphControls | undefined => {
     const v = safeJsonParse<Partial<GraphControls>>(raw);
@@ -63,9 +63,9 @@ const controlsCodec = {
   stringify: (c: GraphControls) => JSON.stringify(c),
 };
 
-/** First-tag root at the requested depth. `tag: research/algebra` with
- *  level 1 → `research`; with level 2 → `research/algebra`. Pages with
- *  no tag get a synthetic "(untagged)" bucket so they share one colour. */
+/** First-tag prefix at the requested depth: `research/algebra` at level
+ *  1 -> `research`, level 2 -> `research/algebra`. Untagged pages share
+ *  one synthetic "(untagged)" bucket (one colour). */
 function tagBucket(p: PageMeta, level: number): string {
   const first = p.tags?.[0];
   if (!first) return "(untagged)";
@@ -75,7 +75,7 @@ function tagBucket(p: PageMeta, level: number): string {
 
 function bucketColor(bucket: string): string {
   if (bucket === "(untagged)") return "#9aa";
-  // Hash → hue; fixed saturation/lightness for readable contrast.
+  // Hash -> hue, fixed saturation/lightness for readable contrast.
   let h = 0;
   for (let i = 0; i < bucket.length; i++) {
     h = (h * 31 + bucket.charCodeAt(i)) | 0;
@@ -91,10 +91,10 @@ export function CbGraphView({ client, allPages, filter }: Props) {
     () => DEFAULT_CONTROLS,
     controlsCodec,
   );
-  // Apply the panel filters to the graph DATA (not just rendering) so an
-  // excluded node leaves the force simulation entirely. `markdownOnly`
-  // drops PDF pages first, which can newly isolate markdown nodes, then
-  // `showIsolated` drops whatever has no remaining edge.
+  // Filter the graph DATA (not just rendering) so an excluded node
+  // leaves the force simulation. `markdownOnly` drops PDFs first (can
+  // newly isolate markdown nodes), then `showIsolated` drops whatever
+  // has no remaining edge.
   const { nodes, edges } = useMemo(() => {
     let { nodes, edges } = buildGraph(allPages);
     if (controls.markdownOnly) {
@@ -112,19 +112,17 @@ export function CbGraphView({ client, allPages, filter }: Props) {
     }
     return { nodes, edges };
   }, [allPages, controls.markdownOnly, controls.showIsolated]);
-  // We keep the nodes array as a ref so we can mutate during the
-  // simulation without re-rendering on every tick. A monotonic `tick`
-  // state forces React to repaint.
+  // Nodes live in refs so the simulation can mutate them without
+  // re-rendering every tick. The monotonic `tick` state forces repaints.
   const nodesRef = useRef<Node[]>(nodes);
   const byIdRef = useRef<Map<string, Node>>(
     new Map(nodes.map((n) => [n.id, n])),
   );
   const edgesRef = useRef<Edge[]>(edges);
-  // Re-seat the mutable refs whenever `nodes` / `edges` change, building
-  // the merged array + Map in one O(N) pass and preserving (x, y, vx,
-  // vy, fixed) of nodes already in `byIdRef` — so the 10s allPages
-  // refresh (fresh arrays, same ids) doesn't reset a settled layout
-  // back to the seed ring.
+  // Re-seat the refs when `nodes` / `edges` change, one O(N) pass that
+  // preserves (x, y, vx, vy, fixed) of nodes already in `byIdRef` so
+  // the 10s allPages refresh (fresh arrays, same ids) doesn't reset a
+  // settled layout back to the seed ring.
   useEffect(() => {
     const prev = byIdRef.current;
     const nextMap = new Map<string, Node>();
@@ -164,24 +162,22 @@ export function CbGraphView({ client, allPages, filter }: Props) {
     | { kind: "pan"; startX: number; startY: number; vbX: number; vbY: number }
     | null
   >(null);
-  // Set by the simulation effect; drag handlers poke it so a parked
-  // (settled) loop resumes integrating. No-op while already running.
+  // Set by the simulation effect. Drag handlers poke it so a parked
+  // (settled) loop resumes, no-op while already running.
   const wakeRef = useRef<(() => void) | null>(null);
 
-  // Stable signature of the topology (node id set + edge set) so the
-  // simulation restarts on real graph changes, not on every 10s
-  // `allPages` refresh tick that re-builds the arrays with the same
-  // contents.
+  // Topology signature (node ids + edges) so the simulation restarts on
+  // real graph changes, not on every 10s `allPages` refresh that
+  // rebuilds identical arrays.
   const topoSig = useMemo(() =>
     nodes.map((n) => n.id).sort().join("\n") + "\0" +
     edges.map((e) => `${e.from}\0${e.to}`).sort().join("\n"), [nodes, edges]);
 
-  // Simulation loop: step() runs every frame while the layout is in
-  // motion, so drag, knob changes, and new edges show up in real time.
-  // Damping inside step() bleeds energy out; once the max per-tick
-  // displacement falls below SETTLE_EPS the loop parks itself (no
-  // step(), no re-render) and is woken again by a drag (wakeRef), a
-  // knob change, or a topology change (effect deps).
+  // Simulation loop: step() runs every frame while the layout moves so
+  // drags, knob changes, and new edges show live. Damping in step()
+  // bleeds energy out, below SETTLE_EPS the loop parks (no step, no
+  // re-render) until woken by a drag (wakeRef), a knob change, or a
+  // topology change (effect deps).
   useEffect(() => {
     let raf = 0;
     let running = false;
@@ -219,7 +215,7 @@ export function CbGraphView({ client, allPages, filter }: Props) {
   }, [topoSig, controls.attract, controls.repulse]);
 
 
-  // Map a client (x,y) inside the SVG to viewBox coords.
+  // Client (x,y) inside the SVG -> viewBox coords.
   const toVb = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -242,8 +238,8 @@ export function CbGraphView({ client, allPages, filter }: Props) {
     setViewBox({ x: nx, y: ny, w, h });
   };
 
-  // A "click" (open the page) is a node mousedown + mouseup with <4px
-  // movement. Anything farther becomes a drag and never opens.
+  // A click (opens the page) is node mousedown + mouseup within 4px,
+  // anything farther becomes a drag and never opens.
   const CLICK_SLOP_PX = 4;
   const onMouseDown = (e: MouseEvent) => {
     if (e.button !== 0) return;
@@ -307,7 +303,6 @@ export function CbGraphView({ client, allPages, filter }: Props) {
       if (n) n.fixed = false;
       // The released node and its neighbours still need to relax.
       wakeRef.current?.();
-      // No movement → treat as a click and open the page.
       if (!d.moved) navigateToNode(d.id);
     }
     dragRef.current = null;
@@ -319,7 +314,7 @@ export function CbGraphView({ client, allPages, filter }: Props) {
     client.navigate({ path: toPath(page.name) });
   };
 
-  // Compute the highlight set (hovered node + 1-hop neighbours).
+  // Hovered node + 1-hop neighbours.
   const highlightSet = useMemo(() => {
     if (!hover) return null;
     const s = new Set<string>([hover]);
@@ -331,13 +326,24 @@ export function CbGraphView({ client, allPages, filter }: Props) {
   }, [hover, edges]);
 
   const q = filter.replace(/^#+/, "").toLowerCase();
-  // Shared filter scope (content.md): folder names, file names, tags
-  // at every level, titles, and headings — same predicate as the
-  // Path / Tag views.
-  const filterMatches = (n: Node) => pageMatchesQuery(n.page, q);
+  // Per-node colour + filter match, hoisted so RAF-driven ticks only
+  // read the Map. Filter scope shared with Path / Tag views (content.md):
+  // folder names, file names, tags at every level, titles, headings.
+  const nodeStyle = useMemo(() => {
+    const m = new Map<string, { color: string; matched: boolean }>();
+    for (const n of nodes) {
+      m.set(n.id, {
+        color: n.page.origin?.kind === "remote"
+          ? "#aaa"
+          : bucketColor(tagBucket(n.page, controls.tagLevel)),
+        matched: pageMatchesQuery(n.page, q),
+      });
+    }
+    return m;
+  }, [nodes, q, controls.tagLevel]);
 
-  // `tick` is read here only to make React treat the SVG as dirty —
-  // the actual positions live on the mutable nodesRef.
+  // `tick` is read only to make React treat the SVG as dirty - the
+  // actual positions live on the mutable nodesRef.
   void tick;
   const ns = nodesRef.current;
 
@@ -465,12 +471,17 @@ export function CbGraphView({ client, allPages, filter }: Props) {
         })}
         {ns.map((n) => {
           const isRemote = n.page.origin?.kind === "remote";
-          const matched = filterMatches(n);
+          // One stale frame can render old nodes (nodesRef re-seats in
+          // an effect after `nodes` changes): compute their style inline.
+          const style = nodeStyle.get(n.id) ?? {
+            color: isRemote
+              ? "#aaa"
+              : bucketColor(tagBucket(n.page, controls.tagLevel)),
+            matched: pageMatchesQuery(n.page, q),
+          };
           const hot = highlightSet ? highlightSet.has(n.id) : false;
-          const dim = (highlightSet && !hot) || (q && !matched);
-          const baseFill = isRemote
-            ? "#aaa"
-            : bucketColor(tagBucket(n.page, controls.tagLevel));
+          const dim = (highlightSet && !hot) || (q && !style.matched);
+          const baseFill = style.color;
           return (
             <g
               key={n.id}

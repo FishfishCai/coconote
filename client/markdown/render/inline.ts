@@ -5,7 +5,7 @@ import { fsEndpoint } from "../../spaces/constants.ts";
 import type { Transclusion } from "coconote/lib/transclusion";
 
 // Bare page names default to text/markdown so wiki transclusions work.
-export function getMimeTypeFromUrl(
+function getMimeTypeFromUrl(
   url: string,
   allowExternal: boolean,
 ): string | null {
@@ -23,7 +23,7 @@ export function getMimeTypeFromUrl(
     if (/^(png|jpe?g|gif|webp|svg|bmp|avif)$/.test(tail)) {
       return `image/${tail === "jpg" ? "jpeg" : tail}`;
     }
-    // Last resort: default to image/* so `<img>` attempts the load;
+    // Last resort: default to image/* so `<img>` attempts the load -
     // onerror swaps in a text link.
     return "image/*";
   }
@@ -54,7 +54,7 @@ function isSafeExternalMediaUrl(url: string): boolean {
 export function createMediaElement(
   transclusion: Transclusion,
 ): HTMLElement | null {
-  // `![[javascript://…]]` etc. must never reach src/data below.
+  // `![[javascript://...]]` etc. must never reach src/data below.
   if (
     !isLocalURL(transclusion.url) &&
     !isSafeExternalMediaUrl(transclusion.url)

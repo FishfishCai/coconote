@@ -1,5 +1,5 @@
 // Sub-context interfaces let plugins depend only on the surface they
-// touch — Client implements ClientContext; a plugin importing only
+// touch - Client implements ClientContext. A plugin importing only
 // `EditorCtx` declares it doesn't care about space or navigation.
 
 import type { Compartment, Extension } from "@codemirror/state";
@@ -29,19 +29,19 @@ export type AttachedCollabHandle = {
   disconnect(): void;
   path: string;
   extension: Extension;
-  status?: () => CollabUiStatus;
+  status: () => CollabUiStatus;
   /** True once the initial SyncStep2 landed (content authoritative). */
-  synced?: () => boolean;
-  onStatusChange?: (cb: (s: CollabUiStatus) => void) => () => void;
+  synced: () => boolean;
+  onStatusChange: (cb: (s: CollabUiStatus) => void) => () => void;
 };
 
 export interface EditorCtx {
   editorView: EditorView;
-  undoHistoryCompartment?: Compartment;
-  markdownLanguageCompartment?: Compartment;
-  renderModeCompartment?: Compartment;
-  editModeCompartment?: Compartment;
-  collabCompartment?: Compartment;
+  undoHistoryCompartment: Compartment;
+  markdownLanguageCompartment: Compartment;
+  renderModeCompartment: Compartment;
+  editModeCompartment: Compartment;
+  collabCompartment: Compartment;
   collabHandle?: AttachedCollabHandle;
   widgetMeta: Map<string, WidgetMeta>;
   systemReady: boolean;
@@ -76,7 +76,7 @@ export interface SpaceCtx {
   contentManager: ContentManager;
   reloadEditor(): Promise<void> | void;
   /** Re-fetch the local + remote page list and broadcast it through
-   *  `ui.updatePageList`. Cheap (~1 HTTP round trip); call after any
+   *  `ui.updatePageList`. Cheap (~1 HTTP round trip). Call after any
    *  mutation the content browser should reflect. */
   updatePageListCache(): Promise<void>;
 }
@@ -92,8 +92,6 @@ export interface NavigationCtx {
 }
 
 export interface LifecycleCtx {
-  readonly fullIndexCompleted: boolean;
-  readonly pageListLoaded: boolean;
   onEditorInit?: () => void;
   onPageClick?: (event: ClickEvent) => void;
   onPageSaved?: () => void;

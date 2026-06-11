@@ -1,8 +1,5 @@
-// Shared settings primitives — extracted so a CSS/a11y tweak applies
-// to every settings section at once. Two primitives: SettingRow (the
-// labelled `coconote-setting-row` wrapper used by the Appearance
-// range / colour / font rows) and SettingToggle (switch-style boolean
-// row built on top of it).
+// Shared settings primitives, extracted so a CSS/a11y tweak applies to
+// every settings section at once.
 
 import type { ComponentChildren } from "preact";
 
@@ -67,9 +64,9 @@ type OverrideProps = {
   variant: "color" | "text";
 };
 
-// One "value with a theme default + reset" row, shared by the colour and
-// font settings. Empty value means "use the default"; the input shows the
-// effective value either way, and reset clears the override.
+// One "value with a theme default + reset" row, shared by the colour
+// and font settings. Empty value means "use the default", the input
+// always shows the effective value, reset clears the override.
 export function OverrideRow(
   { label, defaultValue, value, onChange, variant }: OverrideProps,
 ) {

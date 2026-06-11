@@ -1,6 +1,6 @@
 // The "nothing here yet" hint shared by settings lists (Local roots,
-// Remote servers). Single class so a CSS tweak to the hint applies to
-// every empty list at once; the message itself is passed in as children.
+// Remote servers). Single class so a CSS tweak applies to every empty
+// list at once.
 
 import type { ComponentChildren } from "preact";
 

@@ -1,17 +1,7 @@
-// coconote.yaml — the only on-disk configuration. Spec fields
-// (welcome.md):
-//
-//   port:  u16             — HTTP listen port (default 40704)
-//   auth:  String          — bearer token (default "coconote", loopback bypasses)
-//   root:  {name → path}   — local roots; absolute paths
-//   url:   [String]        — remote roots; coconote URLs mounted into the vault
-//
-// Location: the standard per-user config dir (welcome.md). The desktop
-// Setting → Config file UI may drop a `config-path` pointer file in that
-// dir to redirect reads elsewhere — still a single entry point, just
-// indirected. `ensure_default_config` bootstraps the default yaml on
-// first launch when no pointer is set.
-//
+// coconote.yaml, the only on-disk config (welcome.md): port (default 40704),
+// auth (bearer token, default "coconote", loopback bypasses), root ({name ->
+// path}, absolute local roots), url (remote coconote URLs mounted into the
+// vault). Lives in the per-user config dir (see effective_config_dir).
 // IndexMap preserves the user's yaml ordering on round-trip.
 
 use crate::error::{Error, Result};
@@ -33,13 +23,13 @@ const FORBIDDEN_ROOTS: &[&str] = &[
     "/boot", "/proc", "/sys", "/dev", "/System", "/Library",
 ];
 
-// No deny_unknown_fields: a stray key (e.g. a `roots:` typo) must not
-// make the whole file unparseable — ensure_default_config would then
-// replace the user's config wholesale.
+// No deny_unknown_fields: a stray key (e.g. a `roots:` typo) must not make
+// the file unparseable, or ensure_default_config would replace the user's
+// config wholesale.
 #[derive(Debug, Default, Deserialize)]
 pub struct FileConfig {
-    /// `None` ⇒ use built-in default. `Some(0)` ⇒ explicit ephemeral
-    /// port (test harnesses).
+    /// `None` -> built-in default. `Some(0)` -> explicit ephemeral port
+    /// (test harnesses).
     #[serde(default)]
     pub port: Option<u16>,
     #[serde(default)]
@@ -51,7 +41,7 @@ pub struct FileConfig {
 }
 
 impl FileConfig {
-    /// Returns Ok(None) when the file is absent; bubbles parse errors up.
+    /// Ok(None) when the file is absent, parse errors bubble up.
     pub fn load(path: &Path) -> Result<Option<Self>> {
         match std::fs::read(path) {
             Ok(data) => {
@@ -64,8 +54,8 @@ impl FileConfig {
         }
     }
 
-    /// Bearer token surfaced to handlers. Defaults to "coconote" when
-    /// the user left the field out — spec says auth is required.
+    /// Bearer token for handlers. Defaults to "coconote" when the field
+    /// is absent: spec says auth is required.
     pub fn auth_token(&self) -> String {
         self.auth
             .as_deref()
@@ -74,19 +64,18 @@ impl FileConfig {
             .to_string()
     }
 
-    /// Convert the YAML `root:` mapping into resolved RootConfig list.
-    /// Forbidden-list check runs on BOTH the raw + canonical form so
-    /// macOS symlinks (`/etc` → `/private/etc`) can't smuggle a system
-    /// path through (welcome.md).
+    /// Resolve the YAML `root:` map into RootConfigs. Forbidden-list check
+    /// runs on BOTH raw and canonical forms so macOS symlinks (`/etc` ->
+    /// `/private/etc`) can't smuggle a system path through (welcome.md).
     pub fn root_configs(&self) -> Result<Vec<RootConfig>> {
         self.root
             .iter()
             .map(|(name, path)| {
                 let expanded = expand_user(path)?;
-                // welcome.md: "Local roots must be absolute paths" — a
+                // welcome.md: "Local roots must be absolute paths" - a
                 // relative entry would silently resolve against the CWD.
-                // The PATCH /.config entry point already rejects these;
-                // hand-edited yaml must be held to the same rule.
+                // Single validation point for PATCH /.config and
+                // hand-edited yaml.
                 if !expanded.is_absolute() {
                     return Err(Error::BadRequest(format!(
                         "root '{name}' must be an absolute path (got '{}')",
@@ -108,15 +97,14 @@ impl FileConfig {
 fn check_forbidden(path: &Path, name: &str) -> Result<()> {
     let p = path.to_string_lossy();
     for bad in FORBIDDEN_ROOTS {
-        // Exact match.
         if p == *bad {
             return Err(Error::Other(format!(
                 "root {name:?}: refusing to mount system path {p}"
             )));
         }
-        // Subtree match: `/etc/whatever` should also be rejected (e.g.
-        // a symlink resolved into the system tree). `/` would catch
-        // everything so skip it for the subtree check.
+        // Subtree: `/etc/whatever` is also rejected (e.g. a symlink
+        // resolved into the system tree). `/` would catch everything,
+        // skip it for the subtree check.
         if *bad != "/" {
             let prefix = format!("{bad}/");
             if p.starts_with(&prefix) {
@@ -125,16 +113,15 @@ fn check_forbidden(path: &Path, name: &str) -> Result<()> {
                 )));
             }
         }
-        // macOS symlinks `/etc → /private/etc` and `/var →
-        // /private/var`. canonicalize() lands at the private/
-        // form, which the welcome.md list doesn't enumerate verbatim.
-        // Treat them as equivalent to the underlying system path so a
-        // symlink can't smuggle a forbidden root past the check
+        // macOS symlinks `/etc -> /private/etc`, `/var -> /private/var`:
+        // canonicalize() lands at the private/ form, which the welcome.md
+        // list doesn't enumerate verbatim. Treat it as the underlying
+        // system path so a symlink can't smuggle a forbidden root past
         // (welcome.md: "Symlinks are resolved before validation").
         let private_form = format!("/private{bad}");
         if p == private_form {
             return Err(Error::Other(format!(
-                "root {name:?}: refusing to mount system path {p} (symlink → {bad})"
+                "root {name:?}: refusing to mount system path {p} (symlink -> {bad})"
             )));
         }
         let private_subtree = format!("/private{bad}/");
@@ -163,22 +150,20 @@ fn home_dir() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
 }
 
-/// The directory where `coconote.yaml` lives. The pointer file
-/// `<standard config dir>/config-path` (set by Setting → Config file)
-/// redirects the lookup to any directory the user picks; otherwise we
-/// use the standard per-user config dir. welcome.md §coconote.yaml.
+/// Directory where `coconote.yaml` lives. The pointer file `<standard
+/// config dir>/config-path` (set by Setting -> Config file) redirects the
+/// lookup, otherwise the standard per-user config dir (welcome.md).
 pub fn effective_config_dir() -> Option<PathBuf> {
     read_config_pointer().or_else(standard_config_dir)
 }
 
-/// Pointer file location. Lives at the standard dir so it's
-/// discoverable even if the user redirected elsewhere.
+/// Pointer file lives at the standard dir so it stays discoverable even
+/// after a redirect.
 fn config_pointer_path() -> Option<PathBuf> {
     standard_config_dir().map(|d| d.join("config-path"))
 }
 
-/// Read the pointer file as a directory path. Empty / missing /
-/// unreadable → None.
+/// Pointer file as a directory path. Empty / missing / unreadable -> None.
 fn read_config_pointer() -> Option<PathBuf> {
     let p = config_pointer_path()?;
     let raw = std::fs::read_to_string(&p).ok()?;
@@ -187,9 +172,9 @@ fn read_config_pointer() -> Option<PathBuf> {
     Some(PathBuf::from(trimmed))
 }
 
-/// Write the pointer file, or clear it when the value equals (or is
-/// empty / equals) the standard config dir. Creates the standard dir if
-/// missing so the write doesn't fail on a fresh machine.
+/// Write the pointer file, clearing it when the value is empty or equals
+/// the standard config dir. Creates the standard dir if missing so the
+/// write doesn't fail on a fresh machine.
 pub fn write_config_pointer(dir: &str) -> Result<()> {
     let p = config_pointer_path()
         .ok_or_else(|| Error::Other("no $HOME / %APPDATA% to host config pointer".into()))?;
@@ -207,12 +192,9 @@ pub fn write_config_pointer(dir: &str) -> Result<()> {
     Ok(())
 }
 
-/// Per-user config directory for coconote, by platform:
-///   macOS / Linux: `~/.config/coconote/`
-///   Windows:       `%APPDATA%\coconote\`
-///
-/// (XDG-style on Unix even on macOS — matches the user-facing config
-/// idiom; respects `$XDG_CONFIG_HOME` when set.)
+/// Per-user config dir: `~/.config/coconote/` on macOS/Linux (XDG-style
+/// even on macOS, respects `$XDG_CONFIG_HOME`), `%APPDATA%\coconote\` on
+/// Windows.
 pub fn standard_config_dir() -> Option<PathBuf> {
     #[cfg(windows)]
     {
@@ -229,15 +211,13 @@ pub fn standard_config_dir() -> Option<PathBuf> {
     }
 }
 
-/// Ensure a usable `coconote.yaml` exists in the effective config dir.
-/// First launch — or after the user redirects Setting → Config file to
-/// a dir without a yaml, or with a broken yaml — writes a known-good
-/// default so the server always boots. A present-but-unparseable yaml
-/// is first renamed to `coconote.yaml.bak` (best-effort) so the user's
-/// content is never silently destroyed. The default has **no roots**:
-/// the user adds them via Setting → Local at runtime, so we don't have
-/// to guess where their notes should live or create a throwaway
-/// folder. Server starts happily with an empty space.
+/// Ensure a usable `coconote.yaml` in the effective config dir (first
+/// launch, or a Setting -> Config file redirect to a dir with no or broken
+/// yaml) so the server always boots. An unparseable yaml is first renamed
+/// to `coconote.yaml.bak` (best-effort) so user content is never silently
+/// destroyed. The default has NO roots: the user adds them via Setting ->
+/// Local at runtime, so we don't guess where notes live or create a
+/// throwaway folder. The server starts fine with an empty space.
 pub fn ensure_default_config() -> Result<PathBuf> {
     let dir = effective_config_dir()
         .ok_or_else(|| Error::Other("no $HOME / %APPDATA% to host default config".into()))?;
@@ -245,11 +225,11 @@ pub fn ensure_default_config() -> Result<PathBuf> {
         .map_err(|e| Error::Other(format!("mkdir {}: {e}", dir.display())))?;
     let yaml_path = dir.join("coconote.yaml");
     if let Ok(bytes) = std::fs::read(&yaml_path) {
-        // Existing & parses → leave it alone.
+        // Exists and parses: leave it alone.
         if serde_yaml::from_slice::<FileConfig>(&bytes).is_ok() {
             return Ok(yaml_path);
         }
-        // Present but broken → keep the bytes around as .bak.
+        // Present but broken: keep the bytes around as .bak.
         let bak = yaml_path.with_extension("yaml.bak");
         match std::fs::rename(&yaml_path, &bak) {
             Ok(()) => tracing::warn!(
@@ -343,16 +323,14 @@ mod tests {
 
     #[test]
     fn empty_root_section_parses_to_zero_roots() {
-        // Default yaml shipped by ensure_default_config — has an empty
-        // `root:` line that should parse cleanly to an empty IndexMap,
-        // not error out.
+        // The default yaml from ensure_default_config has an empty
+        // `root:` line: must parse to an empty IndexMap, not error.
         let yaml = "port: 40704\nauth: coconote\nroot:\n";
         let cfg: FileConfig = serde_yaml::from_str(yaml).unwrap();
         assert!(cfg.root.is_empty());
         assert_eq!(cfg.port, Some(40704));
         assert_eq!(cfg.auth_token(), "coconote");
-        // The list of resolved root configs is empty — no filesystem
-        // poking, no errors.
+        // Resolves to zero roots with no filesystem poking, no errors.
         let resolved = cfg.root_configs().unwrap();
         assert!(resolved.is_empty());
     }

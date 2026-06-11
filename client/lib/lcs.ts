@@ -1,6 +1,6 @@
 // Shared LCS-based line diff used by the merge UI (lib/diff3.ts) and
-// the history-preview diff (lib/line_diff.ts). Standard O(N·M) DP;
-// equal prefix/suffix lines are trimmed here so every caller gets the
+// the history-preview diff (lib/line_diff.ts). Standard O(N*M) DP.
+// Equal prefix/suffix lines are trimmed here so every caller gets the
 // small-DP fast path on the common "few lines changed" case.
 
 export type LcsDiffOp =
@@ -8,7 +8,6 @@ export type LcsDiffOp =
   | { kind: "del"; line: string }
   | { kind: "ins"; line: string };
 
-/** Compute LCS DP table for two arrays of strings. */
 function lcsTable(a: string[], b: string[]): number[][] {
   const n = a.length, m = b.length;
   const dp: number[][] = Array.from(
@@ -25,7 +24,7 @@ function lcsTable(a: string[], b: string[]): number[][] {
   return dp;
 }
 
-/** Diff `a → b` line-by-line. Operations come out in the order they
+/** Diff `a -> b` line-by-line. Operations come out in the order they
  *  would replay when transforming `a` into `b`. */
 export function lcsDiff(a: string[], b: string[]): LcsDiffOp[] {
   // Trim the equal prefix/suffix before the quadratic DP.

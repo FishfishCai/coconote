@@ -11,7 +11,7 @@ import type { SyntaxNode } from "@lezer/common";
 import type { ClientContext as Client } from "../../../core/context.ts";
 import { isCodeOrCommentNode } from "../../util/util.ts";
 
-// LaTeX Suite–compatible snippet format. options flags:
+// LaTeX Suite-compatible snippet format. options flags:
 //   m = math (any), M = block math `$$..$$` only, t = text (outside math),
 //   A = auto-expand (no Tab), r = regex trigger, w = word boundary required.
 export type SnippetRaw = {
@@ -78,7 +78,7 @@ function compileSnippets(file: SnippetFile): CompiledSnippet[] {
     if (isRegex) {
       const pattern = substituteVariables(s.trigger, vars);
       try {
-        // Anchor to end-of-input — tested against chars just before cursor.
+        // Anchor to end-of-input - tested against chars just before cursor.
         const anchored = pattern.endsWith("$") ? pattern : pattern + "$";
         compiled.regex = new RegExp(anchored);
       } catch (e) {
@@ -120,8 +120,8 @@ export function invalidateSnippetsCache() {
   snippetsLoaded = false;
 }
 
-// "code" is its own context (not "none"): NO snippet — not even
-// t-flagged or auto-expanding ones — may fire inside a code region.
+// "code" is its own context (not "none"): NO snippet (not even
+// t-flagged or auto-expanding ones) may fire inside a code region.
 type MathContext = "none" | "inline" | "block" | "code";
 
 /** Doc prefix [0, upto) with code/comment regions blanked to spaces
@@ -154,7 +154,7 @@ function maskCodeRegions(state: EditorState, upto: number): string {
 }
 
 function detectMathContext(state: EditorState, pos: number): MathContext {
-  // Cursor inside a code region → snippets are disabled entirely.
+  // Cursor inside a code region -> snippets are disabled entirely.
   for (
     let n: SyntaxNode | null = syntaxTree(state).resolveInner(pos, -1);
     n;
@@ -164,7 +164,7 @@ function detectMathContext(state: EditorState, pos: number): MathContext {
   }
   // Parity scan over MASKED text: code regions earlier in the doc are
   // blanked first. (Scanning text instead of checking tree ancestors
-  // also catches the unclosed `$…` the user is mid-typing, which has
+  // also catches the unclosed `$...` the user is mid-typing, which has
   // no Math node yet.)
   const head = maskCodeRegions(state, pos);
   const blockOpens = (head.match(/\$\$/g) ?? []).length;
@@ -206,7 +206,7 @@ function matchSnippet(
     };
   }
   if (snippet.literal && textBefore.endsWith(snippet.literal)) {
-    // No implicit boundary here — per spec, a word boundary applies
+    // No implicit boundary here - per spec, a word boundary applies
     // ONLY when the snippet carries the `w` flag (checked in tryExpand).
     return {
       matchStart: absEnd - snippet.literal.length,
@@ -217,11 +217,11 @@ function matchSnippet(
   return null;
 }
 
-// editor.md §Snippet: "$1, $2, …, $9 are sequential tab stops … $0 is
-// the final caret. Once all $1–$9 have been visited, pressing Tab
+// editor.md Snippet: "$1, $2, ..., $9 are sequential tab stops ... $0
+// is the final caret. Once all $1-$9 have been visited, pressing Tab
 // jumps to $0 and the snippet ends." Returns the expanded text plus
 // the ordered list of caret offsets the snippet should visit ($1..$9
-// in numeric order, then $0; EMPTY when the template has no markers).
+// in numeric order, then $0, EMPTY when the template has no markers).
 function expandReplacement(
   template: string,
   groups: string[],
@@ -258,7 +258,7 @@ function expandReplacement(
     out += c;
   }
 
-  // Order: $1, $2, … $9, then $0 (final caret, visited last).
+  // Order: $1, $2, ... $9, then $0 (final caret, visited last).
   // Duplicates collapse to the first occurrence.
   const ordered: number[] = [];
   for (let n = 1; n <= 9; n++) {
@@ -271,7 +271,7 @@ function expandReplacement(
   return { text: out, stops: ordered };
 }
 
-// Active snippet tracker — survives across user edits so $1 → $2 → … → $0
+// Active snippet tracker - survives across user edits so $1 -> $2 -> ... -> $0
 // navigation works. Stops are stored as ABSOLUTE doc positions and
 // remapped through every transaction so intermediate typing doesn't
 // strand the cursor in the middle of a freshly-typed substring.
@@ -303,7 +303,7 @@ const activeSnippetField = StateField.define<ActiveSnippet | null>({
       to: tr.changes.mapPos(value.to, 1),
       stops: value.stops.map((p) => tr.changes.mapPos(p, 1)),
     };
-    // Clicking / cursoring away from the snippet expires it — a later
+    // Clicking / cursoring away from the snippet expires it - a later
     // Tab must not teleport the caret back to a stale stop. (Typing,
     // deletes etc. are "input.*"/"delete.*", not "select".)
     if (tr.selection && tr.isUserEvent("select")) {
@@ -357,7 +357,7 @@ function tryExpand(
     if (!m) continue;
     // `w` flag (spec): fire only when preceded by "a space, line
     // start, or non-alphanumeric character". `_` is non-alphanumeric,
-    // i.e. a boundary — so the class is letters + digits only.
+    // i.e. a boundary - so the class is letters + digits only.
     if (s.wordBoundary && m.matchStart > 0) {
       const prev = state.doc.sliceString(m.matchStart - 1, m.matchStart);
       if (/[A-Za-z0-9]/.test(prev)) continue;
@@ -378,7 +378,7 @@ function tryExpand(
     // A single stop ($0-only and friends) stays ACTIVE even though the
     // caret already sits on it: spec wants the first Tab consumed
     // ("pressing Tab exits the snippet directly") rather than falling
-    // through to indent. No markers at all ⇒ nothing to keep active.
+    // through to indent. No markers at all => nothing to keep active.
     const restOffsets = stops.length === 1 ? stops : stops.slice(1);
     const remainingAbs = restOffsets.map((off) => replaceFrom + off);
     view.dispatch({
@@ -426,7 +426,7 @@ export function snippetsPlugin(client: Client) {
     // Tab order: active snippet's next stop > new snippet expansion >
     // default Tab. editor_state.ts has a Prec.high Tab handler that
     // unconditionally inserts 4 spaces (outside list) / indents
-    // (inside list); the snippet expansion needs strictly higher
+    // (inside list). The snippet expansion needs strictly higher
     // priority and falls through (false) when no trigger matches.
     Prec.highest(keymap.of([
       {

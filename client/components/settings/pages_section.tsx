@@ -9,10 +9,10 @@ import { EmptyState } from "../empty_state.tsx";
 
 type Root = { name: string; path: string };
 
-// setting.md §Local: + opens a (name, absolute path) modal, − drops the
-// row, and either path round-trips through PATCH /.config which
-// rewrites coconote.yaml atomically and reloads the file index without
-// restarting the server.
+// setting.md Local: + opens a (name, absolute path) modal, the minus
+// button drops the row. Either path round-trips through PATCH /.config,
+// which rewrites coconote.yaml atomically and reloads the file index
+// without restarting the server.
 
 async function fetchRoots(): Promise<Root[]> {
   const map = (await getConfig()).root ?? {};
@@ -36,10 +36,10 @@ function groupPagesByRoot(pages: PageMeta[]): Map<string, PageMeta[]> {
 export function PagesSection(props: { client: Client }) {
   const { client } = props;
   const [openRoots, setOpenRoots] = useState<Set<string>>(new Set());
-  // setting.md §Local covers ONLY the yaml-configured local roots.
-  // Remote-vault pages (origin kind "remote", names prefixed
-  // "@<label>/") belong to the Remote section, so drop them before
-  // grouping or every "@label" shows up as a bogus local root.
+  // setting.md Local covers ONLY yaml-configured local roots.
+  // Remote-vault pages (origin "remote", names prefixed "@<label>/")
+  // belong to the Remote section: drop them before grouping or every
+  // "@label" shows up as a bogus local root.
   const localPages = client.ui.viewState.allPages.filter(
     (p) => p.origin?.kind !== "remote" && !p.name.startsWith("@"),
   );

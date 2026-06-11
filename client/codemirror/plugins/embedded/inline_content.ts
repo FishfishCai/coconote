@@ -19,8 +19,8 @@ import {
 } from "../../../markdown/transclusion_resolver.ts";
 import { scanMath } from "./tex.ts";
 
-// Page transclusion (`![[Page]]`) is intentionally unsupported — hover on
-// `[[Page]]` is the preview path; non-media `![[...]]` renders as raw text.
+// Page transclusion (`![[Page]]`) is intentionally unsupported - hover on
+// `[[Page]]` is the preview path, non-media `![[...]]` renders as raw text.
 export function inlineContentPlugin(client: Client) {
   return decoratorStateField((state: EditorState) => {
     const widgets: Range<Decoration>[] = [];
@@ -65,7 +65,6 @@ export function inlineContentPlugin(client: Client) {
                 // Don't mutate `transclusion`; callback re-fires on each re-toDOM.
                 const resolved = resolveTransclusion(
                   transclusion,
-                  client.currentName(),
                   client.currentPath(),
                   client.allKnownFiles,
                   client.ui.viewState.allPages,

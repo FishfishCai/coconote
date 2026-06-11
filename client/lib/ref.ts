@@ -16,7 +16,7 @@ import { encodePathSegments } from "./path_url.ts";
 export type Path = `${string}.${string}` | "";
 
 /** Brand a bare string as a `Path`. Adds `.md` when the basename has
- *  no extension; passes paths with an extension through unchanged. */
+ *  no extension, passes paths with an extension through unchanged. */
 export function toPath(s: string): Path {
   if (s === "") return s;
   return (/\.[a-z0-9]+$/i.test(s) ? s : s + ".md") as Path;
@@ -47,14 +47,14 @@ export function isMarkdownPath(path: Path): boolean {
 }
 
 function normalizePath(path: string): Path {
-  // Single ".md-appending" rule for the whole module — toPath owns it.
+  // Single ".md-appending" rule for the whole module - toPath owns it.
   if (path.startsWith("/")) path = path.slice(1);
   return toPath(path);
 }
 
 // Sigils: `#` header, `@` anchor (markdown), `:` callout, `%` PDF anchor.
-// `@` instead of `$` avoids math `$..$` collision; `%` is new — chosen
-// for PDF because Markdown / wikilinks don't use it anywhere else.
+// `@` instead of `$` avoids math `$..$` collision. `%` was chosen for
+// PDF because Markdown / wikilinks don't use it anywhere else.
 const refRegex = new RegExp(
   `^(?<path>(?!.*\\.[a-zA-Z0-9]+\\.md$)(?!\\/?\\.)(?!.*(?:\\/|^)\\.{1,2}(?:\\/|$)|.*\\/{2})(?!.*(?:\\]\\]|\\[\\[))[^@#|<>:%]*)(#\\s*(?<header>.*)|@(?<anchor>${ANCHOR_NAME_RE.source})|:\\s*(?<callout>\\d+|[^\\s:#@|\\\\][^:#@|\\\\]*?)|%(?<pdfAnchor>${ANCHOR_NAME_RE.source}))?\\s*$`,
 );
@@ -76,7 +76,7 @@ export function findNamedAnchor(
 // Numbering must agree with the rendered view (codemirror callout
 // plugin): openers inside fenced code don't count, and an UNCLOSED
 // callout (no `:::` closer before the next opener / EOF) is skipped
-// entirely — otherwise `[[:3]]` jumps and "Theorem 5" displays drift
+// entirely - otherwise `[[:3]]` jumps and "Theorem 5" displays drift
 // from what the user sees.
 function* iterCallouts(text: string): Iterable<{
   index: number;
@@ -111,7 +111,7 @@ function* iterCallouts(text: string): Iterable<{
     if (inFence) continue;
     const m = CALLOUT_OPEN_RE.exec(line);
     if (!m) continue;
-    if (!findCalloutBounds(getLine, i + 1)) continue; // unclosed — skip
+    if (!findCalloutBounds(getLine, i + 1)) continue; // unclosed - skip
     const keyword = m[2].toLowerCase();
     const tpl = resolveTemplate(keyword);
     if (tpl?.numbered) counter++;
@@ -133,9 +133,9 @@ export function findCalloutTarget(text: string, target: string): number {
 }
 
 // Mirrors the rendered callout prefix shape:
-//   numbered + labelled → "Definition 1 (defLimit)."
-//   numbered only       → "Theorem 5."
-//   labelled only       → "Note (myTag)"
+//   numbered + labelled -> "Definition 1 (defLimit)."
+//   numbered only       -> "Theorem 5."
+//   labelled only       -> "Note (myTag)"
 export function resolveCalloutDisplay(
   text: string,
   target: string,
@@ -227,7 +227,7 @@ export function getOffsetFromRef(
       return pos < 0 ? -1 : pos;
     }
     case "pdfAnchor": {
-      // PDF anchors live outside the markdown tree — resolved by the
+      // PDF anchors live outside the markdown tree - resolved by the
       // PDF viewer via sidecar notes. Not addressable inside text.
       return -1;
     }
@@ -266,16 +266,16 @@ export function getOffsetFromHeader(
   return node.from ?? -1;
 }
 
-// Like encodeURIComponent but preserves `/`. Single implementation —
-// delegates to path_url so the two historic copies can't drift.
+// Like encodeURIComponent but preserves `/`. Delegates to path_url so
+// the two historic copies can't drift.
 export function encodePageURI(page: string): string {
   return encodePathSegments(page);
 }
 
 // Slices the substring `details` selects:
-//   header  → heading line → next same/higher heading (or EOF)
-//   anchor  → anchor line → EOF
-//   callout → body between `:::` opener / closer (fence stripped)
+//   header  -> heading line to next same/higher heading (or EOF)
+//   anchor  -> anchor line to EOF
+//   callout -> body between `:::` opener / closer (fence stripped)
 // Returns null when target can't be located.
 export function sliceByRef(
   text: string,
@@ -324,7 +324,7 @@ export function sliceByRef(
       // opener. Match anything >= fenceLen instead of exactly fenceLen.
       const closeRe = new RegExp(`^:{${fenceLen},}\\s*$`);
       // Static md render has no callout case, so fence lines would
-      // leak as raw `:::` text — body only.
+      // leak as raw `:::` text - body only.
       const bodyStart = lines[0].length + 1;
       for (let i = 1; i < lines.length; i++) {
         if (closeRe.test(lines[i])) {
@@ -335,7 +335,7 @@ export function sliceByRef(
       return { text: lines.slice(1).join("\n"), offset: pos + bodyStart };
     }
     case "pdfAnchor": {
-      // PDF content lives in a separate viewer; no slice into markdown.
+      // PDF content lives in a separate viewer - no slice into markdown.
       return null;
     }
   }

@@ -1,5 +1,5 @@
 // Tiny YAML frontmatter editor for client-side ops that flip a single
-// key (today: `coconote: true / false`). Deliberately string-level — we
+// key (today: `coconote: true / false`). Deliberately string-level - we
 // don't want to round-trip through a YAML parser that would strip
 // the user's comments / indentation / key ordering.
 
@@ -8,9 +8,9 @@ import { escapeRegex } from "./util.ts";
 const FENCE = "---";
 
 /** Returns the text with `key: value` set in the frontmatter block.
- *  - Existing frontmatter, key present → replace the value on its line.
- *  - Existing frontmatter, key missing → append `key: value` before close.
- *  - No frontmatter → prepend a fresh block.
+ *  - Existing frontmatter, key present -> replace the value on its line.
+ *  - Existing frontmatter, key missing -> append `key: value` before close.
+ *  - No frontmatter -> prepend a fresh block.
  */
 export function setFrontmatterKey(
   doc: string,
@@ -19,7 +19,7 @@ export function setFrontmatterKey(
 ): string {
   const fm = findFrontmatter(doc);
   if (!fm) {
-    // Keep a leading BOM at the very start; the fresh block goes after it.
+    // Keep a leading BOM at the very start - the fresh block goes after it.
     const bom = doc.charCodeAt(0) === 0xfeff ? doc[0] : "";
     const body = bom ? doc.slice(1) : doc;
     return `${bom}${FENCE}\n${key}: ${value}\n${FENCE}\n\n${body}`;
@@ -51,7 +51,7 @@ type Fm = {
 };
 
 function findFrontmatter(doc: string): Fm | null {
-  // Skip a leading BOM (some editors prepend one) — markdown/
+  // Skip a leading BOM (some editors prepend one) - markdown/
   // frontmatter.ts's extractor does the same, and disagreeing here
   // would stack a second frontmatter block onto BOM'd files.
   const bom = doc.charCodeAt(0) === 0xfeff ? 1 : 0;

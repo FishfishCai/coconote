@@ -1,8 +1,8 @@
-// Pull a remote page into a chosen local root (history.md §Pull).
+// Pull a remote page into a chosen local root (history.md Pull).
 // Mirror of sync_push: same id model (frontmatter id for md, sidecar
 // metadata.id for PDFs), same synced content (md body / sidecar JSON),
-// same merge strategy via lib/sync_core.ts; assets folders are mirrored
-// remote → local for markdown pages.
+// same merge strategy via lib/sync_core.ts. Assets folders are mirrored
+// remote -> local for markdown pages.
 
 import { fileUrl, fsEndpoint } from "../spaces/constants.ts";
 import { authedFetch } from "./authed_fetch.ts";
@@ -13,10 +13,11 @@ import { fetchLocalMergeBase } from "./sync_history.ts";
 import { headersToFileMeta } from "./util.ts";
 import {
   mdAssetsPrefix,
+  nameToFsPath,
   pdfSidecarPath,
   stripFirstSegment,
 } from "./path_url.ts";
-import { merge3Strategy } from "./sync_core.ts";
+import { merge3Strategy, type SyncListings } from "./sync_core.ts";
 
 export type PullOutcome =
   | { kind: "noop" }
@@ -31,12 +32,12 @@ export type PullOutcome =
     remoteLabel: string;
     remotePath: string;
     /** Writes the merged result local-first, mirrors it to the remote,
-     *  and records the pull rows (history.md §MergeView submit). */
+     *  and records the pull rows (history.md MergeView submit). */
     commitMerged: (merged: Uint8Array) => Promise<void>;
   }
   | {
     /** Something already occupies the proposed local path (history.md
-     *  §Pull "same relative path holds a same-named file" — confirm
+     *  Pull "same relative path holds a same-named file" - confirm
      *  per file before overwriting). */
     kind: "pathCollision";
     localPath: string;
@@ -51,14 +52,21 @@ async function localPathOccupied(path: string): Promise<boolean> {
   return r.ok;
 }
 
-/** First local file (any root) whose page id matches — history.md keys
+/** First local file (any root) whose page id matches - history.md keys
  *  the branch on "a local file exists with the same page_id". */
-async function findLocalById(id: string): Promise<string | null> {
-  const r = await authedFetch(fsEndpoint);
-  if (!r.ok) return null;
-  const list = (await r.json()) as Array<
-    { type: string; path: string; page_id?: string }
-  >;
+async function findLocalById(
+  id: string,
+  listings?: SyncListings,
+): Promise<string | null> {
+  let list = listings?.local;
+  if (!list) {
+    const r = await authedFetch(fsEndpoint);
+    if (!r.ok) return null;
+    list = (await r.json()) as Array<
+      { type: string; path: string; page_id?: string }
+    >;
+    if (listings) listings.local = list;
+  }
   const hit = list.find((e) => e.type === "file" && e.page_id === id);
   return hit?.path ?? null;
 }
@@ -96,35 +104,36 @@ async function pullAssets(
   remoteMdPath: string,
   localMdPath: string,
 ): Promise<void> {
+  // Assets live in a dot-dir, which the plain listing prunes - only
+  // the ?prefix= endpoint can see them.
   const remotePrefix = mdAssetsPrefix(remoteMdPath);
   const localPrefix = mdAssetsPrefix(localMdPath);
-  let rows: Awaited<ReturnType<HttpSpacePrimitives["fetchFileList"]>>;
+  let paths: string[];
   try {
-    rows = await sp.fetchFileList();
+    paths = await sp.listUnderPrefix(remotePrefix);
   } catch {
     return;
   }
-  for (const row of rows) {
-    if (!row.name.startsWith(remotePrefix)) continue;
-    const { data } = await sp.readFile(row.name);
-    await writeLocalFile(localPrefix + row.name.slice(remotePrefix.length), data);
+  for (const p of paths) {
+    const { data } = await sp.readFile(p);
+    await writeLocalFile(localPrefix + p.slice(remotePrefix.length), data);
   }
 }
 
 export async function pullRemoteToLocal(
   remotePrefixedPath: string,
   targetRootName: string,
+  /** Set by folder batches to share one local listing per batch. */
+  listings?: SyncListings,
 ): Promise<PullOutcome> {
   const split = parseRemotePath(remotePrefixedPath);
   if (!split) return { kind: "remoteMissing" };
   const r = getRemoteSpaceByLabel(split.label);
   if (!r) return { kind: "remoteMissing" };
 
-  // The remote index strips `.md` from markdown names; PDFs keep their
+  // The remote index strips `.md` from markdown names, PDFs keep their
   // extension. Restore the on-disk path before reading.
-  const remoteFsPath = /\.(md|pdf)$/i.test(split.rest)
-    ? split.rest
-    : split.rest + ".md";
+  const remoteFsPath = nameToFsPath(split.rest);
   const isPdf = remoteFsPath.toLowerCase().endsWith(".pdf");
   const remoteContentPath = isPdf ? pdfSidecarPath(remoteFsPath) : remoteFsPath;
 
@@ -137,8 +146,8 @@ export async function pullRemoteToLocal(
     : extractFrontmatter(remoteText).id;
   if (!id) return { kind: "idMissing" };
 
-  // Direct download (history.md §Pull): no local file with this id.
-  const localPath = await findLocalById(id);
+  // Direct download (history.md Pull): no local file with this id.
+  const localPath = await findLocalById(id, listings);
   if (!localPath) {
     const fallback = `${targetRootName}/${stripFirstSegment(remoteFsPath)}`;
     const fallbackContent = isPdf ? pdfSidecarPath(fallback) : fallback;
@@ -153,7 +162,7 @@ export async function pullRemoteToLocal(
       await writeLocalPullRow(fallbackContent, remoteBytes);
       return { kind: "clean", localPath: fallback };
     };
-    // history.md §Pull: same relative path already holds a file →
+    // history.md Pull: same relative path already holds a file ->
     // confirm overwrite (any occupant counts, id-less included).
     if (await localPathOccupied(fallback)) {
       return {
@@ -178,7 +187,7 @@ export async function pullRemoteToLocal(
   const base = await fetchLocalMergeBase(id);
   const baseText = base?.content ?? "";
 
-  // For pull, the "target" we're writing INTO is local; the source is the remote.
+  // For pull, the "target" we're writing INTO is local, the source is the remote.
   const decision = merge3Strategy(
     remoteText,
     remoteHash,
@@ -188,7 +197,7 @@ export async function pullRemoteToLocal(
   );
 
   if (decision.kind === "noop") {
-    // Identical bytes — still append the pull row so the merge base
+    // Identical bytes - still append the pull row so the merge base
     // advances (history.md: "appends one save_type = pull row").
     await writeLocalPullRow(localContentPath, localBytes);
     return { kind: "noop" };

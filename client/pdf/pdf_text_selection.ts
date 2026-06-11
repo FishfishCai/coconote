@@ -1,26 +1,14 @@
-// Native-selection quality fix for the pdf.js text layer, ported from
-// pdf.js's viewer-level TextLayerBuilder (#bindMouse + the global
-// selectionchange handler). coconote renders the text layer with the
-// low-level `TextLayer` class, which paints the absolutely-positioned
-// runs but does NOT bind this logic — so without it, dragging into a
-// page's empty margin makes the browser greedily extend the selection
-// to the end of the page (the "select '1 Motivation' → grab half the
-// page" bug).
-//
-// The mechanism: each text layer gets an empty `.endOfContent` backstop.
-// While selecting, it's repositioned in the DOM to sit immediately after
-// the current selection anchor and stretched to fill the layer, so the
-// nearest caret position for the empty area is right at the visible text
-// boundary instead of the document end.
-//
-// We keep only the selection part — the viewer's copy/permissions and
-// search-highlight handling are not relevant here.
+// Selection-only port of pdf.js's viewer TextLayerBuilder (#bindMouse +
+// global selectionchange). Our low-level TextLayer render doesn't bind it,
+// so dragging into a page's empty margin greedily selects to the page end.
+// Fix: while selecting, re-park the empty `.endOfContent` backstop right
+// after the selection anchor, stretched to fill the layer.
 
 const END_OF_CONTENT_CLASS = "coconote-pdf-end-of-content";
 const TEXT_LAYER_CLASS = "coconote-pdf-text-layer";
 
-// textLayerDiv → its endOfContent backstop. Drives both the per-layer
-// reset and lifetime of the shared document listeners.
+// textLayerDiv -> its endOfContent backstop. Drives per-layer reset and
+// the shared document listeners' lifetime.
 const textLayers = new Map<HTMLElement, HTMLElement>();
 let globalListeners: AbortController | null = null;
 let isFirefox: boolean | undefined;
@@ -94,9 +82,8 @@ function onSelectionChange() {
     return;
   }
 
-  // Only the layers the selection actually touches keep the `selecting`
-  // class; the rest reset (so a stale backstop in another page doesn't
-  // linger).
+  // Only layers the selection touches keep the `selecting` class. The
+  // rest reset so a stale backstop in another page doesn't linger.
   const active = new Set<HTMLElement>();
   for (let i = 0; i < selection.rangeCount; i++) {
     const range = selection.getRangeAt(i);
@@ -109,10 +96,10 @@ function onSelectionChange() {
     else reset(end, layer);
   }
 
-  // Firefox's selection model doesn't need the backstop reposition (and
-  // mis-detects the caret if we do it), so bail there. Detected via the
-  // backstop's computed -moz-user-select: it's `none` (our CSS) only on
-  // Gecko; on Chromium the property is unknown → "".
+  // Firefox doesn't need the backstop reposition (and mis-detects the
+  // caret if we do it), so bail there. Gecko detection: the backstop's
+  // computed -moz-user-select is `none` (our CSS) only there, Chromium
+  // doesn't know the property -> "".
   const first = textLayers.values().next().value;
   if (first) {
     isFirefox ??=
@@ -121,9 +108,9 @@ function onSelectionChange() {
   if (isFirefox) return;
 
   const range = selection.getRangeAt(0);
-  // Are we extending the selection's start (vs its end)? If the live
-  // range shares an end boundary with the previous one, the user is
-  // dragging the start; otherwise the end.
+  // Extending the selection's start (vs its end)? If the live range
+  // shares an end boundary with the previous one, the user is dragging
+  // the start.
   const modifyStart = !!prevRange &&
     (range.compareBoundaryPoints(Range.END_TO_END, prevRange) === 0 ||
       range.compareBoundaryPoints(Range.START_TO_END, prevRange) === 0);
@@ -131,7 +118,7 @@ function onSelectionChange() {
   let anchor: Node | null = modifyStart ? range.startContainer : range.endContainer;
   if (anchor.nodeType === Node.TEXT_NODE) anchor = anchor.parentNode;
 
-  // endOffset 0 means the boundary sits at the very start of a node — the
+  // endOffset 0 means the boundary sits at the very start of a node - the
   // real content is in the previous non-empty sibling. Walk back to it.
   if (!modifyStart && range.endOffset === 0 && anchor) {
     do {

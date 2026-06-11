@@ -49,8 +49,8 @@ export function getRemoteSpaceById(id: string): VaultWithSpace | undefined {
 }
 
 /** Construct a transient remote-space for a one-off push to a typed URL
- *  (history.md §Push: the "free-input box" half of the target picker).
- *  Bypasses the localStorage registry — the URL is NOT added to
+ *  (history.md Push: the "free-input box" half of the target picker).
+ *  Bypasses the localStorage registry - the URL is NOT added to
  *  setting.md's Remote list unless the user explicitly adds it there. */
 export function makeRemoteSpace(opts: {
   url: string;
@@ -66,7 +66,7 @@ export function makeRemoteSpace(opts: {
   return { vault: v, sp: ensureSpace(v) };
 }
 
-export function pruneStaleRemoteSpaces(): void {
+function pruneStaleRemoteSpaces(): void {
   const live = new Set(listRemoteVaults().map((v) => v.id));
   for (const id of [...remoteSpaces.keys()]) {
     if (!live.has(id)) remoteSpaces.delete(id);
@@ -91,7 +91,7 @@ export function parseRemotePath(p: string): { label: string; rest: string } | nu
  * `@<label>/`, and tag each with origin metadata. The listing only
  * carries admitted pages, so no coconote filtering is needed here.
  * Returns [] on any failure (logged). */
-export async function fetchRemotePages(v: RemoteVault): Promise<PageMeta[]> {
+async function fetchRemotePages(v: RemoteVault): Promise<PageMeta[]> {
   const sp = ensureSpace(v);
   let files: Awaited<ReturnType<HttpSpacePrimitives["fetchFileList"]>>;
   try {
@@ -121,7 +121,7 @@ export async function fetchRemotePages(v: RemoteVault): Promise<PageMeta[]> {
       name: prefixedName,
       created: new Date(f.created).toISOString(),
       lastModified: new Date(f.lastModified).toISOString(),
-      perm: "ro", // unconditional in the unified index — opens read-only
+      perm: "ro", // unconditional in the unified index - opens read-only
       tags: f.tags,
       title: f.title,
       origin,

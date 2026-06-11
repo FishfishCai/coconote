@@ -56,21 +56,20 @@ export type CalloutBounds = {
 };
 
 /** Scan the lines below `openerLineNo` (1-based) for the callout's
- *  closing `:::`. Returns null when the callout is unclosed — i.e. the
+ *  closing `:::`. Returns null when the callout is unclosed - the
  *  document ends, or ANOTHER opener appears before any closer (callouts
- *  don't nest; the second opener starts a new callout). Consumers must
- *  skip unclosed callouts entirely: no decoration, no inner range, and —
- *  for numbered templates — no counter bump.
- *  `getLine` maps a 1-based line number to `{text, from, to}` (`from`/
- *  `to` = absolute offsets of the line's start/end) or null past
- *  end-of-document. */
+ *  don't nest, the second opener starts a new callout). Consumers must
+ *  skip unclosed callouts entirely: no decoration, no inner range, no
+ *  counter bump for numbered templates.
+ *  `getLine` maps a 1-based line number to `{text, from, to}` (absolute
+ *  offsets of the line's start/end) or null past end-of-document. */
 export function findCalloutBounds(
   getLine: (n: number) => { text: string; from: number; to: number } | null,
   openerLineNo: number,
 ): CalloutBounds | null {
   for (let n = openerLineNo + 1; ; n++) {
     const ln = getLine(n);
-    if (!ln) return null; // ran off end of document — unclosed
+    if (!ln) return null; // ran off end of document - unclosed
     if (CALLOUT_CLOSE_RE.test(ln.text)) {
       return { closerLineNo: n, closerFrom: ln.from, closerTo: ln.to };
     }

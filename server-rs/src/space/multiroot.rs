@@ -52,7 +52,7 @@ impl MultiRootSpacePrimitives {
     ) -> Result<(&'a str, &'a str, Arc<DiskSpacePrimitives>)> {
         let trimmed = p.trim_start_matches('/');
         // Reject `..` first so the spec 400 wins over the 404 the
-        // root-name lookup would otherwise return (server.md §Errors).
+        // root-name lookup would otherwise return (server.md Errors).
         if trimmed
             .split('/')
             .any(|seg| seg == ".." || seg.contains('\0'))
@@ -127,17 +127,12 @@ impl SpacePrimitives for MultiRootSpacePrimitives {
         Ok((data, e))
     }
 
-    async fn write_file(
-        &self,
-        path: &str,
-        data: &[u8],
-        mtime: Option<i64>,
-    ) -> Result<Entry> {
+    async fn write_file(&self, path: &str, data: &[u8]) -> Result<Entry> {
         let (root, rest, prim) = self.split_path(path)?;
         if rest.is_empty() {
             return Err(Error::PathOutsideRoot);
         }
-        let mut e = prim.write_file(rest, data, mtime).await?;
+        let mut e = prim.write_file(rest, data).await?;
         e.path = format!("{root}/{}", e.path);
         Ok(e)
     }

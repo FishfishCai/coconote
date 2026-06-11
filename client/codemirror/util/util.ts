@@ -26,7 +26,7 @@ export class LinkWidget extends WidgetType {
   }
 
   toDOM(): HTMLElement {
-    // No href: avoids Chrome's URL preview tooltip; click handler drives nav.
+    // No href: avoids Chrome's URL preview tooltip, click handler drives nav.
     const anchor = document.createElement("a");
     anchor.className = this.options.cssClass;
     anchor.textContent = this.options.text;
@@ -66,7 +66,7 @@ export class LinkWidget extends WidgetType {
     // Every render-affecting option must participate: cssClass flips
     // when a missing target gets created (text unchanged), and without
     // it the widget would stay red until the link text itself changes.
-    // `callback` is deliberately excluded — it's a fresh closure per
+    // `callback` is deliberately excluded - it's a fresh closure per
     // decoration pass, so comparing it would defeat eq entirely.
     return (
       other instanceof LinkWidget &&
@@ -81,7 +81,7 @@ export class LinkWidget extends WidgetType {
 export interface DecoratorFieldOptions {
   /**
    * Set true ONLY when decorations don't depend on cursor position.
-   * Plugins that gate on `isCursorInRange` MUST leave this false — they
+   * Plugins that gate on `isCursorInRange` MUST leave this false - they
    * need re-eval to fold the active line back to source.
    */
   ignoreSelectionOnly?: boolean;
@@ -130,7 +130,7 @@ function checkRangeOverlap(
 
 /** True while the editor is in `read` mode. Provided by
  *  editModeExtensionsFor (through the edit-mode compartment, so mode
- *  switches reconfigure it) and read straight off the EditorState —
+ *  switches reconfigure it) and read straight off the EditorState -
  *  read mode keeps every widget permanently folded. */
 export const readModeFacet = Facet.define<boolean, boolean>({
   combine: (values) => values.some(Boolean),
@@ -162,12 +162,5 @@ export function isCodeOrCommentNode(name: string): boolean {
 type WidgetRenderMode = "ready" | "loading";
 
 export function widgetRenderMode(client: Client): WidgetRenderMode {
-  if (
-    !client.systemReady ||
-    !client.fullIndexCompleted ||
-    !client.pageListLoaded
-  ) {
-    return "loading";
-  }
-  return "ready";
+  return client.systemReady ? "ready" : "loading";
 }

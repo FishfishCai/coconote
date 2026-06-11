@@ -96,7 +96,6 @@ const Highlight: MarkdownConfig = {
       parse(cx, next, pos) {
         if (next !== 61 /* '=' */) return -1;
         if (cx.char(pos + 1) !== 61) return -1;
-        // `===` is markdown setext underline; let it pass through.
         if (cx.char(pos + 2) === 61) return -1; // `===` is setext underline
         const slice = cx.slice(pos + 2, cx.end);
         const m = /^([^\n=]+?)==(?!=)/.exec(slice);
@@ -245,7 +244,7 @@ const FrontMatter: MarkdownConfig = {
   ],
 };
 
-// Only opener tokens are tagged; body & closer flow through default block
+// Only opener tokens are tagged - body and closer flow through default block
 // parsing so inline math, wiki links, lists etc. still render inside.
 const FencedDiv: MarkdownConfig = {
   defineNodes: [
@@ -325,7 +324,7 @@ const baseMarkdownExtensions: MarkdownConfig[] = [
         CodeInfo: ct.CodeInfoTag,
         HorizontalRule: ct.HorizontalRuleTag,
         NakedURL: ct.NakedURLTag,
-        // `[..]`/`[..](..)` are not navigable here; brackets render as plain text.
+        // `[..]`/`[..](..)` are not navigable here - brackets render as plain text.
         LinkMark: t.content,
       }),
     ],

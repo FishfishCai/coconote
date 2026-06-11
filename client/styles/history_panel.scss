@@ -1,5 +1,5 @@
 // The dialog chrome (box, header, close) comes from the unified Modal base
-// (modals.scss); this file styles only the history-specific list + preview.
+// (modals.scss). This file styles only the history-specific list + preview.
 .coconote-history-body {
   display: flex;
   flex: 1;
@@ -32,7 +32,7 @@
   }
   .coconote-history-time { flex: 1; opacity: 0.85; }
   .coconote-history-error { padding: 0.6rem; color: var(--color-red); }
-  // Per-kind chip — keys must stay in sync with server SaveType
+  // Per-kind chip. Keys must stay in sync with server SaveType
   // (server-rs/src/history.rs: create / edit / push / pull / pin).
   .coconote-history-chip {
     font-size: 0.7em;
@@ -72,9 +72,9 @@
     font-family: var(--font-monospace);
     font-size: 0.85em;
   }
-  // Git-diff red/green block (history.md §Diff). `add` lines come from
-  // the current on-disk text but aren't in the selected snapshot;
-  // `del` lines are the inverse.
+  // Git-diff red/green block (history.md "Diff"). `add` lines come from
+  // the current on-disk text but aren't in the selected snapshot, `del`
+  // lines are the inverse.
   .coconote-history-diff {
     .coconote-history-diff-line {
       display: block;

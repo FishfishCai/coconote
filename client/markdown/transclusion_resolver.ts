@@ -5,13 +5,13 @@ import {
   type Transclusion,
 } from "coconote/lib/transclusion";
 import type { PageMeta } from "coconote/type/page";
+import { mdAssetsPrefix } from "../lib/path_url.ts";
 import { resolveWikiLink } from "../lib/wikilink.ts";
 import { resolveWikiLinkPath } from "./wiki_link_resolver.ts";
 
-// Input is never mutated — the widget callback may fire repeatedly across re-renders.
+// Input is never mutated - the widget callback may fire repeatedly across re-renders.
 export function resolveTransclusion(
   transclusion: Transclusion,
-  _currentName: string,
   currentPath: string,
   allKnownFiles: ReadonlySet<string>,
   allPages: readonly PageMeta[],
@@ -20,9 +20,9 @@ export function resolveTransclusion(
   let bare = range.path;
 
   if (isLocalURL(bare)) {
-    // Decide treat-as-binary from the basename only — a dot inside a
+    // Decide treat-as-binary from the basename only - a dot inside a
     // directory segment like `notes/section.draft/page` must not
-    // flip the classification. Lowercase comparison so `MY.MD` ≡ `my.md`.
+    // flip the classification. Lowercase comparison so `MY.MD` == `my.md`.
     const lastSlash = bare.lastIndexOf("/");
     const base = (lastSlash === -1 ? bare : bare.slice(lastSlash + 1)).toLowerCase();
     const isBinary = base.includes(".") && !base.endsWith(".md");
@@ -37,17 +37,10 @@ export function resolveTransclusion(
         bare = resolved;
       } else if (currentPath) {
         // Binary assets aren't in the page-only allKnownFiles index.
-        // Per file.md: a markdown file's images live in
-        // `.<basename>.assets/` beside it, so rewrite under that dir
-        // unless `bare` is already there (round-trip stability) or
-        // starts with a known root prefix.
-        const slash = currentPath.lastIndexOf("/");
-        const dir = slash >= 0 ? currentPath.slice(0, slash + 1) : "";
-        const file = slash >= 0 ? currentPath.slice(slash + 1) : currentPath;
-        const stem = file.toLowerCase().endsWith(".md")
-          ? file.slice(0, -3)
-          : file;
-        const assetsPrefix = `${dir}.${stem}.assets/`;
+        // file.md: a markdown file's images live in `.<basename>.assets/`
+        // beside it, so rewrite under that dir unless `bare` is already
+        // there (round-trip stability) or starts with a known root prefix.
+        const assetsPrefix = mdAssetsPrefix(currentPath);
         if (!bare.startsWith(assetsPrefix)) {
           bare = `${assetsPrefix}${bare}`;
         }
@@ -60,9 +53,9 @@ export function resolveTransclusion(
   };
 }
 
-// markdown.md makes `![[…]]` an *image* syntax. Restrict the
-// embed renderer to image MIME types; PDFs / audio / video aren't part
-// of the markdown spec.
+// markdown.md makes `![[...]]` an *image* syntax. Restrict the embed
+// renderer to image MIME types - PDFs / audio / video aren't part of
+// the markdown spec.
 const IMAGE_EXT_RE = /\.(png|jpe?g|gif|svg|webp|bmp|avif)$/i;
 
 export function isMediaTransclusion(url: string): boolean {

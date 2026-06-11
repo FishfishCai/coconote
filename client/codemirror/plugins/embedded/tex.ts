@@ -47,7 +47,6 @@ class TexWidget extends CachedWidget<EditorCtx & NavigationCtx> {
     el.addEventListener("mousedown", ((e: MouseEvent) => {
       if (e.altKey) return;
       const view = this.ctx.editorView;
-      if (!view) return;
       e.preventDefault();
       e.stopPropagation();
       const from = view.posAtDOM(el);
@@ -87,8 +86,21 @@ export function scanMath(
 ): void {
   const docText = state.doc.toString();
   let scanText = docText;
-  for (const [s, e] of skipRanges) {
-    scanText = scanText.slice(0, s) + " ".repeat(e - s) + scanText.slice(e);
+  if (skipRanges.length > 0) {
+    // Single pass: blank every skipped range with spaces (same length,
+    // so offsets stay aligned). Ranges may nest (FencedCode + its inner
+    // CodeText), hence the sort + clamp.
+    const sorted = [...skipRanges].sort((a, b) => a[0] - b[0]);
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const [s, e] of sorted) {
+      const from = Math.max(s, cursor);
+      const to = Math.max(e, from);
+      parts.push(docText.slice(cursor, from), " ".repeat(to - from));
+      cursor = to;
+    }
+    parts.push(docText.slice(cursor));
+    scanText = parts.join("");
   }
   const inSkip = (from: number, to: number) =>
     skipRanges.some(([s, e]) => from < e && to > s);
@@ -104,7 +116,7 @@ export function scanMath(
     // Multi-line invisibleDecoration over the whole `$$..$$` range paired
     // with an inline widget (`block: false, side: -1`). CM treats the
     // widget's <div> as the only content of the merged cm-line so DOM
-    // height = widget height — heightMap and DOM stay in lock-step.
+    // height = widget height - heightMap and DOM stay in lock-step.
     widgets.push(invisibleDecoration.range(from, to));
     widgets.push(
       Decoration.widget({

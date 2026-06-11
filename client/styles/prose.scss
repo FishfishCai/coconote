@@ -11,7 +11,7 @@
 
   // Headings via the shared prose look (no margins: CM's heightMap
   // ignores margins, so margins would make `posAtCoords` drift by the
-  // margin px for every line below — use padding on `.cm-line` instead).
+  // margin px for every line below - use padding on `.cm-line` instead).
   @include shared.prose-headings($line-classes: true);
 
   .coconote-code {

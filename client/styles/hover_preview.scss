@@ -1,6 +1,6 @@
 @use "shared";
 
-// Positioned via inline styles from hover_preview.ts; visuals only here.
+// Positioned via inline styles from hover_preview.ts - visuals only here.
 .coconote-hover-preview {
   position: fixed;
   z-index: var(--layer-tooltip);
@@ -18,7 +18,7 @@
   color: var(--text-normal);
 }
 
-// Same prose look as the editor — shared mixins keep the two in sync
+// Same prose look as the editor - shared mixins keep the two in sync
 // (the preview renders HTML elements, not CM line classes).
 .coconote-hover-preview-content {
   padding: 10px 16px;

@@ -1,6 +1,6 @@
 // Locator grammar (split by `/`):
-//   last segment  →  page key:    filename (priority 2)  >  title (priority 1)
-//   prefix segs   →  namespace:   tag      (priority 2)  >  path  (priority 1)
+//   last segment -> page key:   filename (priority 2)  >  title (priority 1)
+//   prefix segs  -> namespace:  tag      (priority 2)  >  path  (priority 1)
 // Score = keyKind*10 + prefixKind.
 // wikilink.md: "Filename matches outrank title matches."
 
@@ -44,14 +44,39 @@ function matchPrefix(
 ): 0 | 1 | 2 | null {
   if (!prefix) return 0;
   const tags = page.tags ?? [];
-  // wikilink.md: the prefix can be a TAG PREFIX — `research/` must match
+  // wikilink.md: the prefix can be a TAG PREFIX - `research/` must match
   // a page tagged `research/algebra` (tags are hierarchical, file.md).
   if (tags.some((t) => t === prefix || t.startsWith(prefix + "/"))) return 2;
   if (prefixMatchesPath(prefix, page.name)) return 1;
   return null;
 }
 
+// Memo keyed on the pages array identity (replaced wholesale on every
+// refresh) then on the query. Resolution is pure, and the link
+// decorator / graph build / autocomplete all re-resolve the same
+// queries against the same list many times per pass.
+const resolveMemo = new WeakMap<
+  readonly PageMeta[],
+  Map<string, WikiLinkResult>
+>();
+
 export function resolveWikiLink(
+  query: string,
+  allPages: readonly PageMeta[],
+): WikiLinkResult {
+  let byQuery = resolveMemo.get(allPages);
+  if (!byQuery) {
+    byQuery = new Map();
+    resolveMemo.set(allPages, byQuery);
+  }
+  const cached = byQuery.get(query);
+  if (cached) return cached;
+  const result = resolveWikiLinkUncached(query, allPages);
+  byQuery.set(query, result);
+  return result;
+}
+
+function resolveWikiLinkUncached(
   query: string,
   allPages: readonly PageMeta[],
 ): WikiLinkResult {
@@ -86,8 +111,8 @@ export function resolveWikiLink(
   return { kind: "ambiguous", pages: winners.map((w) => w.page) };
 }
 
-// Candidate order: bare filename → bare title → first tag + key →
-// path-prefix + key (shortest first) → full path + key. Filename comes
+// Candidate order: bare filename -> bare title -> first tag + key ->
+// path-prefix + key (shortest first) -> full path + key. Filename comes
 // before title because filename matches outrank title matches in
 // resolution (wikilink.md), making filename locators the more robust
 // suggestion.
@@ -100,7 +125,7 @@ export function shortestLocator(
   const tag0 = (target.tags ?? [])[0];
   const pathSegs = target.name.split("/").filter(Boolean);
   // Try every CONTIGUOUS suffix-of-prefix (sliding window), shortest
-  // first: for `a/b/c/d.md` → `c`, `b/c`, `a/b/c`. The full path is
+  // first: for `a/b/c/d.md` -> `c`, `b/c`, `a/b/c`. The full path is
   // tried last via the fallback return.
   const pathPrefixes: string[] = [];
   const dirSegs = pathSegs.slice(0, -1);

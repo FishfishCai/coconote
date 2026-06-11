@@ -1,8 +1,8 @@
 // Canonical "Mod+Shift+H" combos (Mod = Cmd on macOS, Ctrl elsewhere).
 // Defaults merged with localStorage prefs at lookup time, so Settings
-// edits take effect without reloading. setting.md §Shortcut.
+// edits take effect without reloading. setting.md Shortcut.
 
-import { readUserPrefs } from "./user_prefs.ts";
+import { readUserPrefs, userPrefsVersion } from "./user_prefs.ts";
 
 export const SHORTCUT_NAMES = [
   "modeSwitch",
@@ -86,10 +86,26 @@ function readUserShortcuts(): Partial<Record<ShortcutName, string>> {
     : {};
 }
 
-export function getShortcut(name: ShortcutName): string {
-  const user = readUserShortcuts();
-  const combo = user[name] ?? DEFAULT_SHORTCUTS[name];
-  return normalizeCombo(combo) ?? DEFAULT_SHORTCUTS[name];
+// matchShortcut runs per keydown (up to 8 lookups), and readUserPrefs
+// is localStorage + JSON.parse: cache the parsed Combo table and
+// rebuild only when writeUserPrefs bumped the version.
+let comboCache: Record<ShortcutName, Combo> | null = null;
+let comboCacheVersion = -1;
+
+/** Parsed Combo for `name`: the user binding when it parses, else the
+ *  default (DEFAULT_SHORTCUTS literals always parse). */
+function resolvedCombo(name: ShortcutName): Combo {
+  if (!comboCache || comboCacheVersion !== userPrefsVersion) {
+    const user = readUserShortcuts();
+    comboCache = {} as Record<ShortcutName, Combo>;
+    comboCacheVersion = userPrefsVersion;
+    for (const n of SHORTCUT_NAMES) {
+      const userCombo = user[n];
+      comboCache[n] = (userCombo ? parseCombo(userCombo) : null) ??
+        parseCombo(DEFAULT_SHORTCUTS[n])!;
+    }
+  }
+  return comboCache[name];
 }
 
 export function getAllShortcuts(): Record<ShortcutName, string> {
@@ -109,11 +125,10 @@ const IS_MAC = typeof navigator !== "undefined" &&
   /Mac|iP(hone|ad|od)/.test(navigator.platform || navigator.userAgent);
 
 /** Returns true when the keyboard event matches the named shortcut.
- *  Mod is the PLATFORM modifier (Cmd on macOS, Ctrl elsewhere); the
+ *  Mod is the PLATFORM modifier (Cmd on macOS, Ctrl elsewhere). The
  *  other one must be up so Ctrl+Shift+P doesn't pin on macOS. */
 export function matchShortcut(ev: KeyboardEvent, name: ShortcutName): boolean {
-  const combo = parseCombo(getShortcut(name));
-  if (!combo) return false;
+  const combo = resolvedCombo(name);
   const mod = IS_MAC ? ev.metaKey : ev.ctrlKey;
   const otherMod = IS_MAC ? ev.ctrlKey : ev.metaKey;
   if (combo.mod !== mod || otherMod) return false;
@@ -123,7 +138,7 @@ export function matchShortcut(ev: KeyboardEvent, name: ShortcutName): boolean {
 }
 
 /** Groups bindings by normalised combo string. Entries with more than
- *  one name share a key combo; callers (Settings) filter accordingly. */
+ *  one name share a key combo, callers (Settings) filter accordingly. */
 export function groupBindingsByCombo(
   bindings: Record<ShortcutName, string>,
 ): Map<string, ShortcutName[]> {

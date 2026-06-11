@@ -1,7 +1,7 @@
-// Pure DOM/notes helpers for the PDF viewer: turning a live browser
-// Selection into a page-relative highlight payload, and painting the
-// highlight overlays back onto the rendered pages. No React — kept
-// separate from pdf_viewer.tsx so they're independently testable.
+// Pure DOM/notes helpers for the PDF viewer: live browser Selection ->
+// page-relative highlight payload, and painting highlight overlays onto
+// the rendered pages. No React - kept out of pdf_viewer.tsx so they are
+// independently testable.
 
 import type { Highlight, PdfNotes } from "./notes_client.ts";
 
@@ -13,9 +13,8 @@ export type SelectionPayload = {
 
 /**
  * Capture the current selection as a single-page highlight payload.
- * The highlight model is one highlight = one page, so when a selection
- * crosses a page boundary we keep only the rects on the start page
- * (rather than silently storing page N+1 rects under page N's origin).
+ * One highlight = one page, so a cross-page selection keeps only the
+ * start page's rects (not page N+1 rects under page N's origin).
  */
 export function capturePdfSelection(sel: Selection): SelectionPayload | null {
   const range = sel.getRangeAt(0);
@@ -30,7 +29,7 @@ export function capturePdfSelection(sel: Selection): SelectionPayload | null {
   const pageRect = pageEl.getBoundingClientRect();
   const rects: SelectionPayload["rects"] = [];
   for (const r of range.getClientRects()) {
-    // Keep only rects whose vertical centre lands on the start page —
+    // Keep only rects whose vertical centre lands on the start page -
     // drops the tail of a cross-page drag.
     const cy = (r.top + r.bottom) / 2;
     if (cy < pageRect.top || cy > pageRect.bottom) continue;
@@ -44,9 +43,8 @@ export function capturePdfSelection(sel: Selection): SelectionPayload | null {
     });
   }
   if (rects.length === 0) return null;
-  // Clamp the TEXT to the start page too — rects already dropped the
-  // cross-page tail, and storing the full multi-page string would show
-  // unhighlighted text in the hover-preview card.
+  // Clamp the TEXT to the start page too - the full multi-page string
+  // would show unhighlighted text in the hover-preview card.
   const clamped = range.cloneRange();
   if (!pageEl.contains(range.endContainer)) {
     clamped.setEnd(pageEl, pageEl.childNodes.length);
@@ -55,9 +53,9 @@ export function capturePdfSelection(sel: Selection): SelectionPayload | null {
 }
 
 /**
- * Repaint every highlight overlay inside `scope`. Scoped to one viewer's
- * container so multiple viewers don't clobber each other's overlays; a
- * null scope (viewer not mounted yet) is a no-op.
+ * Repaint every highlight overlay inside `scope`. Scoping to one viewer's
+ * container keeps multiple viewers from clobbering each other. A null
+ * scope (viewer not mounted yet) is a no-op.
  */
 export function redrawHighlights(notes: PdfNotes, scope: HTMLElement | null) {
   if (!scope) return;
@@ -75,14 +73,14 @@ export function redrawHighlights(notes: PdfNotes, scope: HTMLElement | null) {
       overlay.innerHTML = "";
       const hs = highlightsByPage.get(pageNum);
       if (!hs || !wrap) return;
-      // rects are 0..1 fractions of the page; scale to the page's current
-      // CSS size (see capturePdfSelection).
+      // rects are 0..1 page fractions - scale to the page's current CSS
+      // size (see capturePdfSelection).
       const pw = wrap.clientWidth;
       const ph = wrap.clientHeight;
       for (const h of hs) {
         for (const r of h.rects) {
           // Paint-only: the divs are pointer-events:none so text under a
-          // highlight stays selectable; hover comments and the context
+          // highlight stays selectable. Hover comments and the context
           // menu hit-test geometrically in pdf_viewer.tsx.
           const div = document.createElement("div");
           div.className = `coconote-pdf-highlight coconote-pdf-color-${h.color}`;

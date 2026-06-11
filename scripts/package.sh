@@ -1,27 +1,12 @@
 #!/usr/bin/env bash
-# Build artifacts for distribution.
-#
-# Produces:
-#   dist/server/coconote-server-<version>-<os>-<arch>.zip
-#       Cross-built standalone HTTP server binaries (6 targets).
-#
-#   dist/app/coconote-<version>-<os>-<arch>.<ext>
-#       Electron desktop installers for whichever host this runs on:
-#         macOS   → .dmg
-#         Linux   → .deb / .AppImage
-#         Windows → .exe (NSIS).
-#
-# The "server" half cross-compiles via `cargo zigbuild` from any host.
-# The "app" half only produces installers for the current OS because
-# electron-builder's native packagers (dpkg, dmg, NSIS) don't
-# cross-bundle. Run this script on each platform to fill the matrix.
-#
-# Flags:
-#   --server-only   skip the Electron app bundle (CI fan-out)
-#   --app-only      skip the cross-platform server zips
-#   --skip-targets  comma-separated server targets to skip
-#
-# Outputs live under dist/ at the repo root and are gitignored.
+# Build distribution artifacts under dist/ (gitignored):
+#   dist/server/coconote-server-<version>-<os>-<arch>.zip: standalone HTTP
+#       server, cross-built via `cargo zigbuild` for 6 targets from any host.
+#   dist/app/coconote-<version>-<os>-<arch>.{dmg,deb/AppImage,exe}: Electron
+#       installers for the HOST OS only (dpkg/dmg/NSIS can't cross-bundle,
+#       run on each platform to fill the matrix).
+# Flags: --server-only (skip app, CI fan-out), --app-only (skip server zips),
+#   --skip-targets=<comma-separated triples>.
 
 set -euo pipefail
 
@@ -45,7 +30,7 @@ for arg in "$@"; do
   esac
 done
 
-say() { printf "\n\033[1m▸ %s\033[0m\n" "$*"; }
+say() { printf "\n\033[1m==> %s\033[0m\n" "$*"; }
 
 ensure_client_bundle() {
   if [[ ! -d embed/client/.client ]]; then
@@ -64,7 +49,7 @@ build_server() {
     "aarch64-unknown-linux-gnu   linux      aarch64 coconote"
     "x86_64-unknown-linux-gnu    linux      x86_64  coconote"
     "x86_64-unknown-linux-musl   linux-musl x86_64  coconote"
-    # windows-gnu (not msvc) on purpose: gnu is what zigbuild can cross-compile from non-Windows hosts for the server zip; the desktop sidecar uses msvc natively on the Windows CI runner.
+    # windows-gnu (not msvc) on purpose: zigbuild can cross-compile gnu from non-Windows hosts for the server zip. The desktop sidecar uses msvc natively on the Windows CI runner.
     "x86_64-pc-windows-gnu       windows    x86_64  coconote.exe"
   )
   for row in "${targets[@]}"; do
@@ -75,27 +60,26 @@ build_server() {
     fi
     say "Building server for $triple"
     if ! cargo zigbuild --manifest-path server-rs/Cargo.toml --release --target "$triple"; then
-      echo "WARN: $triple build failed — skipping." >&2
+      echo "WARN: $triple build failed - skipping." >&2
       continue
     fi
     local out="$DIST_SERVER/coconote-server-v${VERSION}-${os}-${arch}.zip"
     local stage; stage="$(mktemp -d)"
     cp "server-rs/target/$triple/release/$bin" "$stage/"
-    # No per-user yaml shipped: the server auto-creates one at the
-    # standard config dir on first launch (welcome.md §coconote.yaml).
+    # No per-user yaml shipped: the server auto-creates one in the
+    # standard config dir on first launch (welcome.md).
     cp introduction/welcome.md "$stage/README.md"
     (cd "$stage" && zip -q "$ROOT/$out" "$bin" README.md)
     rm -rf "$stage"
-    echo "→ $out"
+    echo "-> $out"
   done
 }
 
 build_app() {
   ensure_client_bundle
-  # Electron-builder bundles the server binary via the `extraResources`
-  # mapping in electron/builder.config.json, which looks for it under
-  # electron/binaries/<platform>-<arch>/. stage_sidecar.sh handles the
-  # naming + chmod.
+  # electron-builder bundles the server via the `extraResources` mapping in
+  # electron/builder.config.json, which expects it under
+  # electron/binaries/<platform>-<arch>/. stage_sidecar.sh names + chmods it.
   say "Building server for host (Electron sidecar)"
   cargo build --manifest-path server-rs/Cargo.toml --release
   bash scripts/stage_sidecar.sh
@@ -104,9 +88,9 @@ build_app() {
   (cd electron && npm install --silent)
 
   say "Building Electron bundle"
-  # Pass the HOST arch explicitly so electron-builder packages the same
-  # arch stage_sidecar.sh just staged, and point it at builder.config.json
-  # (not a filename electron-builder auto-detects).
+  # Pass the HOST arch explicitly so electron-builder packages the arch
+  # stage_sidecar.sh just staged. --config is needed because
+  # builder.config.json is not a filename electron-builder auto-detects.
   local eb_arch
   case "$(uname -m)" in
     arm64|aarch64) eb_arch=--arm64 ;;
@@ -140,10 +124,10 @@ build_app() {
         ext="${base##*.}"
         local dst="$DIST_APP/coconote-v${VERSION}-${host_os}-${host_arch}.${ext}"
         cp "$f" "$dst"
-        echo "→ $dst"
+        echo "-> $dst"
     done
   else
-    echo "Electron bundle root missing — nothing copied to $DIST_APP" >&2
+    echo "Electron bundle root missing - nothing copied to $DIST_APP" >&2
   fi
 }
 

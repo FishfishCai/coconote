@@ -1,4 +1,4 @@
-// Not a full YAML parser — only pulls `title` / `tag` / `prereq` /
+// Not a full YAML parser - only pulls `title` / `tag` / `prereq` /
 // `id` / `remote`.
 export type Frontmatter = {
   title?: string;
@@ -6,7 +6,7 @@ export type Frontmatter = {
   prereq?: string[];
   /** Server-injected stable page identity. */
   id?: string;
-  /** Label of the remote vault this file is bound to. Set on Download;
+  /** Label of the remote vault this file is bound to. Set on Download,
    * absent means a purely local file. */
   remote?: string;
 };
@@ -16,7 +16,7 @@ export type Frontmatter = {
 // CRLF-tolerant to match the Rust server's find_frontmatter.
 const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
-/** UTF-8 BOM. Some editors prepend one; skip it transparently so the
+/** UTF-8 BOM. Some editors prepend one - skip it transparently so the
  *  fence still anchors at offset 0 from the caller's perspective. */
 const BOM = "﻿";
 

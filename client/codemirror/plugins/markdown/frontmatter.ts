@@ -20,7 +20,7 @@ export function frontmatterPlugin(client: Client) {
           const line = state.doc.line(n);
           // `display: none` measures row as 0px in both DOM and CM's
           // heightMap so clicks below the frontmatter don't drift.
-          // (`coconote-line-table-outside` is a legacy name — it's the
+          // (`coconote-line-table-outside` is a legacy name - it's the
           // generic hide-this-line class, nothing table-specific.)
           widgets.push(
             Decoration.line({ class: "coconote-line-table-outside" }).range(line.from),
@@ -97,7 +97,7 @@ class FrontmatterChip extends WidgetType {
         // content.md: clicking a tag chip "jumps to tag view and
         // auto-fills that tag into the filter". Route through the
         // navigator so the URL becomes /.content/tag (each view owns
-        // a URL); then seed the filter.
+        // a URL), then seed the filter.
         this.client.navigateRoute({ kind: "content", view: "tag" });
         this.client.ui.showContentBrowser(tag);
       });
@@ -107,7 +107,7 @@ class FrontmatterChip extends WidgetType {
       const pEl = document.createElement("span");
       pEl.className = "coconote-frontmatter-prereq";
       pEl.textContent = `← ${page}`;
-      // Click prereq chip → jump to the page it references, using the
+      // Click prereq chip -> jump to the page it references, using the
       // same locator grammar as `[[..]]` wiki links.
       pEl.style.cursor = "pointer";
       pEl.addEventListener("mousedown", (e) => {
@@ -145,7 +145,7 @@ class FrontmatterChip extends WidgetType {
 }
 
 // Modifier keys (cmd/ctrl/shift/alt) and middle/right buttons keep their
-// browser-native meaning (text-drag start, context menu, etc.); we only
+// browser-native meaning (text-drag start, context menu, etc.). We only
 // treat a plain left mousedown as "chip click".
 function isPlainLeftMouse(e: MouseEvent): boolean {
   return e.button === 0 &&

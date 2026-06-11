@@ -1,7 +1,7 @@
 // Authorization-injecting fetch wrapper for code paths outside
 // HttpSpacePrimitives (PdfViewer, HistoryPanel, RemoteVaults probe,
 // settings). Token is set once at boot (client/core/client.ts) and
-// held in module state — no per-fetch storage hit.
+// held in module state - no per-fetch storage hit.
 
 let authToken: string | undefined;
 

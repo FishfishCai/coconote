@@ -4,7 +4,7 @@ export function newUuid(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
-  // Math.random fallback — only collision-safe enough for per-user note
+  // Math.random fallback - only collision-safe enough for per-user note
   // ids, not for security tokens. Same shape as randomUUID for v4.
   const hex = (n: number) => Math.floor(Math.random() * n).toString(16);
   const part = (n: number) => Array.from({ length: n }, () => hex(16)).join("");

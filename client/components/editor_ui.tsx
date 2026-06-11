@@ -1,21 +1,22 @@
 import { Confirm, Prompt } from "./basic_modals.tsx";
+import { CollabStatusDot } from "./collab_status_dot.tsx";
 import { ContentBrowser, loadView } from "./content_browser.tsx";
 import { HistoryPanel } from "./history_panel.tsx";
 import { Settings } from "./settings.tsx";
+import { useAppearance } from "./use_appearance.ts";
 import { PdfViewer } from "../pdf/pdf_viewer.tsx";
 import { PdfMetadataPanel } from "../pdf/pdf_metadata_panel.tsx";
 import {
   activeSidecarState,
+  type PdfSidecar,
   sidecarPath,
   updateSidecarSession,
 } from "../pdf/notes_client.ts";
+import { safeJsonParse } from "../lib/json.ts";
 import type { AppViewState } from "../types/ui.ts";
 import { h, render as preactRender } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import type {
-  ClientContext as Client,
-  CollabUiStatus,
-} from "../core/context.ts";
+import type { ClientContext as Client } from "../core/context.ts";
 import { getNameFromPath, type Path } from "coconote/lib/ref";
 import { installGlobalKeyboard } from "../core/keyboard.ts";
 import {
@@ -42,30 +43,6 @@ const initialUiOptions: UiOptions = {
   snippets: "",
 };
 
-function hexToHsl(hex: string): { h: number; s: number; l: number } | null {
-  let h = hex.trim();
-  if (h.startsWith("#")) h = h.slice(1);
-  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
-  if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
-  const r = parseInt(h.slice(0, 2), 16) / 255;
-  const g = parseInt(h.slice(2, 4), 16) / 255;
-  const b = parseInt(h.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  let s = 0;
-  let hue = 0;
-  if (max !== min) {
-    const d = max - min;
-    s = d / (l > 0.5 ? 2 - max - min : max + min);
-    if (max === r) hue = ((g - b) / d + (g < b ? 6 : 0));
-    else if (max === g) hue = (b - r) / d + 2;
-    else hue = (r - g) / d + 4;
-    hue *= 60;
-  }
-  return { h: Math.round(hue), s: Math.round(s * 100), l: Math.round(l * 100) };
-}
-
 type CurrentPage = { path: Path; meta: PageMeta };
 type Modal =
   | { kind: "prompt"; message: string; defaultValue: string; callback: (v: string | undefined) => void }
@@ -89,7 +66,7 @@ type Setters = {
 };
 
 export class MainUI {
-  // Read by non-React consumers; refreshed every ViewComponent render.
+  // Read by non-React consumers, refreshed every ViewComponent render.
   viewState: AppViewState = {
     allPages: [],
     unsavedChanges: false,
@@ -98,15 +75,15 @@ export class MainUI {
     showConfirm: false,
     showSettings: false,
     showContentBrowser: false,
-    pendingContentFilter: "",
     pdfViewer: null,
   };
   private setters!: Setters;
+  private lastPagesSig: string | undefined;
 
   constructor(private client: Client) {
     installGlobalKeyboard(client, {
-      openHistory: () => this.setters?.setShowHistory(true),
-      openPdfMetadata: () => this.setters?.setShowPdfMeta(true),
+      openHistory: () => this.setters.setShowHistory(true),
+      openPdfMetadata: () => this.setters.setShowPdfMeta(true),
     });
   }
 
@@ -125,6 +102,12 @@ export class MainUI {
       const old = prevByName.get(pm.name);
       if (old?.lastOpened) pm.lastOpened = old.lastOpened;
     }
+    // The 10s poll usually returns an unchanged list: skip the
+    // setAllPages re-render cascade then (the signature covers every
+    // field, computed after the lastOpened carry-over).
+    const sig = JSON.stringify(allPages);
+    if (sig === this.lastPagesSig) return;
+    this.lastPagesSig = sig;
     this.setters.setAllPages(allPages);
     const cur = this.viewState.current;
     if (cur && isMarkdownPath(cur.path)) {
@@ -238,22 +221,16 @@ export class MainUI {
       unsavedChanges,
       uiOptions,
       showPrompt: modal?.kind === "prompt",
-      promptMessage: modal?.kind === "prompt" ? modal.message : undefined,
-      promptDefaultValue: modal?.kind === "prompt" ? modal.defaultValue : undefined,
-      promptCallback: modal?.kind === "prompt" ? modal.callback : undefined,
       showConfirm: modal?.kind === "confirm",
-      confirmMessage: modal?.kind === "confirm" ? modal.message : undefined,
-      confirmCallback: modal?.kind === "confirm" ? modal.callback : undefined,
       showSettings,
       showContentBrowser,
-      pendingContentFilter,
       pdfViewer,
     };
 
     useEffect(() => {
       if (!current) return;
       const fallback = getNameFromPath(current.path);
-      // First 1KB only — runs on every save.
+      // First 1KB only - runs on every save.
       const recompute = () => {
         const head = this.client.editorView?.state.sliceDoc(0, 1024) ?? "";
         const fm = extractFrontmatter(head);
@@ -268,33 +245,7 @@ export class MainUI {
       };
     }, [current]);
 
-    useEffect(() => {
-      if (uiOptions.darkMode === undefined) return;
-      document.documentElement.dataset.theme = uiOptions.darkMode ? "dark" : "light";
-      // Persist so the inline <head> script in index.html avoids the
-      // light->dark first-paint flash on next load.
-      try {
-        localStorage.setItem("coconote.darkMode", uiOptions.darkMode ? "1" : "0");
-      } catch { /* ignore quota / disabled storage */ }
-    }, [uiOptions.darkMode]);
-
-    useEffect(() => {
-      document.documentElement.dataset.editorMode = uiOptions.editorMode;
-    }, [uiOptions.editorMode]);
-
-    useEffect(() => {
-      document.documentElement.style.setProperty(
-        "--editor-font-size",
-        `${uiOptions.fontSize}px`,
-      );
-    }, [uiOptions.fontSize]);
-
-    useEffect(() => {
-      document.documentElement.style.setProperty(
-        "--editor-width",
-        `${uiOptions.editorWidth}rem`,
-      );
-    }, [uiOptions.editorWidth]);
+    useAppearance(uiOptions);
 
     // Skip initial mount: rebuilding state during boot races with
     // initNavigator's loadPage and can clobber the just-loaded document.
@@ -310,71 +261,17 @@ export class MainUI {
       });
     }, [uiOptions.snippets]);
 
-    // Empty string clears the override so the theme default re-applies.
-    useEffect(() => {
-      const root = document.documentElement;
-      const set = (cssVar: string, value: string) => {
-        if (value) root.style.setProperty(cssVar, value);
-        else root.style.removeProperty(cssVar);
-      };
-      // Split accent hex -> HSL so the theme can derive hover/selection
-      // shades by tweaking lightness.
-      if (uiOptions.accentColor) {
-        const hsl = hexToHsl(uiOptions.accentColor);
-        if (hsl) {
-          root.style.setProperty("--accent-h", String(hsl.h));
-          root.style.setProperty("--accent-s", `${hsl.s}%`);
-          root.style.setProperty("--accent-l", `${hsl.l}%`);
-        }
-      } else {
-        root.style.removeProperty("--accent-h");
-        root.style.removeProperty("--accent-s");
-        root.style.removeProperty("--accent-l");
-      }
-      set("--editor-highlight-background-color", uiOptions.highlightColor);
-      set("--editor-wiki-link-missing-color", uiOptions.linkMissingColor);
-      // setting.md: "Code background" covers inline AND fenced blocks —
-      // the stylesheet uses a separate var for block surfaces.
-      set("--editor-code-background-color", uiOptions.codeBackgroundColor);
-      set("--editor-code-block-background-color", uiOptions.codeBackgroundColor);
-      // CSS uses --background-secondary-alt for button / settings-group /
-      // content-browser hovers (setting.md "Hover background").
-      set("--background-secondary-alt", uiOptions.hoverBackgroundColor);
-      set("--font-text", uiOptions.fontText);
-      set("--font-interface", uiOptions.fontInterface);
-      set("--font-monospace", uiOptions.fontMonospace);
-    }, [
-      uiOptions.accentColor,
-      uiOptions.highlightColor,
-      uiOptions.linkMissingColor,
-      uiOptions.codeBackgroundColor,
-      uiOptions.hoverBackgroundColor,
-      uiOptions.fontText,
-      uiOptions.fontInterface,
-      uiOptions.fontMonospace,
-    ]);
-
     return (
       <>
         {modal?.kind === "prompt" && (
           <Prompt
             message={modal.message}
             defaultValue={modal.defaultValue}
-            darkMode={uiOptions.darkMode}
-            callback={(value) => {
-              setModal(null);
-              modal.callback(value);
-            }}
+            callback={modal.callback}
           />
         )}
         {modal?.kind === "confirm" && (
-          <Confirm
-            message={modal.message}
-            callback={(value) => {
-              setModal(null);
-              modal.callback(value);
-            }}
-          />
+          <Confirm message={modal.message} callback={modal.callback} />
         )}
         <div id="coconote-content">
           {/* 32px draggable strip for Electron's hidden-inset title bar
@@ -404,6 +301,7 @@ export class MainUI {
                 // scroll the mounted viewer (anchorScrolledRef), not
                 // remount + re-render the whole PDF.
                 key={pdfViewer.path}
+                client={this.client}
                 path={pdfViewer.path}
                 initialAnchor={pdfViewer.anchor}
               />
@@ -418,26 +316,26 @@ export class MainUI {
             if (!sid) return null;
             return (
               <HistoryPanel
+                client={this.client}
                 id={sid}
                 targetPath={sidecarPath(pdfPath)}
                 applyRestore={(txt) => {
-                  try {
-                    const sc = JSON.parse(txt);
-                    updateSidecarSession(pdfPath, () => sc);
-                  } catch { /* skip a non-JSON snapshot */ }
+                  const sc = safeJsonParse<PdfSidecar>(txt);
+                  if (sc !== undefined) updateSidecarSession(pdfPath, () => sc);
                 }}
                 onClose={() => setShowHistory(false)}
-                onRestored={() => void this.client.updatePageListCache?.()}
+                onRestored={() => void this.client.updatePageListCache()}
               />
             );
           })()}
           {showHistory && !pdfViewer && current?.path && current?.meta?.id && (
             <HistoryPanel
+              client={this.client}
               id={current.meta.id}
               targetPath={current.path}
               onClose={() => setShowHistory(false)}
               onRestored={() => {
-                void this.client.contentManager?.loadPage({ path: current.path });
+                void this.client.contentManager.loadPage({ path: current.path });
               }}
             />
           )}
@@ -457,46 +355,4 @@ export class MainUI {
     container.innerHTML = "";
     preactRender(h(this.ViewComponent.bind(this), {}), container);
   }
-}
-
-// Live collab WS state dot (editor.md §Collaboration "green / yellow").
-// Subscribes to the handle's onStatusChange; a short interval re-bind
-// covers the case where loadPage swaps in a new handle.
-function CollabStatusDot({ client }: { client: Client }) {
-  const [status, setStatus] = useState<CollabUiStatus>("connecting");
-  useEffect(() => {
-    let unsub: (() => void) | undefined;
-    let currentHandle: unknown = null;
-    const bind = () => {
-      const h = client.collabHandle;
-      if (h === currentHandle) return;
-      unsub?.();
-      currentHandle = h;
-      if (!h) {
-        setStatus("disposed");
-        unsub = undefined;
-        return;
-      }
-      setStatus(h.status?.() ?? "connecting");
-      unsub = h.onStatusChange?.(setStatus);
-    };
-    bind();
-    const id = window.setInterval(bind, 500);
-    return () => {
-      unsub?.();
-      window.clearInterval(id);
-    };
-  }, [client]);
-  const title = status === "connected"
-    ? "Collab: connected"
-    : status === "disposed"
-    ? "Collab: off"
-    : "Collab: reconnecting…";
-  return (
-    <span
-      className={`coconote-collab-status coconote-collab-status-${status}`}
-      title={title}
-      aria-label={title}
-    />
-  );
 }

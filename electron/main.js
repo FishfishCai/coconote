@@ -1,10 +1,7 @@
-// Electron entry. Probe-or-spawn the coconote sidecar on :40704 before
-// loading the WebView. 1:1 app ⇔ owned sidecar (we only SIGTERM the
-// child we spawned ourselves — a previously-running coconote is
-// borrowed). All config — including which roots to mount — lives in
-// coconote.yaml, loaded by the server itself from the standard per-user
-// config dir (welcome.md §coconote.yaml). The shell never asks for a
-// vault path.
+// Electron entry: probe-or-spawn the coconote sidecar on :40704, then load
+// the WebView. Only the child we spawned gets SIGTERM (an already-running
+// coconote is borrowed). All config, mounted roots included, is coconote.yaml
+// in the server's per-user config dir (welcome.md), so no vault-path prompt.
 
 import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import { fileURLToPath } from "node:url";
@@ -43,7 +40,7 @@ app.on("second-instance", () => {
   }
 });
 
-// Setting → Config file IPC. Channel names match what
+// Setting -> Config file IPC. Channel names match what
 // client/lib/config_path_api.ts invokes through the preload bridge.
 ipcMain.handle("coconote_config_path", () => {
   const dir = readEffectiveConfigDir();
@@ -51,28 +48,26 @@ ipcMain.handle("coconote_config_path", () => {
 });
 
 ipcMain.handle("coconote_apply_config_path", async (_event, args) => {
-  // Renderer payloads are untrusted: tolerate any shape (no destructure)
-  // and reject an empty path with a clean error reply (a rejected
-  // invoke() promise) instead of relaunching on bogus input.
+  // Renderer payloads are untrusted: accept any shape (no destructure) and
+  // reject an empty path with a rejected invoke() promise instead of
+  // relaunching on bogus input.
   const p = String(args?.path ?? "").trim();
   if (!p) throw new Error("coconote_apply_config_path: path is empty");
   writeConfigPointer(p);
-  // Take the owned sidecar down before relaunch so the fresh shell can
-  // bind :40704 — and WAIT for it to actually exit. shutdownOwned() only
-  // sends SIGTERM; exiting immediately would let the relaunched shell
-  // probe the still-draining old server and adopt it with the OLD
-  // config. relaunch + exit then re-execs the Electron app.
+  // Take the owned sidecar down before relaunch so the fresh shell can bind
+  // :40704, and WAIT for the exit: shutdownOwned() only sends SIGTERM, and
+  // exiting now would let the relaunched shell probe the still-draining old
+  // server and adopt it with the OLD config. relaunch + exit re-execs.
   shutdownOwned();
   await waitForExit(3000);
   app.relaunch();
   app.exit(0);
 });
 
-// Open a URL in the OS browser — but ONLY http/https/mailto. The renderer
-// is loopback-served, so an unfiltered openExternal would let page content
+// Open a URL in the OS browser, but ONLY http/https/mailto: the renderer is
+// loopback-served, so an unfiltered openExternal would let page content
 // launch file:/// or custom-protocol handlers. Single chokepoint for
-// window.open, target=_blank clicks (via preload IPC), and stray
-// navigations.
+// window.open, target=_blank clicks (via preload IPC), and stray navigations.
 function openExternalSafe(rawUrl) {
   let u;
   try {
@@ -87,11 +82,10 @@ function openExternalSafe(rawUrl) {
 ipcMain.handle("coconote_open_external", (_event, url) => openExternalSafe(url));
 
 function createWindow() {
-  // macOS Dock: never call app.dock.setIcon. The packaged app already
-  // shows icon.icns composited onto the system rounded-square plate;
-  // setIcon would replace that with the raw png (no plate), which is the
-  // "icon changed after launch" bug. A dev run shows Electron's own
-  // plated icon, which is fine (dev only).
+  // macOS Dock: never call app.dock.setIcon. The packaged app already shows
+  // icon.icns composited onto the system rounded-square plate, and setIcon
+  // would replace that with the raw png (no plate): the "icon changed after
+  // launch" bug. Dev runs show Electron's own plated icon, which is fine.
   const win = new BrowserWindow({
     width: 1100,
     height: 800,
@@ -100,8 +94,8 @@ function createWindow() {
     title: "Coconote",
     backgroundColor: "#ffffff",
     // Linux: set the window icon explicitly or some DEs show the stock
-    // Electron icon. macOS / Windows take theirs from the bundle / exe;
-    // the png is packed into the asar via builder.config.json "files".
+    // Electron icon. macOS / Windows take theirs from the bundle / exe. The
+    // png is packed into the asar via builder.config.json "files".
     ...(process.platform === "linux"
       ? { icon: join(__dirname, "icons/icon.png") }
       : {}),
@@ -110,7 +104,6 @@ function createWindow() {
     ...(process.platform === "darwin"
       ? {
           titleBarStyle: "hiddenInset",
-          titleBarOverlay: false,
           trafficLightPosition: { x: 14, y: 14 },
         }
       : {}),
@@ -119,25 +112,22 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
-      devTools: true,
     },
   });
 
-  // The renderer talks to the sidecar at http://localhost:40704; that
-  // URL serves both the HTML/JS bundle and the API.
+  // The sidecar URL serves both the HTML/JS bundle and the API.
   win.loadURL(`http://${HOST}:${PORT}/`);
 
-  // Click on `target="_blank"` and window.open in the renderer should
-  // open in the user's browser, not a child BrowserWindow. The preload
-  // script catches anchor clicks; this covers window.open().
+  // target="_blank" / window.open go to the user's browser, not a child
+  // BrowserWindow. The preload catches anchor clicks, this covers window.open().
   win.webContents.setWindowOpenHandler(({ url }) => {
     openExternalSafe(url);
     return { action: "deny" };
   });
 
-  // Any navigation away from the sidecar URL (mostly external links
-  // missed by the preload) should also go to the system browser. Both
-  // 127.0.0.1 and localhost are internal (the server logs the latter).
+  // Navigations away from the sidecar URL (external links the preload
+  // missed) also go to the system browser. Both 127.0.0.1 and localhost
+  // are internal (the server logs the latter).
   win.webContents.on("will-navigate", (event, url) => {
     if (
       !url.startsWith(`http://${HOST}:${PORT}`) &&
@@ -152,10 +142,10 @@ function createWindow() {
 }
 
 async function bootstrap() {
-  // The renderer only ever talks to the loopback sidecar; external links
-  // open in the system browser. Force direct connections so Chromium skips
-  // system-proxy / PAC resolution, which otherwise adds a one-time stall to
-  // the first request to the server (felt as a slow first panel open).
+  // Force direct connections: the renderer only talks to the loopback
+  // sidecar (external links open in the system browser), and skipping
+  // Chromium's system-proxy / PAC resolution avoids a one-time stall on
+  // the first server request (felt as a slow first panel open).
   await session.defaultSession.setProxy({ mode: "direct" });
 
   const probeResult = await probe();
@@ -198,7 +188,7 @@ async function bootstrap() {
       return;
     }
   } else {
-    // Existing coconote — borrowing. Don't tear it down on quit.
+    // Existing coconote: borrowing. Don't tear it down on quit.
     console.log(`coconote: borrowing existing coconote server on :${PORT}`);
   }
 
@@ -207,19 +197,16 @@ async function bootstrap() {
 
 app.whenReady().then(bootstrap);
 
-// macOS: re-create the window when the dock icon is clicked and no
-// other windows are open (standard macOS-app idiom). Keeping the
-// sidecar alive across this is fine — bootstrap's probe will re-borrow.
+// macOS idiom: dock click with no windows open re-creates one. The sidecar
+// staying alive across this is fine: bootstrap's probe will re-borrow.
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     void bootstrap();
   }
 });
 
-// Quit when all windows close, except on macOS where the app stays
-// resident and `activate` re-creates the window (standard macOS idiom;
-// otherwise the activate handler below is unreachable). Owned-sidecar
-// cleanup happens in before-quit.
+// macOS stays resident so `activate` can re-create the window (standard
+// idiom). Owned-sidecar cleanup happens in before-quit.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });

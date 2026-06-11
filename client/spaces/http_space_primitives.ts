@@ -24,7 +24,7 @@ export function isStaleWriteError(e: unknown): e is StaleWriteError {
 }
 
 export class HttpSpacePrimitives {
-  /** Optional Bearer token; injected into every request when set. */
+  /** Optional Bearer token - injected into every request when set. */
   authToken?: string;
 
   constructor(
@@ -47,7 +47,7 @@ export class HttpSpacePrimitives {
     if (this.authToken) {
       const h = new Headers(opts.headers ?? {});
       // Respect a caller-supplied Authorization (e.g. one-off per-
-      // request token) — only inject when the slot is empty.
+      // request token) - only inject when the slot is empty.
       if (!h.has("Authorization")) {
         h.set("Authorization", `Bearer ${this.authToken}`);
       }
@@ -55,23 +55,20 @@ export class HttpSpacePrimitives {
     }
     try {
       const result = await fetch(url, opts);
-      // 5xx is a server fault, not connectivity — keep it distinct from
+      // 5xx is a server fault, not connectivity - keep it distinct from
       // offlineError so the UI doesn't report "Offline" for a crash.
       if (result.status >= 500 && result.status < 600) {
         throw new Error(`server error: HTTP ${result.status}`);
       }
       const redirect = result.headers.get("location");
       // opaqueredirect strips Location entirely (web spec), so we can
-      // never follow it programmatically — always treat as auth
+      // never follow it programmatically - always treat as auth
       // failure and reload.
       if (result.type === "opaqueredirect") {
         this.authErrorCallback("Not authenticated, reloading", "reload");
         throw Error("Not authenticated");
       }
-      if (
-        (result.status >= 300 && result.status < 400 && redirect) ||
-        ((result.status === 401 || result.status === 403) && redirect)
-      ) {
+      if ((result.status === 401 || result.status === 403) && redirect) {
         this.authErrorCallback("Auth redirect", redirect);
         throw Error("Not authenticated");
       }
@@ -105,7 +102,7 @@ export class HttpSpacePrimitives {
       perm?: "ro" | "rw";
     }> = await resp.json();
     return raw
-      .filter((e) => e.type !== "dir") // Drop dir rows so callers iterating file metadata don't have to skip them.
+      .filter((e) => e.type !== "dir")
       .map((e) => ({
         name: e.path,
         size: e.size ?? 0,
@@ -120,6 +117,18 @@ export class HttpSpacePrimitives {
         wikilinks: e.wikilinks,
         id: e.page_id,
       }));
+  }
+
+  /// `GET /.file?prefix=` lists every file path under a prefix as a
+  /// flat string array, dot-prefixed dirs included - the only way to
+  /// see assets folders, which the plain listing prunes.
+  async listUnderPrefix(prefix: string): Promise<string[]> {
+    const res = await this.fetch(
+      `${this.url}?prefix=${encodeURIComponent(prefix)}`,
+      { method: "GET" },
+    );
+    if (!res.ok) throw new Error(`list ${prefix}: HTTP ${res.status}`);
+    return await res.json();
   }
 
   async readFile(path: string): Promise<{ data: Uint8Array; meta: FileMeta }> {
@@ -141,7 +150,7 @@ export class HttpSpacePrimitives {
     path: string,
     data: Uint8Array,
     ifUnmodifiedSince?: number,
-    /** Tags the resulting history row. Sync flows pass "push" / "pull";
+    /** Tags the resulting history row. Sync flows pass "push" / "pull",
      * normal saves omit (or pass "edit"). spec server.md uses
      * `?save_type=` query, not a custom header. */
     saveType?: "edit" | "push" | "pull",
@@ -159,7 +168,7 @@ export class HttpSpacePrimitives {
     const res = await this.fetch(
       url,
       { method: "PUT", headers, body: data as BodyInit },
-      0, // no timeout — upload can be large
+      0, // no timeout - upload can be large
     );
     if (res.status === 409) {
       const err = new Error("stale write") as StaleWriteError;
@@ -167,7 +176,7 @@ export class HttpSpacePrimitives {
       err.serverMeta = headersToFileMeta(path, res.headers)!;
       throw err;
     }
-    // 405 read-only vault etc. — surface instead of returning undefined
+    // 405 read-only vault etc. - surface instead of returning undefined
     // metadata that explodes later in the save loop.
     if (!res.ok) throw new Error(`write ${path}: HTTP ${res.status}`);
     return headersToFileMeta(path, res.headers)!;
@@ -186,7 +195,7 @@ export class HttpSpacePrimitives {
     return headersToFileMeta(path, res.headers)!;
   }
 
-  /// Liveness probe — spec server.md only exposes `/.health` (no /.ping).
+  /// Liveness probe - spec server.md only exposes `/.health` (no /.ping).
   async ping(): Promise<string | undefined> {
     // Walk one path segment up from this.url so a trailing slash
     // doesn't strip a different segment than expected.

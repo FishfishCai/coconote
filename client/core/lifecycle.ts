@@ -13,14 +13,14 @@ import { reconfigureMode } from "../codemirror/registry.ts";
 
 /** Wire the single-slot lifecycle callbacks. Lives here (not in
  *  codemirror/registry.ts) so the dependency stays one-way:
- *  lifecycle → registry, never back. */
+ *  lifecycle -> registry, never back. */
 export function wireModuleLifecycle(c: Client): void {
   c.onEditorInit = () => setEditorMode(c);
   c.onPageClick = (e: ClickEvent) => clickNavigate(c, e);
 }
 
-export async function setEditorMode(c: Client) {
-  // setting.md §Dark mode: "Follows OS preference on first run." When
+async function setEditorMode(c: Client) {
+  // setting.md Dark mode: "Follows OS preference on first run." When
   // localStorage/yaml haven't seeded the choice yet, consult
   // prefers-color-scheme so the very first paint matches the OS.
   let darkMode = c.config.get<boolean | null>(["ui", "darkMode"], null);
@@ -32,7 +32,7 @@ export async function setEditorMode(c: Client) {
       } else if (typeof matchMedia === "function") {
         darkMode = matchMedia("(prefers-color-scheme: dark)").matches;
       }
-    } catch {/* private browsing — fall through */}
+    } catch {/* private browsing - fall through */}
   }
   if (darkMode != null) c.setUiOption("darkMode", darkMode);
   const mode = c.config.get<string | null>(["ui", "editorMode"], null);
@@ -72,7 +72,7 @@ async function actionFollow(
   newTab = false,
 ) {
   if (!mdTree) return;
-  // Only WikiLinks navigate; md inline links/autolinks/naked URLs are inert.
+  // Only WikiLinks navigate - md inline links/autolinks/naked URLs are inert.
   if (mdTree.type !== "WikiLink") {
     mdTree = findParentMatching(mdTree, (t) => t.type === "WikiLink");
     if (!mdTree) return;
@@ -90,7 +90,7 @@ async function actionFollow(
   if (ref.path === "") {
     ref.path = c.currentPath();
   } else if (ref.path.toLowerCase().endsWith(".pdf")) {
-    // PDF wikilinks skip resolveWikiLink (md-only); navigator does its own allKnownFiles lookup.
+    // PDF wikilinks skip resolveWikiLink (md-only) - navigator does its own allKnownFiles lookup.
   } else {
     const query = ref.path.endsWith(".md")
       ? ref.path.slice(0, -3)
@@ -121,7 +121,7 @@ async function actionFollow(
   return c.navigate(ref, false);
 }
 
-export async function clickNavigate(c: Client, event: ClickEvent) {
+async function clickNavigate(c: Client, event: ClickEvent) {
   if (event.altKey) return;
   const text = c.editorView.state.sliceDoc();
   const mdTree = parseMarkdown(text);

@@ -1,5 +1,5 @@
-// 16-char Crockford base32 page id (file.md §Frontmatter, mirrors
-// server-rs/src/frontmatter.rs). 80 bits of entropy; non-crypto RNG
+// 16-char Crockford base32 page id (file.md Frontmatter, mirrors
+// server-rs/src/frontmatter.rs). 80 bits of entropy - non-crypto RNG
 // is fine because uniqueness is checked vault-wide on PUT.
 
 const ID_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";

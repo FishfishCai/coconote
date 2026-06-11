@@ -17,7 +17,7 @@ export type ContentDimensions = {
 const ALIGN_KEYWORDS = new Set<ContentAlign>(["left", "center", "right"]);
 const DIM_RE = /^(\d+)?(?:x(\d+)?)?$/;
 
-// Segments may appear in any order; first non-special segment becomes alias.
+// Segments may appear in any order - first non-special segment becomes alias.
 export function parseDimensionFromAlias(text: string): {
   alias: string;
   dimension?: ContentDimensions;

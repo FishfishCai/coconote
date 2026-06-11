@@ -29,7 +29,7 @@ export function useDismissOnOutside(onClose: () => void): void {
   }, []);
 }
 
-/** Serialiser for `useLocalStorageState`. Defaults to JSON; supply
+/** Serialiser for `useLocalStorageState`. Defaults to JSON. Supply
  *  a custom pair when storing a non-JSON-native shape (e.g. Set).
  *  parse returns undefined on bad input so the caller falls back
  *  to `initial`. */
@@ -64,7 +64,7 @@ export const stringSetCodec: Codec<Set<string>> = {
 };
 
 /** localStorage-backed useState. Lazy initial so each mount parses
- *  once; quota / disabled storage fail silently. */
+ *  once, quota / disabled storage fail silently. */
 export function useLocalStorageState<T>(
   key: string,
   initial: () => T,

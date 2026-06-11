@@ -1,19 +1,8 @@
-// /.config — read + mutate coconote.yaml (setting.md §Local + §Remote +
-// §Config file).
-//
-// GET  /.config  → { port, hasAuth, root: {name→path}, url: [...],
-//                    snippets, configDir, readOnly }
-// PATCH /.config → one of:
-//                    { addRoot:    { name, path } }
-//                    { removeRoot: "name" }
-//                    { addUrl:     "url" }
-//                    { removeUrl:  "url" }
-//                    { snippets:   "<raw snippet.json>" }
-//                    { configDir:  "<dir>" }   (redirects yaml + restarts)
-//
-// On any mutation the yaml is atomically rewritten (tmp + rename) and,
-// when roots change, the LiveSpace inside AppState is swapped so the
-// file index reloads without a process restart.
+// /.config: read + mutate coconote.yaml (setting.md Local/Remote/Config file).
+// GET -> {port, hasAuth, root, url, snippets, configDir, readOnly}. PATCH ->
+// one of addRoot/removeRoot/addUrl/removeUrl/snippets/configDir (the last
+// redirects the yaml + restarts). Mutations rewrite the yaml atomically
+// (tmp + rename), root changes swap LiveSpace without a process restart.
 
 use crate::config::{effective_config_dir, write_config_pointer, FileConfig};
 use crate::error::{Error, Result};
@@ -28,11 +17,10 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-// The token is never returned: a leaked token via XSS would compromise
-// the vault. Settings UI only needs to know whether a non-default
-// token is configured, hence `hasAuth`. `snippets` is the raw text of
-// the on-disk snippet.json sidecar (editor.md §Snippet): same lookup
-// path as coconote.yaml, JSON array of `{trigger, replacement, options}`.
+// The token is never returned: a leak via XSS would compromise the vault,
+// the Settings UI only needs `hasAuth`. `snippets` is the raw text of the
+// on-disk snippet.json sidecar (editor.md Snippet): same lookup path as
+// coconote.yaml, JSON array of `{trigger, replacement, options}`.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ConfigBody {
@@ -41,11 +29,11 @@ struct ConfigBody {
     root: IndexMap<String, String>,
     url: Vec<String>,
     snippets: String,
-    /// Directory holding the yaml the server is currently using.
-    /// setting.md §Config file. Shown pre-filled in Setting →
-    /// Config file; PATCH `configDir` to change it.
+    /// Directory holding the yaml currently in use (setting.md Config
+    /// file). Shown pre-filled in Setting -> Config file, PATCH
+    /// `configDir` to change it.
     config_dir: String,
-    /// Vault rejects writes (CLI --read-only). The client reads this to
+    /// Vault rejects writes (CLI --read-only). The client uses this to
     /// make the editor read-only up front instead of waiting for a 405.
     read_only: bool,
 }
@@ -84,8 +72,8 @@ pub struct PatchBody {
     /// Replace the snippet.json sidecar with this raw JSON string.
     /// Empty string removes the file.
     snippets: Option<String>,
-    /// Redirect yaml lookup to a new directory (setting.md §Config
-    /// file). Server writes the pointer, returns 200, then re-execs.
+    /// Redirect yaml lookup to a new directory (setting.md Config file).
+    /// Server writes the pointer, returns 200, then re-execs.
     config_dir: Option<String>,
 }
 
@@ -99,14 +87,14 @@ pub async fn patch_config(
     State(app): State<AppState>,
     Json(patch): Json<PatchBody>,
 ) -> Response {
-    // configDir changes the LOCATION of the yaml, not its content —
-    // they don't compose with the other field-level patches, and a
-    // self-restart follows. Handle it standalone and short-circuit.
+    // configDir changes the LOCATION of the yaml, not its content: it
+    // doesn't compose with the field-level patches and a self-restart
+    // follows. Handle it standalone and short-circuit.
     if let Some(dir) = patch.config_dir.as_deref() {
         // Prove the dir usable BEFORE persisting the pointer: a pointer
-        // at an unwritable location would brick the next boot after
-        // this handler has already returned 200. Empty value clears
-        // the pointer (back to the standard dir) — nothing to probe.
+        // at an unwritable location would brick the next boot after this
+        // handler already returned 200. Empty value clears the pointer
+        // (back to the standard dir), nothing to probe.
         let trimmed = dir.trim();
         if !trimmed.is_empty() {
             if let Err(e) = validate_config_dir(Path::new(trimmed)) {
@@ -165,11 +153,7 @@ async fn apply_patch(app: &AppState, patch: PatchBody) -> Result<()> {
         if cfg.root.contains_key(&name) {
             return Err(Error::BadRequest(format!("root '{name}' already exists")));
         }
-        let path_str = new.path.trim();
-        if !path_str.starts_with('/') && !path_str.starts_with('~') {
-            return Err(Error::BadRequest("root path must be absolute".into()));
-        }
-        cfg.root.insert(name, path_str.to_string());
+        cfg.root.insert(name, new.path.trim().to_string());
         roots_changed = true;
     }
     if let Some(name) = patch.remove_root.as_deref() {
@@ -197,11 +181,11 @@ async fn apply_patch(app: &AppState, patch: PatchBody) -> Result<()> {
     }
 
     // Validate roots BEFORE writing yaml so a rebuild failure can't leave
-    // disk inconsistent with the live space. Empty roots is fine — the
-    // server happily boots with no roots (welcome.md §coconote.yaml), so
-    // a user can remove every root and reconfigure from scratch via
-    // Setting → Local. The resolved list feeds rebuild_live_space
-    // directly — no second resolution pass.
+    // disk inconsistent with the live space. Empty roots is fine: the
+    // server boots with no roots (welcome.md coconote.yaml), so a user
+    // can remove every root and reconfigure via Setting -> Local. The
+    // resolved list feeds rebuild_live_space directly, no second
+    // resolution pass.
     let resolved = if roots_changed {
         Some(
             cfg.root_configs()
@@ -223,8 +207,8 @@ async fn apply_patch(app: &AppState, patch: PatchBody) -> Result<()> {
     Ok(())
 }
 
-/// Read the snippet.json sidecar (editor.md §Snippet — same lookup
-/// path as coconote.yaml). Missing file → empty string.
+/// Read the snippet.json sidecar (editor.md Snippet, same lookup path
+/// as coconote.yaml). Missing file -> empty string.
 fn read_snippets_file(yaml_path: Option<&Path>) -> Result<String> {
     let p = snippets_path_for(yaml_path);
     match std::fs::read_to_string(&p) {
@@ -234,8 +218,7 @@ fn read_snippets_file(yaml_path: Option<&Path>) -> Result<String> {
     }
 }
 
-/// Atomically replace the snippet.json sidecar; empty string removes
-/// the file.
+/// Atomically replace the snippet.json sidecar. Empty string removes it.
 fn write_snippets_file(yaml_path: Option<&Path>, content: &str) -> Result<()> {
     let p = snippets_path_for(yaml_path);
     if content.is_empty() {
@@ -247,8 +230,8 @@ fn write_snippets_file(yaml_path: Option<&Path>, content: &str) -> Result<()> {
     write_atomically(&p, content.as_bytes())
 }
 
-/// snippet.json lives next to coconote.yaml. When no yaml is on disk
-/// the snippet file lives in CWD too — matches the yaml fallback.
+/// snippet.json lives next to coconote.yaml. With no yaml on disk it
+/// lives in CWD too, matching the yaml fallback.
 fn snippets_path_for(yaml_path: Option<&Path>) -> PathBuf {
     match yaml_path {
         Some(p) => p.with_file_name("snippet.json"),
@@ -256,7 +239,7 @@ fn snippets_path_for(yaml_path: Option<&Path>) -> PathBuf {
     }
 }
 
-/// Swap the live space to `resolved` (already validated by the caller —
+/// Swap the live space to `resolved` (already validated by the caller,
 /// root_configs() is not re-run here).
 fn rebuild_live_space(app: &AppState, resolved: Vec<crate::space::RootConfig>) -> Result<()> {
     let pretty: IndexMap<String, String> = resolved
@@ -268,7 +251,6 @@ fn rebuild_live_space(app: &AppState, resolved: Vec<crate::space::RootConfig>) -
         MultiRootSpacePrimitives::new(resolved.clone())
             .map_err(|e| Error::Other(format!("multiroot: {e}")))?,
     );
-    // Wrap in read-only if the server started that way.
     let space: DynSpace = if app.read_only {
         Arc::new(crate::space::ReadOnlySpacePrimitives::new(base))
     } else {
@@ -289,10 +271,9 @@ fn rebuild_live_space(app: &AppState, resolved: Vec<crate::space::RootConfig>) -
 }
 
 fn write_yaml_atomically(target: Option<&Path>, cfg: &FileConfig) -> Result<()> {
-    // `None` means the server booted without a yaml (--folder mode,
-    // which bypasses config resolution entirely). Persisting to a
-    // ./coconote.yaml that no later boot would read just litters the
-    // CWD — mutations stay in-process only.
+    // `None` = booted without a yaml (--folder mode, which bypasses
+    // config resolution). Persisting a ./coconote.yaml no later boot
+    // would read just litters the CWD: mutations stay in-process only.
     let Some(path) = target else {
         return Ok(());
     };
@@ -301,8 +282,8 @@ fn write_yaml_atomically(target: Option<&Path>, cfg: &FileConfig) -> Result<()> 
 }
 
 /// tmp + rename in the destination dir so readers never observe a torn
-/// file. pid + 64-bit random suffix so two simultaneous PATCH requests
-/// in the same process don't truncate each other's tmp file.
+/// file. pid + 64-bit random suffix so two simultaneous PATCHes in one
+/// process don't truncate each other's tmp file.
 fn write_atomically(path: &Path, content: &[u8]) -> Result<()> {
     let parent = path
         .parent()

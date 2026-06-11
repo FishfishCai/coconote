@@ -1,14 +1,14 @@
-// Merge-base lookup for push / pull. Per history.md §Merge ("the merge
-// base is the content of the local latest push/pull row"), the base is
-// the newest local row whose save_type ∈ {push, pull}; query local
-// history only — no remote round-trip.
+// Merge-base lookup for push / pull. Per history.md Merge ("the merge
+// base is the content of the local latest push/pull row"): the newest
+// local row with save_type push or pull. Queries local history only -
+// no remote round-trip.
 
 import { authedFetch } from "./authed_fetch.ts";
 
 export type SaveType = "create" | "edit" | "push" | "pull" | "pin";
 export type HistoryRow = { ts: number; save_type: SaveType };
 
-/** Latest push or pull row for `id` — None when no sync has happened yet. */
+/** Latest push or pull row for `id` - null when no sync has happened yet. */
 export async function fetchLocalMergeBase(
   id: string,
 ): Promise<{ ts: number; content: string } | null> {

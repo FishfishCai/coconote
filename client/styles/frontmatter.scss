@@ -32,7 +32,7 @@
 }
 
 // `flow-root` establishes a block formatting context so KaTeX's
-// `.katex-display { margin: 1em 0 }` stays inside the widget — otherwise
+// `.katex-display { margin: 1em 0 }` stays inside the widget - otherwise
 // the gap is invisible to CM's heightMap, drifting click positions below
 // the widget by one line per block.
 .coconote-tex-display {
@@ -41,7 +41,7 @@
 }
 
 // KaTeX failure: tex.ts replaces the widget content with
-// "[TeX error: …]" and tags it with this class.
+// "[TeX error: ...]" and tags it with this class.
 .coconote-tex-error {
   color: var(--color-red);
 }

@@ -63,10 +63,9 @@ body {
   height: 100%;
 }
 
-// Top strip the user can drag to move the window in Electron's
-// hidden-inset title bar mode; inert in a plain browser. The macOS
-// traffic lights overlap its left edge but stay clickable — they're
-// native controls drawn above the page, not DOM the strip can block.
+// Window-drag strip for Electron's hidden-inset title bar mode, inert in
+// a plain browser. The macOS traffic lights overlap its left edge but
+// stay clickable - native controls drawn above the page, not DOM.
 .coconote-window-drag {
   height: 32px;
   flex-shrink: 0;
@@ -86,12 +85,6 @@ body {
   flex: 2;
   height: 100%;
   width: 100%;
-
-  iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
 }
 
 // Driven by @codemirror/autocomplete after snippet expansion.

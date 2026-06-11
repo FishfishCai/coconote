@@ -12,6 +12,11 @@ export function readUserPrefs(): Record<string, unknown> {
   return (raw && safeJsonParse<Record<string, unknown>>(raw)) || {};
 }
 
+/** Bumped on every write so hot-path readers (shortcuts) can cache the
+ *  parsed blob and still pick up Settings edits immediately. */
+export let userPrefsVersion = 0;
+
 export function writeUserPrefs(prefs: unknown): void {
   localStorage.setItem(USER_PREFS_KEY, JSON.stringify(prefs));
+  userPrefsVersion++;
 }

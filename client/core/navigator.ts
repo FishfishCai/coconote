@@ -1,6 +1,6 @@
 // History contract: `navigate` pushes history then loadPage (no synthetic
-// popstate); browser back/forward fires native popstate → loadPage. Leaving
-// page's scroll/cursor is captured so the destination can restore it.
+// popstate). Browser back/forward fires native popstate -> loadPage. The
+// leaving page's scroll/cursor is captured so the destination can restore it.
 
 import {
   encodePageURI,
@@ -18,10 +18,10 @@ import { resolveWikiLinkPath } from "../markdown/wiki_link_resolver.ts";
 import { absFsBase } from "../spaces/constants.ts";
 import { errMessage } from "../lib/constants.ts";
 
-// `path === ""` represents the root URL (`/`) — the Settings page.
+// `path === ""` represents the root URL (`/`).
 export type LocationState = Ref & {
   scrollTop?: number;
-  /** Doc position nearest viewport top; survives heightMap shuffle on return. */
+  /** Doc position nearest viewport top (survives heightMap shuffle on return). */
   scrollAnchorPos?: number;
   selection?: { anchor: number; head?: number };
 };
@@ -35,7 +35,7 @@ export type SpecialRoute =
   | { kind: "content"; view: "path" | "tag" | "graph" }
   | { kind: "setting" };
 
-export function parseSpecialRoute(pathname: string): SpecialRoute | null {
+function parseSpecialRoute(pathname: string): SpecialRoute | null {
   const trimmed = pathname.replace(/\/+$/, "");
   if (trimmed === "" || trimmed === "/.content" || trimmed === "/.content/path") {
     return trimmed === "" ? null : { kind: "content", view: "path" };
@@ -51,9 +51,7 @@ function pathToURI(path: Path): string {
 }
 
 export function parseRefFromURI(): Ref | null {
-  // Special routes bypass the page-resolution path; the caller checks
-  // parseSpecialRoute() first and only falls through to here when the
-  // URL is a real page reference.
+  // Callers check parseSpecialRoute() first - only real page URLs reach here.
   const locationRef = parseToRef(
     decodeURIComponent(
       location.href.substring(document.baseURI.length),
@@ -68,7 +66,7 @@ export function parseRefFromURI(): Ref | null {
   return locationRef;
 }
 
-export function captureEditorPosition(
+function captureEditorPosition(
   view: EditorView,
 ): Pick<LocationState, "scrollTop" | "scrollAnchorPos" | "selection"> {
   const sc = view.scrollDOM;
@@ -91,13 +89,13 @@ export async function navigate(
   replaceState = false,
 ): Promise<void> {
   if (!ref?.path) {
-    // No path = the index — content.md's default route.
+    // No path = the index (content.md's default route).
     navigateSpecialRoute(client, { kind: "content", view: "path" }, replaceState);
     return;
   }
   const resolved = resolveWikiLinkPath(
     ref.path,
-    client.currentPath?.(),
+    client.currentPath(),
     client.allKnownFiles,
   );
   if (resolved !== ref.path) {
@@ -107,7 +105,7 @@ export async function navigate(
   client.focus();
 }
 
-export function openUrl(_client: Client, url: string) {
+export function openUrl(url: string) {
   const win = globalThis.open(url, "_blank");
   if (win) win.focus();
 }
@@ -127,18 +125,15 @@ async function doLoad(
     });
   }
 
-  // Non-md/non-pdf refs open in a new tab — decide BEFORE touching the
-  // URL so the address bar / history never point at e.g. /diagram.png
-  // (a Back press would re-trigger the tab-open).
+  // Non-md/non-pdf refs open in a new tab. Decide BEFORE touching the
+  // URL so history never points at e.g. /diagram.png (Back would
+  // re-trigger the tab-open).
   if (ref.path && !isMarkdownPath(ref.path) && getPathExtension(ref.path) !== "pdf") {
-    openUrl(
-      client,
-      `${absFsBase()}/${ref.path}`,
-    );
+    openUrl(`${absFsBase()}/${ref.path}`);
     return;
   }
 
-  // On popstate the URL is already correct; only push/replace otherwise.
+  // Skip push/replace on popstate (URL already correct).
   if (!viaPopstate) {
     const url = `${document.baseURI}${pathToURI(ref.path)}`;
     if (replaceState) {
@@ -148,26 +143,25 @@ async function doLoad(
     }
   }
 
-  // Flush the page we're leaving BEFORE detaching collab: with the
-  // handle still attached, a connected session short-circuits the HTTP
-  // PUT (the server checkpoints the Yjs doc), so we never fire a
-  // guaranteed-stale PUT right after the detach (the detach itself
-  // triggers a last-peer checkpoint server-side).
+  // Flush the leaving page BEFORE detaching collab: while attached, a
+  // connected session short-circuits the HTTP PUT (server checkpoints
+  // the Yjs doc), so no guaranteed-stale PUT fires right after detach
+  // (detach itself triggers a last-peer checkpoint server-side).
   if (leavingDifferent && isMarkdownPath(leavingPath) && client.editorView) {
     try {
-      await client.contentManager?.save(true);
+      await client.contentManager.save(true);
     } catch (e: unknown) {
       console.error(`Save on leave failed: ${errMessage(e)}`);
     }
   }
-  // Leaving a live collab path → drop the session. The next loadPage
-  // spawns a fresh one if the destination also wants collab.
+  // Leaving a live collab path -> drop the session. Next loadPage
+  // spawns a fresh one if the destination wants collab.
   if (client.collabHandle && client.collabHandle.path !== ref.path) {
     detachCollab(client);
   }
 
   if (!ref.path) {
-    client.ui.hidePdfViewer?.();
+    client.ui.hidePdfViewer();
     client.ui.hideSettings();
     client.ui.showContentBrowser();
     return;
@@ -176,10 +170,10 @@ async function doLoad(
     const anchor = ref.details?.type === "pdfAnchor"
       ? ref.details.anchor
       : undefined;
-    client.ui.showPdfViewer?.(ref.path, anchor);
+    client.ui.showPdfViewer(ref.path, anchor);
     return;
   }
-  client.ui.hidePdfViewer?.();
+  client.ui.hidePdfViewer();
 
   client.ui.hideSettings();
   client.ui.hideContentBrowser();
@@ -201,20 +195,19 @@ async function doLoad(
 }
 
 function applySpecialRoute(client: Client, route: SpecialRoute): void {
-  // Leaving the editor / PDF viewer for Content or Settings drops the live
-  // collab session so the status dot reverts to grey (navigate() does this
-  // for path nav; the special routes need it too).
+  // Drop any live collab session so the status dot reverts to grey
+  // (navigate() handles this for path nav, special routes need it too).
   if (client.collabHandle) detachCollab(client);
   if (route.kind === "setting") {
     client.ui.hideContentBrowser();
-    client.ui.hidePdfViewer?.();
+    client.ui.hidePdfViewer();
     client.ui.showSettings();
     return;
   }
   client.ui.hideSettings();
-  client.ui.hidePdfViewer?.();
+  client.ui.hidePdfViewer();
   client.ui.showContentBrowser();
-  client.ui.setContentBrowserView?.(route.view);
+  client.ui.setContentBrowserView(route.view);
 }
 
 export function navigateSpecialRoute(
@@ -245,7 +238,7 @@ export async function initNavigator(client: Client): Promise<void> {
       applySpecialRoute(client, route);
       return;
     }
-    // Trust history state only when it looks like a Ref — boot's query
+    // Trust history state only when it looks like a Ref - boot's query
     // strip and other writers can leave `{}` there.
     const stateRef = state && typeof state === "object" &&
         typeof (state as Ref).path === "string"
@@ -262,7 +255,7 @@ export async function initNavigator(client: Client): Promise<void> {
   }
 
   if (!client.onLoadRef?.path) {
-    // Bare `/` → default to /.content/path (content.md).
+    // Bare `/` -> default to /.content/path (content.md).
     navigateSpecialRoute(client, { kind: "content", view: "path" }, true);
     return;
   }

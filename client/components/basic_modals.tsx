@@ -5,15 +5,13 @@ import { Modal } from "./modal.tsx";
 export function Prompt({
   message,
   defaultValue,
-  darkMode: _darkMode,
   callback,
 }: {
   message: string;
-  defaultValue?: string;
-  darkMode: boolean | undefined;
+  defaultValue: string;
   callback: (value?: string) => void;
 }) {
-  const [text, setText] = useState(defaultValue || "");
+  const [text, setText] = useState(defaultValue);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     inputRef.current?.focus();

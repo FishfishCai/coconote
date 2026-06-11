@@ -1,23 +1,10 @@
-// Bearer-token middleware (server.md §API).
-//
-// Only the API surface (/.file, /.history, /.config, /.collab) is
-// gated. Everything else — the embedded client bundle, the SPA index
-// fallback (client routes like /.content/*, /.setting) and /.health —
-// serves unauthenticated, so a remote browser can load the UI and
-// present the token at login (welcome.md §Headless server).
-//
-// Loopback bypasses ONLY when all of these hold:
-//   - the TCP peer address is loopback;
-//   - the Host header names a loopback host (localhost / 127.0.0.1 /
-//     [::1], any port) — behind a same-host reverse proxy every remote
-//     request arrives from a loopback peer, so the peer IP alone must
-//     not unlock the bypass;
-//   - the request is same-origin or has no Origin header — a
-//     cross-origin fetch from a malicious page in the user's browser
-//     must still present the bearer, otherwise CORS-permissive
-//     defaults would let any web page exfiltrate the vault.
-// Browsers can't set custom headers on WS handshakes, so /.collab/*
-// also accepts `?token=`. Constant-time compare avoids timing leaks.
+// Bearer-token middleware (server.md API). Only PROTECTED_PREFIXES are
+// gated, the rest (bundle, SPA fallback, /.health) stays open so a remote
+// browser can load the UI and present the token at login (welcome.md
+// Headless server). Loopback bypass requires loopback peer AND loopback
+// Host AND same-origin (rationales on the helpers below). /.collab also
+// accepts `?token=` (browsers can't set custom headers on WS handshakes).
+// Constant-time compare avoids timing leaks.
 
 use crate::state::AppState;
 use axum::extract::{ConnectInfo, Request, State};
@@ -27,7 +14,7 @@ use axum::response::{IntoResponse, Response};
 use std::net::SocketAddr;
 use subtle::ConstantTimeEq;
 
-/// API prefixes that require auth; all other paths (static assets,
+/// API prefixes that require auth. All other paths (static assets,
 /// index fallback, /.health) stay open.
 const PROTECTED_PREFIXES: &[&str] = &["/.file", "/.history", "/.config", "/.collab"];
 
@@ -85,10 +72,11 @@ pub async fn require_bearer(
         .into_response()
 }
 
-/// True when the request's Host (or :authority) names a loopback host:
-/// `localhost`, `127.0.0.1` or `[::1]`, any port. A same-host reverse
-/// proxy preserves the public hostname here, which is what lets us
-/// tell proxied remote traffic apart from a genuine local visit.
+/// True when Host (or :authority) names a loopback host: `localhost`,
+/// `127.0.0.1`, or `[::1]`, any port. Behind a same-host reverse proxy
+/// every remote request arrives from a loopback peer, so the peer IP
+/// alone must not unlock the bypass: the proxy preserves the public
+/// hostname here, telling proxied traffic apart from a local visit.
 fn host_is_loopback(req: &Request) -> bool {
     let host = req
         .headers()
@@ -106,10 +94,10 @@ fn host_is_loopback(req: &Request) -> bool {
     bare.eq_ignore_ascii_case("localhost") || bare == "127.0.0.1"
 }
 
-/// Loopback requests without an Origin (curl, same-origin XHR/fetch)
-/// are treated as first-party. A browser-initiated cross-origin
-/// request carries an Origin header from the calling page; that path
-/// must always present the bearer even on 127.0.0.1.
+/// Loopback requests without an Origin (curl, same-origin XHR/fetch) are
+/// first-party. A cross-origin request carries the calling page's Origin
+/// and must still present the bearer even on 127.0.0.1, else a malicious
+/// page in the user's browser could exfiltrate the vault.
 fn origin_is_self(req: &Request) -> bool {
     let Some(origin) = req.headers().get(header::ORIGIN) else {
         return true;

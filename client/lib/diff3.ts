@@ -1,10 +1,9 @@
-// Line-based 3-way merge (history.md §Three-way diff).
-// Region-based diff3: a "stable" line is a base line kept verbatim by
-// BOTH sides; the region between two stable anchors is classified as a
-// whole (only local changed → take local; only remote → take remote;
-// identical change → take either; different changes → conflict).
-// Deletion counts as a change, so modify-vs-delete is a conflict rather
-// than silently resolving to the surviving side.
+// Line-based 3-way merge (history.md Three-way diff). Region-based
+// diff3: a "stable" line is a base line kept verbatim by BOTH sides,
+// each region between stable anchors is classified whole (only local
+// changed -> local, only remote -> remote, identical change -> either,
+// different -> conflict). Deletion counts as a change, so
+// modify-vs-delete conflicts instead of taking the surviving side.
 
 import { lcsDiff } from "./lcs.ts";
 
@@ -12,7 +11,7 @@ export type Chunk =
   | { kind: "ok"; text: string }
   | { kind: "conflict"; local: string; base: string; remote: string };
 
-/** Map base-line index → derived-line index for every line the derived
+/** Map base-line index -> derived-line index for every line the derived
  *  side kept unchanged (the LCS "same" ops). */
 function matchMap(base: string[], derived: string[]): Map<number, number> {
   const map = new Map<number, number>();
@@ -41,7 +40,7 @@ function arrEq(a: string[], b: string[]): boolean {
 /** Split into lines, recording whether the text ended with a newline.
  *  Without dropping the trailing "" sentinel, a newline-terminated file
  *  ("a\nb\n") splits to ["a","b",""] and the phantom line doubles the
- *  trailing newline — defeating the noop/fast-forward hash paths on the
+ *  trailing newline - defeating the noop/fast-forward hash paths on the
  *  next sync. The empty string counts as newline-terminated so merging
  *  into an empty file doesn't flag a phantom newline change. */
 function splitLines(s: string): { lines: string[]; nl: boolean } {
@@ -52,7 +51,7 @@ function splitLines(s: string): { lines: string[]; nl: boolean } {
   return { lines, nl };
 }
 
-/** Three-way merge. Returns ordered chunks; each "ok" chunk's text is
+/** Three-way merge. Returns ordered chunks. Each "ok" chunk's text is
  *  newline-terminated, conflict fields are "" or newline-terminated. */
 export function merge3(base: string, local: string, remote: string): Chunk[] {
   const sep = "\n";
@@ -122,7 +121,7 @@ export function merge3(base: string, local: string, remote: string): Chunk[] {
     : (localNl === baseNl ? remoteNl : localNl);
   if (!nl && out.length > 0) {
     const last = out[out.length - 1];
-    // A trailing conflict keeps its newline-terminated markers; only the
+    // A trailing conflict keeps its newline-terminated markers - only the
     // common case (ok tail) preserves the missing final newline exactly.
     if (last.kind === "ok") last.text = last.text.replace(/\n$/, "");
   }

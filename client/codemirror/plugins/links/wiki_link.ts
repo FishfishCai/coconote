@@ -1,7 +1,6 @@
 import { syntaxTree } from "@codemirror/language";
 import { type EditorState, type Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
-import { isBuiltinPath } from "coconote/lib/resolve";
 import { basename } from "../../../lib/path_url.ts";
 import {
   encodeRef,
@@ -24,7 +23,7 @@ export function cleanWikiLinkPlugin(client: Client) {
     syntaxTree(state).iterate({
       enter: ({ type, from, to }) => {
         if (type.name !== "WikiLink") return;
-        // Skip `![[..]]` — image transclusion owns that range. Parser
+        // Skip `![[..]]` - image transclusion owns that range. Parser
         // nests WikiLink inside Image starting at the `!` itself.
         if (state.sliceDoc(from, from + 1) === "!") return;
         const text = state.sliceDoc(from, to);
@@ -44,7 +43,7 @@ export function cleanWikiLinkPlugin(client: Client) {
           linkStatus = "default";
         } else if (!ref) {
           linkStatus = "invalid";
-        } else if (ref.path === "" || isBuiltinPath(ref.path)) {
+        } else if (ref.path === "") {
           linkStatus = "default";
         } else {
           // New resolver supports 4 locator forms: [[name]] / [[path/name]] /
@@ -57,15 +56,13 @@ export function cleanWikiLinkPlugin(client: Client) {
             query,
             client.ui.viewState.allPages,
           );
-          const indexReady = client.fullIndexCompleted ||
-            client.knownFilesLoaded;
           if (result.kind === "ok") {
             ref.path = (result.page.name + ".md") as typeof ref.path;
             linkStatus = "default";
-          } else if (indexReady && result.kind === "ambiguous") {
+          } else if (result.kind === "ambiguous") {
             linkStatus = "ambiguous";
             ambiguousCandidates = result.pages.map((p) => p.name);
-          } else if (indexReady) {
+          } else {
             linkStatus = "file-missing";
           }
         }
@@ -91,13 +88,16 @@ export function cleanWikiLinkPlugin(client: Client) {
 
         let linkText = alias || stringRef;
         if (linkStatus === "default" && !isExternal && ref) {
-          const renderedRef = structuredClone(ref);
+          // Shallow copy is enough: only `path` is reassigned below and
+          // `details` is never mutated.
+          const renderedRef = { ...ref };
+          if (ref.details) renderedRef.details = { ...ref.details };
           renderedRef.path = shortWikiLinks
             ? basename(renderedRef.path) as typeof renderedRef.path
             : renderedRef.path;
-          // Callout `:target` → resolve to the title-widget form so the
+          // Callout `:target` -> resolve to the title-widget form so the
           // chip reads naturally. Only resolvable inside the current
-          // file's text; cross-file refs fall back to raw encoded form.
+          // file's text, cross-file refs fall back to raw encoded form.
           if (!alias && ref.details?.type === "callout" && ref.path === "") {
             const display = resolveCalloutDisplay(
               state.sliceDoc(),
@@ -156,7 +156,7 @@ function onClick(
     console.error(
       `Multiple files match "${ctx.stringRef}": ${
         (ctx.ambiguousCandidates ?? []).join(", ")
-      } — write the full path`,
+      } - write the full path`,
     );
     return;
   }

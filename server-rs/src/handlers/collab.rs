@@ -1,6 +1,6 @@
-// WS /.collab/<path>?token=<auth> — Yjs sync + awareness, binary only.
-// Single-frame cap 16 MB; 5 s disk checkpoint + flush on last-out
-// (server.md §Collab, editor.md §Collaboration).
+// WS /.collab/<path>?token=<auth>: Yjs sync + awareness, binary only.
+// Single-frame cap 16 MB, 5 s disk checkpoint + flush on last-out
+// (server.md Collab, editor.md Collaboration).
 
 use crate::state::AppState;
 use axum::extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade};
@@ -22,30 +22,30 @@ const SYNC_STEP_1: u8 = 0;
 const SYNC_STEP_2: u8 = 1;
 const SYNC_UPDATE: u8 = 2;
 
-/// Single-frame cap (server.md §Collab). Above this we close 1009.
+/// Single-frame cap (server.md Collab). Above this we close 1009.
 const MAX_MESSAGE_BYTES: usize = 16 * 1024 * 1024;
 
-/// Disk checkpoint interval (editor.md §Collaboration).
+/// Disk checkpoint interval (editor.md Collaboration).
 const CHECKPOINT_INTERVAL: Duration = Duration::from_secs(5);
 
-/// Bounded outbound queue per peer. When a slow peer's queue fills we
-/// drop its sender from the room instead of growing the queue forever;
-/// its outbound task then drains and the socket closes (no close
-/// frame). Yjs CRDT resyncs cleanly on the peer's reconnect.
+/// Bounded outbound queue per peer. A slow peer whose queue fills is
+/// dropped from the room instead of growing the queue forever: its
+/// outbound task drains and the socket closes (no close frame). Yjs
+/// CRDT resyncs cleanly on reconnect.
 const PEER_QUEUE_DEPTH: usize = 256;
 
 struct RoomState {
     doc: yrs::Doc,
     dirty: bool,
-    /// Bumped on every applied SYNC_UPDATE / SYNC_STEP_2. The flush
-    /// task snapshots this before writing and only clears `dirty` if
-    /// no new updates arrived during the write — otherwise mid-flush
-    /// edits would be silently dropped from the next window.
+    /// Bumped on every applied SYNC_UPDATE / SYNC_STEP_2. The flush task
+    /// snapshots this before writing and only clears `dirty` if no new
+    /// updates arrived during the write, else mid-flush edits would be
+    /// silently dropped from the next window.
     updates_applied: u64,
-    /// Disk mtime as of the last checkpoint we wrote (or the initial
-    /// seed). Lets the checkpoint loop detect non-collab writes that
-    /// landed between checkpoints (push / pull / external editor) and
-    /// reset the session per editor.md §Collaboration.
+    /// Disk mtime as of the last checkpoint we wrote (or initial seed).
+    /// Lets the checkpoint loop detect non-collab writes between
+    /// checkpoints (push / pull / external editor) and reset the session
+    /// per editor.md Collaboration.
     last_disk_mtime: i64,
 }
 
@@ -70,17 +70,17 @@ pub async fn ws_handler(
     AxPath(path): AxPath<String>,
     State(app): State<AppState>,
 ) -> Response {
-    // Axum's Path extractor already percent-decoded the capture;
+    // Axum's Path extractor already percent-decoded the capture,
     // decoding again would corrupt names with a literal `%HH`.
     let path = path.trim_start_matches('/').to_string();
     ws.on_upgrade(move |socket| handle_socket(socket, path, app))
 }
 
 async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
-    // If reading the file fails or it isn't valid UTF-8, refuse to seed
-    // an empty doc: the 5-second checkpoint would happily overwrite the
-    // on-disk bytes with empty content. Closing the WS forces the
-    // client to surface the issue rather than silently corrupting data.
+    // If the read fails or isn't valid UTF-8, refuse to seed an empty
+    // doc: the 5 s checkpoint would overwrite the on-disk bytes with
+    // empty content. Closing the WS surfaces the issue instead of
+    // silently corrupting data.
     let seed: Option<(String, i64)> = match app.space().read_file(&path).await {
         Ok((bytes, entry)) => match String::from_utf8(bytes) {
             Ok(s) => Some((s, entry.mtime)),
@@ -98,10 +98,10 @@ async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
         Err(_) => None, // new file: empty doc is fine
     };
 
-    // Atomic "get or seed" so two simultaneous joiners on the first
-    // connection don't race. The seed transaction must NOT mark the
-    // doc dirty — that would trigger a spurious 5s checkpoint rewrite
-    // and break mtime-based optimistic concurrency for the HTTP path.
+    // Atomic "get or seed" so two simultaneous first joiners don't race.
+    // The seed transaction must NOT mark the doc dirty: that would
+    // trigger a spurious 5 s checkpoint rewrite and break mtime-based
+    // optimistic concurrency for the HTTP path.
     let room = match rooms().map.entry(path.clone()) {
         dashmap::mapref::entry::Entry::Occupied(e) => e.get().clone(),
         dashmap::mapref::entry::Entry::Vacant(e) => {
@@ -120,9 +120,7 @@ async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
                 {
                     let ytext = st.doc.get_or_insert_text("content");
                     let mut tx = st.doc.transact_mut();
-                    if ytext.len(&tx) == 0 {
-                        ytext.insert(&mut tx, 0, &s);
-                    }
+                    ytext.insert(&mut tx, 0, &s);
                 }
                 st.last_disk_mtime = mtime;
             }
@@ -134,12 +132,12 @@ async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
 
     let cid = room.next_id.fetch_add(1, Ordering::Relaxed) + 1;
     let (tx, mut rx) = mpsc::channel::<Bytes>(PEER_QUEUE_DEPTH);
-    // Server-initiated SyncStep1 (editor.md §Collaboration: on connect
-    // "both sides do a full sync"). Without it the server only ever
-    // ANSWERS the client's Step1 and never asks for what it is missing
-    // itself — a reconnecting client's offline backlog only travels in
-    // its SyncStep2 reply to this request (applied by the receive
-    // loop's extract_sync_update). Fresh queue, so try_send can't fail.
+    // Server-initiated SyncStep1 (editor.md Collaboration: on connect
+    // "both sides do a full sync"). Without it the server only ANSWERS
+    // the client's Step1 and never asks for what it is missing: a
+    // reconnecting client's offline backlog only travels in its
+    // SyncStep2 reply to this request (applied by the receive loop).
+    // Fresh queue, so try_send can't fail.
     let _ = tx.try_send(Bytes::from(sync_step_1_msg(&room)));
     room.clients.insert(cid, tx);
 
@@ -186,12 +184,12 @@ async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
                 .await;
             break;
         }
-        // Apply SYNC_UPDATE payloads to the server's copy of the doc
-        // so flush_room_to_disk has the latest state. Forward EVERY
-        // non-private sync frame (and all awareness frames) to other
-        // peers — even when yrs can't decode the update, yjs peers
-        // may understand each other and we shouldn't drop their
-        // messages. SYNC_STEP_1 stays private (replied to sender).
+        // Apply SYNC_UPDATE payloads to the server's doc so
+        // flush_room_to_disk has the latest state. Forward EVERY
+        // non-private sync frame and all awareness frames: even when
+        // yrs can't decode an update, yjs peers may understand each
+        // other, so don't drop their messages. SYNC_STEP_1 stays
+        // private (replied to sender).
         if bytes.first().copied() == Some(MSG_SYNC) {
             if let Some(update_payload) = extract_sync_update(&bytes) {
                 if let Ok(update) = Update::decode_v1(&update_payload) {
@@ -204,17 +202,15 @@ async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
                 }
             }
             if matches!(bytes.get(1), Some(&SYNC_STEP_1)) {
-                // Reply with only the diff the peer is missing — parse
+                // Reply with only the diff the peer is missing: parse
                 // their StateVector out of the SYNC_STEP_1 payload.
                 let peer_sv = extract_sync_payload(&bytes, SYNC_STEP_1)
                     .and_then(|p| StateVector::decode_v1(&p).ok())
                     .unwrap_or_default();
                 if let Some(sender) = room.clients.get(&cid) {
-                    if let Some(reply) = sync_step_2_reply(&room, &peer_sv) {
-                        let _ = sender.try_send(Bytes::from(reply));
-                    }
+                    let _ = sender.try_send(Bytes::from(sync_step_2_reply(&room, &peer_sv)));
                 }
-                // SYNC_STEP_1 is a private request; don't fan out.
+                // SYNC_STEP_1 is a private request, don't fan out.
                 continue;
             }
         }
@@ -232,27 +228,26 @@ async fn handle_socket(mut socket: WebSocket, path: String, app: AppState) {
         }
     }
     room.clients.remove(&cid);
-    // Drop the close channel so the outbound task exits cleanly after
-    // flushing any queued frames; no abort().
+    // Drop the close channel so the outbound task drains queued frames
+    // and exits cleanly (no abort()).
     drop(close_tx);
     let _ = outbound.await;
 
-    // Last client out → flush + drop the room.
+    // Last client out: flush + drop the room.
     if room.clients.is_empty() {
         flush_room_to_disk(&room, &path, &app).await;
         rooms().map.remove(&path);
     }
 }
 
-/// Background loop: every 5 seconds, if the doc is dirty, dump it to
-/// disk. Exits when the room is gone (Arc dropped) or empty.
+/// Every 5 s, dump the doc to disk if dirty. Exits when the room is
+/// gone (Arc dropped) or empty.
 fn spawn_checkpoint_loop(room: std::sync::Arc<Room>, path: String, app: AppState) {
     tokio::spawn(async move {
         loop {
             tokio::time::sleep(CHECKPOINT_INTERVAL).await;
-            // If the room has been evicted (last-out flush already ran),
-            // bail; spurious flushes after eviction would just be wasted
-            // writes.
+            // Bail if the room was evicted (last-out flush already ran):
+            // post-eviction flushes are wasted writes.
             let evicted = rooms()
                 .map
                 .get(&path)
@@ -267,14 +262,13 @@ fn spawn_checkpoint_loop(room: std::sync::Arc<Room>, path: String, app: AppState
 }
 
 async fn flush_room_to_disk(room: &Room, path: &str, app: &AppState) {
-    // editor.md §Collaboration: detect a non-collab write that landed
-    // between checkpoints (push / pull / external editor). If the disk
-    // mtime is newer than what we wrote at the previous checkpoint,
-    // drop the room — peers' WS senders are released so their outbound
-    // tasks close the sockets, and the client's reconnect backoff
-    // re-seeds the room from the freshly-written disk content. Yjs
-    // edits made since the last checkpoint are intentionally lost; this
-    // is the documented trade-off for letting HTTP writes win.
+    // editor.md Collaboration: detect a non-collab write landed between
+    // checkpoints (push / pull / external editor). If disk mtime is newer
+    // than our previous checkpoint, drop the room: peers' WS senders are
+    // released so their outbound tasks close the sockets, and reconnect
+    // re-seeds the room from the freshly-written disk content. Yjs edits
+    // since the last checkpoint are intentionally lost - the documented
+    // trade-off for letting HTTP writes win.
     let disk_mtime_now = app
         .space()
         .get_file_meta(path)
@@ -306,13 +300,13 @@ async fn flush_room_to_disk(room: &Room, path: &str, app: &AppState) {
         (ytext.get_string(&tx), st.updates_applied)
     };
     let body = snapshot.into_bytes();
-    match app.space().write_file(path, &body, None).await {
+    match app.space().write_file(path, &body).await {
         Ok(written) => {
-            // Only clear `dirty` if no new update landed during the
-            // write — otherwise mid-flush edits would be silently
-            // dropped from the next window. Always update
-            // last_disk_mtime so the next checkpoint's HTTP-conflict
-            // check reflects our own write.
+            // Clear `dirty` only if no new update landed during the
+            // write, else mid-flush edits would be silently dropped
+            // from the next window. Always update last_disk_mtime so
+            // the next checkpoint's HTTP-conflict check reflects our
+            // own write.
             {
                 let mut st = room.state.lock().unwrap();
                 if st.updates_applied == version {
@@ -320,8 +314,8 @@ async fn flush_room_to_disk(room: &Room, path: &str, app: &AppState) {
                 }
                 st.last_disk_mtime = written.mtime;
             }
-            // history.md §SaveType: every save records a row. Collab
-            // checkpoints are the "save" event when a peer is connected,
+            // history.md SaveType: every save records a row. Collab
+            // checkpoints are the "save" event while a peer is connected,
             // so they must record an `edit` row too (otherwise enabling
             // collab silently drops all snapshots for that page).
             if let Some(h) = &app.history {
@@ -378,7 +372,7 @@ fn read_varuint(buf: &[u8]) -> Option<(usize, usize)> {
     None
 }
 
-/// `[MSG_SYNC, SYNC_STEP_1, varuint(len), state-vector]` — the server's
+/// `[MSG_SYNC, SYNC_STEP_1, varuint(len), state-vector]`: the server's
 /// own sync request, sent to every newly-registered peer.
 fn sync_step_1_msg(room: &Room) -> Vec<u8> {
     let st = room.state.lock().unwrap();
@@ -390,14 +384,14 @@ fn sync_step_1_msg(room: &Room) -> Vec<u8> {
     out
 }
 
-fn sync_step_2_reply(room: &Room, peer_sv: &StateVector) -> Option<Vec<u8>> {
+fn sync_step_2_reply(room: &Room, peer_sv: &StateVector) -> Vec<u8> {
     let st = room.state.lock().unwrap();
     let tx = st.doc.transact();
     let update = tx.encode_state_as_update_v1(peer_sv);
     let mut out = vec![MSG_SYNC, SYNC_STEP_2];
     write_varuint(&mut out, update.len());
     out.extend_from_slice(&update);
-    Some(out)
+    out
 }
 
 fn write_varuint(buf: &mut Vec<u8>, mut n: usize) {

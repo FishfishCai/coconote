@@ -1,9 +1,8 @@
-// Three-way merge UI. Renders the merged stream from diff3, with each
-// conflict chunk shown as (local | base | remote) plus per-chunk
-// resolution buttons. The merged buffer is editable so the user can
-// tweak the auto-merged segments before committing. Pure UI: the sync
-// flow that opened the merge supplies `commitMerged`, which writes the
-// result to both sides with the right save_type (history.md §MergeView).
+// Three-way merge UI over diff3's merged stream: conflict chunks render
+// as (local | base | remote) with per-chunk resolution buttons, and the
+// merged buffer is editable before commit. Pure UI: the opening sync
+// flow's `commitMerged` writes both sides with the right save_type
+// (history.md MergeView).
 
 import type { JSX } from "preact";
 import { useEffect, useMemo, useState } from "preact/hooks";
@@ -19,12 +18,11 @@ export type MergeViewProps = {
   baseText: string;
   localText: string;
   remoteText: string;
-  baseHash: string;        // for the header — last common ancestor hash
-  /** Which flow opened the merge; drives button copy. The writes
+  /** Which flow opened the merge, drives button copy. The writes
    *  themselves live in `commitMerged`. */
-  direction?: "push" | "pull";
+  direction: "push" | "pull";
   /** Writes the merged result to the trigger side, then the other side,
-   *  each tagged with the flow's save_type (history.md §MergeView). */
+   *  each tagged with the flow's save_type (history.md MergeView). */
   commitMerged(merged: Uint8Array): Promise<void>;
   onClose(): void;
 };
@@ -38,8 +36,7 @@ export function MergeView(
     baseText,
     localText,
     remoteText,
-    baseHash,
-    direction = "push",
+    direction,
     commitMerged,
     onClose,
   }: MergeViewProps,
@@ -53,9 +50,9 @@ export function MergeView(
   );
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState("");
-  // True once the user hand-edits the buffer; from then on `edited` is
+  // True once the user hand-edits the buffer: from then on `edited` is
   // authoritative regardless of the <details> open/close state, so
-  // collapsing the panel no longer discards their edits.
+  // collapsing the panel doesn't discard edits.
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -63,7 +60,7 @@ export function MergeView(
   const auto = useMemo(() => assemble(chunks, choices), [chunks, choices]);
 
   // Reseed the textarea from the auto-merge until the user hand-edits it
-  // (history.md §MergeView: the hand-edited buffer wins).
+  // (history.md MergeView: the hand-edited buffer wins).
   useEffect(() => {
     if (!dirty) setEdited(auto);
   }, [auto, dirty]);
@@ -103,9 +100,6 @@ export function MergeView(
       <div className="coconote-merge-body">
         <header className="coconote-merge-head">
           <p>
-            {baseHash && (
-              <>Base: <code>{baseHash.slice(0, 12)}…</code> · </>
-            )}
             {conflictCount} conflict{conflictCount === 1 ? "" : "s"}
             {" "}({choices.filter(
               (c, i) => chunks[i].kind === "conflict" && c !== "auto",
@@ -130,8 +124,8 @@ export function MergeView(
                     <div className="coconote-merge-col-head">local</div>
                     <pre>{c.local || "<empty>"}</pre>
                   </div>
-                  {/* history.md §MergeView: fixed local | base | remote
-                      columns — an empty base still gets its column. */}
+                  {/* history.md MergeView: fixed local | base | remote
+                      columns - an empty base still gets its column. */}
                   <div className="coconote-merge-col">
                     <div className="coconote-merge-col-head">base</div>
                     <pre>{c.base || "<empty>"}</pre>
@@ -212,12 +206,10 @@ export function MergeView(
   );
 }
 
-/** Build the merged text from chunks + per-chunk choices.
- *  - `auto`  → emit git-style conflict markers so the textarea shows
- *              something even when the user opens edit mode without
- *              resolving each chunk.
- *  - `base`  → revert to base text (the spec's "reset" action).
- *  - `local` / `remote` → take that side. */
+/** Merged text from chunks + per-chunk choices. `auto` emits git-style
+ *  conflict markers (so edit mode shows something before each chunk is
+ *  resolved), `base` reverts to base text (the spec's "reset" action),
+ *  `local` / `remote` take that side. */
 function assemble(chunks: Chunk[], choices: ChunkChoice[]): string {
   const out: string[] = [];
   for (let i = 0; i < chunks.length; i++) {

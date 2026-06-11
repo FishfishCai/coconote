@@ -13,7 +13,7 @@ const eagerLanguages: Record<string, Language> = {
   yaml: yamlStreamLanguage,
 };
 
-// Each entry is a lazy loader; import() is cached by the JS runtime so
+// Each entry is a lazy loader. import() is cached by the JS runtime so
 // aliases sharing a module (c/cpp/java from clike) don't re-fetch.
 // Specifiers stay literal so esbuild can statically split the bundle.
 export const lazyLanguages: Record<string, () => Promise<Language>> = {

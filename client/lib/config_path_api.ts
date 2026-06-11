@@ -1,12 +1,9 @@
-// Setting → Config file helpers. Same surface whether we're inside the
-// Electron desktop shell (IPC + Electron-initiated relaunch) or a
-// browser pointed at a headless server (HTTP + server self-exec).
-// setting.md §Config file.
-//
-// All the config endpoints live under /.config: GET returns `configDir`
-// alongside the yaml content; PATCH `{configDir}` writes the pointer
-// and triggers a self-restart. Electron mirrors the same actions via
-// IPC because it owns the sidecar lifecycle.
+// Setting -> Config file helpers (setting.md Config file). Same surface
+// inside the Electron desktop shell (IPC + Electron-initiated relaunch)
+// or a browser on a headless server (HTTP + server self-exec).
+// /.config: GET returns `configDir` alongside the yaml content, PATCH
+// `{configDir}` writes the pointer and triggers a self-restart. Electron
+// mirrors the same actions via IPC because it owns the sidecar lifecycle.
 
 import { getConfig, patchConfig } from "./config_api.ts";
 
@@ -32,14 +29,11 @@ export async function getConfigPath(): Promise<string> {
 
 /**
  * Apply a new config directory.
- *
- * Electron: IPC command writes the pointer and calls `app.relaunch()`
- * — the next thing the user sees is a fresh window.
- *
- * Headless / browser: PATCH `/.config { configDir }`; server writes the
- * pointer and re-execs itself. The fetch usually completes before the
- * server drops, but a connection-reset right after is normal and not
- * an error — callers should treat both outcomes as success.
+ * Electron: IPC writes the pointer and calls `app.relaunch()` - the
+ * user next sees a fresh window.
+ * Headless / browser: PATCH `/.config { configDir }` - the server writes
+ * the pointer and re-execs itself. A connection-reset right after the
+ * fetch is normal, not an error - callers treat both outcomes as success.
  */
 export async function applyConfigPath(dir: string): Promise<void> {
   const s = shell();

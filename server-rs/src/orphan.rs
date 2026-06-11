@@ -1,12 +1,7 @@
-// Server-startup orphan scan (file.md "Orphan files"):
-//
-// > At server startup, root folders are scanned for orphan
-// > `.<name>.json` and `.<name>.assets/` entries; orphans are auto-deleted.
-//
-// `<name>` is the basename WITHOUT extension. A sidecar `.foo.json`
-// is paired with `foo.pdf`; an assets dir `.foo.assets/` is paired
-// with `foo.md`. Either is orphan when the matching parent file
-// doesn't exist. Idempotent; safe to run every boot.
+// Server-startup orphan scan (file.md "Orphan files"): roots are scanned
+// for orphan `.<name>.json` / `.<name>.assets/` entries, auto-deleted.
+// `<name>` = basename WITHOUT extension (`.foo.json` pairs with foo.pdf,
+// `.foo.assets/` with foo.md). Orphan = parent file missing. Idempotent.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -32,7 +27,7 @@ fn walk(dir: &Path, json_removed: &mut u64, assets_removed: &mut u64) {
         }
     };
     // Two passes: collect first so companion lookups can match the
-    // extension case-insensitively (listings accept `Foo.MD`; a plain
+    // extension case-insensitively (listings accept `Foo.MD`, a plain
     // exists() probe on `foo.md` would mis-judge its assets dir as
     // orphan on a case-sensitive FS).
     let mut dirs: Vec<(PathBuf, String)> = Vec::new();
@@ -62,8 +57,7 @@ fn walk(dir: &Path, json_removed: &mut u64, assets_removed: &mut u64) {
     let mut subdirs: Vec<PathBuf> = Vec::new();
     for (path, name) in &dirs {
         if let Some(stem) = strip_dot_suffix(name, ".assets") {
-            // `.foo.assets/` → pair file is `foo.md`. Anything else
-            // is treated as orphan.
+            // `.foo.assets/` pairs with `foo.md`, anything else is orphan.
             if !has_companion(&stem, ".md") {
                 tracing::info!("orphan assets removed: {}", path.display());
                 if fs::remove_dir_all(path).is_ok() {
@@ -72,15 +66,15 @@ fn walk(dir: &Path, json_removed: &mut u64, assets_removed: &mut u64) {
                 continue;
             }
         }
-        // Recurse — but never into a `.dot.assets/` we just kept;
-        // it's a leaf directory of images and has no sub-files we own.
+        // Recurse, but never into dot dirs (a kept `.assets/` is a leaf
+        // of images with no sub-files we own).
         if !name.starts_with('.') {
             subdirs.push(path.clone());
         }
     }
     for (path, name) in &files {
         if let Some(stem) = strip_dot_suffix(name, ".json") {
-            // `.foo.json` → pair file is `foo.pdf`.
+            // `.foo.json` pairs with `foo.pdf`.
             if !has_companion(&stem, ".pdf") {
                 tracing::info!("orphan sidecar removed: {}", path.display());
                 if fs::remove_file(path).is_ok() {
@@ -94,8 +88,8 @@ fn walk(dir: &Path, json_removed: &mut u64, assets_removed: &mut u64) {
     }
 }
 
-/// `.foo<suffix>` → `Some("foo")`; None for other shapes. `<name>` carries
-/// no extension — the pair file appends its own (`.md` for `.assets`,
+/// `.foo<suffix>` -> Some("foo"), None for other shapes. The stem carries
+/// no extension: the pair file appends its own (`.md` for `.assets`,
 /// `.pdf` for `.json`).
 fn strip_dot_suffix(name: &str, suffix: &str) -> Option<String> {
     let inner = name.strip_prefix('.')?;

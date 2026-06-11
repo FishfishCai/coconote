@@ -18,7 +18,7 @@ export async function handleImagePaste(
   if (!fullPath || !fullPath.endsWith(".md")) return;
   const ext = pickExt(file.type, file.name);
   // Date-based stems collide when two pastes land in the same
-  // millisecond or the same file is dropped twice; append 6 random
+  // millisecond or the same file is dropped twice - append 6 random
   // chars for within-vault uniqueness.
   const rnd = Math.floor(Math.random() * 0x7fffffff).toString(36);
   const assetStem = `pasted-${Date.now().toString(36)}-${rnd}`;

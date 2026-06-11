@@ -1,9 +1,8 @@
 // Catch-all fallback: serve the embedded client bundle for any GET that
-// doesn't match the spec API. The client is a single-page app — any
-// path resolves to index.html and the client routes on the path itself.
+// doesn't match the spec API. The client is a single-page app: any path
+// resolves to index.html and the client routes on the path itself.
 
 use crate::state::AppState;
-use crate::types::SpacePrimitives;
 use crate::util::decode_path;
 use axum::body::Body;
 use axum::extract::{Request, State};
@@ -13,9 +12,9 @@ use axum::response::{IntoResponse, Response};
 const INDEX_HTML_PATH: &str = ".client/index.html";
 
 pub async fn static_or_index(State(app): State<AppState>, req: Request) -> Response {
-    // The fallback is for GETs only (server.md: "Any GET that doesn't
-    // match ... falls back"); an unmatched POST/DELETE must surface an
-    // error, not a 200 index.html.
+    // GETs only (server.md: "Any GET that doesn't match ... falls
+    // back"): an unmatched POST/DELETE must surface an error, not a
+    // 200 index.html.
     if req.method() != Method::GET && req.method() != Method::HEAD {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     }
@@ -33,13 +32,13 @@ pub async fn static_or_index(State(app): State<AppState>, req: Request) -> Respo
         return r;
     }
 
-    // 2. Otherwise serve index.html — client-side routing takes over.
+    // 2. Otherwise serve index.html: client-side routing takes over.
     let (idx, _) = match app.client_bundle.read_file(INDEX_HTML_PATH).await {
         Ok(x) => x,
         Err(_) => {
             return (
                 StatusCode::NOT_FOUND,
-                "client bundle not embedded — run `npm run build` and rebuild",
+                "client bundle not embedded - run `npm run build` and rebuild",
             )
                 .into_response();
         }

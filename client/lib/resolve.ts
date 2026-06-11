@@ -8,14 +8,8 @@ export function isLocalURL(url: string): boolean {
   );
 }
 
-const builtinPrefixes = ["tag:", "search:"];
-
-export function isBuiltinPath(path: Path): boolean {
-  return builtinPrefixes.some((prefix) => path.startsWith(prefix));
-}
-
 /**
- * Won't resolve above the base of the absolute path; excess `..` is
+ * Won't resolve above the base of the absolute path - excess `..` is
  * dropped. Only leading `..` is processed.
  */
 export function resolveMarkdownLink(
@@ -33,7 +27,7 @@ export function resolveMarkdownLink(
     const splitAbsolute = absolute.split("/").slice(0, -1);
     const splitRelative = relative.split("/");
 
-    while (splitRelative && splitRelative[0] === "..") {
+    while (splitRelative[0] === "..") {
       splitAbsolute.pop();
       splitRelative.shift();
     }

@@ -1,8 +1,7 @@
 @use "shared";
 
-// PDF reader styles. Surfaces are built from the shared theme tokens
-// (--background-*, --text-*, --interactive-accent) so the viewer follows
-// dark mode and the accent setting like the markdown editor does; only
+// PDF reader styles. Surfaces use the shared theme tokens, so the viewer
+// follows dark mode and the accent setting like the markdown editor. Only
 // canvas inversion + highlight compositing need explicit dark overrides.
 
 .coconote-pdf-viewer {
@@ -13,16 +12,15 @@
   color: var(--text-normal);
   font-family: var(--font-interface, system-ui, sans-serif);
   height: 100%;
-  // #coconote-main is `flex-direction: row`; without flex:1 the viewer
-  // shrinks to its widest child (= page = 765 px) and sits at the
-  // left edge instead of filling the pane.
+  // #coconote-main is `flex-direction: row`. Without flex:1 the viewer
+  // shrinks to its widest child (the page) and sits at the left edge
+  // instead of filling the pane.
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-// Errors surface as a small banner at the top of the scroll pane.
 .coconote-pdf-error-banner {
   background: color-mix(in srgb, var(--color-red) 10%, var(--background-primary));
   color: var(--color-red);
@@ -50,9 +48,9 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   border-radius: 4px;
   overflow: hidden;
-  // Parent is flex-direction:column; without flex-shrink:0 the 22
-  // pages get crushed to ~9 px each to fit the viewport. Inline
-  // height (990px) is meant to win — set explicit shrink to honor it.
+  // Parent is flex-direction:column. Without flex-shrink:0 the pages get
+  // crushed to a few px each to fit the viewport - the inline height
+  // must win.
   flex-shrink: 0;
   &.flash {
     animation: coconote-pdf-flash 1.2s ease-out;
@@ -70,25 +68,22 @@
   color: transparent;
   user-select: text;
   pointer-events: auto;
-  // Contain the text-run z-index below in our own stacking context, so
-  // the runs sit above the endOfContent backstop WITHOUT leaking above
-  // the highlight overlay (which is a later sibling at z-index auto) —
-  // otherwise a run would intercept clicks meant for a highlight.
+  // Contain the text-run z-index below in our own stacking context: runs
+  // sit above the endOfContent backstop WITHOUT leaking above the
+  // highlight overlay (a later sibling at z-index auto) - otherwise a
+  // run would intercept clicks meant for a highlight.
   isolation: isolate;
-  // pdf.js positions each text run absolutely via inline left/top/transform;
-  // we just supply the base. z-index keeps runs above the endOfContent
-  // selection backstop below.
+  // pdf.js positions each run absolutely via inline left/top/transform,
+  // we just supply the base. z-index keeps runs above the backstop.
   > :not(.coconote-pdf-end-of-content) {
     position: absolute;
     white-space: pre;
     transform-origin: 0 0;
     z-index: 1;
   }
-  // Selection backstop ported from pdf.js TextLayerBuilder: a full-layer
-  // element parked just after the current selection anchor so dragging
-  // into the page's empty margin stops the selection at the visible text
-  // instead of greedily extending to the end of the page. See
-  // pdf_text_selection.ts.
+  // Selection backstop (pdf.js TextLayerBuilder port): parked just after
+  // the selection anchor so a drag into the empty margin stops at the
+  // visible text instead of the page end. See pdf_text_selection.ts.
   .coconote-pdf-end-of-content {
     display: block;
     position: absolute;
@@ -110,7 +105,7 @@
 }
 
 // Paint-only: pointer-events stays none (inherited from the overlay) so
-// text UNDER a highlight remains selectable; right-click menu and the
+// text UNDER a highlight remains selectable. Right-click menu and the
 // comment hover hit-test geometrically in pdf_viewer.tsx.
 .coconote-pdf-highlight {
   position: absolute;
@@ -171,9 +166,8 @@
   padding: 0.3rem;
   min-width: 180px;
 
-  // Direct children only — keeps the rule off the color swatches
-  // nested inside .coconote-pdf-context-colors, which need their
-  // per-color background to survive.
+  // Direct children only - keeps the rule off the nested color swatches,
+  // whose per-color background must survive.
   > button {
     @include shared.context-menu-item;
     padding: 0.4rem 0.6rem;
@@ -189,8 +183,8 @@
   }
 }
 
-// Comment / anchor modal bodies. The dialog box, backdrop and header title
-// come from the unified Modal base (modals.scss); this styles the contents.
+// Comment / anchor modal bodies. Box / backdrop / header come from the
+// unified Modal base (modals.scss) - this styles only the contents.
 .coconote-pdf-comment {
   padding: 1.1rem 1.2rem 0.9rem;
   display: flex;
@@ -253,18 +247,15 @@
   }
 }
 
-// Dark reading mode — follows the Settings "dark mode" toggle
-// (editor_ui.tsx sets data-theme on <html>). The themed surfaces above
-// flip on their own; here we invert the rendered PDF image so the page
-// itself goes dark, with hue-rotate keeping coloured figures roughly
-// true. The text layer + highlight overlay live outside the canvas, so
-// their colours are untouched by the filter.
+// Dark reading mode (editor_ui.tsx sets data-theme on <html>). Themed
+// surfaces flip on their own. The filter inverts the rendered page,
+// hue-rotate keeps coloured figures roughly true. Text layer + highlight
+// overlay live outside the canvas, untouched by the filter.
 [data-theme="dark"] .coconote-pdf-viewer {
   .coconote-pdf-page { background: #1b1b1b; }
   .coconote-pdf-page canvas { filter: invert(1) hue-rotate(180deg); }
-  // Over the now-dark page, `multiply` would crush highlights to black;
-  // `screen` keeps them as visible coloured tints (mirrors zotero's
-  // light=multiply / dark=lighten compositing).
+  // Over the now-dark page `multiply` would crush highlights to black.
+  // `screen` keeps them visible tints (zotero: light=multiply, dark=lighten).
   .coconote-pdf-highlight { mix-blend-mode: screen; }
   .coconote-pdf-text-layer ::selection { background: rgba(120, 170, 255, 0.4); }
 }

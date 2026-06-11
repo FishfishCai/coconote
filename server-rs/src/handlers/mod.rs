@@ -10,7 +10,7 @@ use crate::error::Error;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-/// Map crate::Error → HTTP. Spec server.md "Errors".
+/// Map crate::Error -> HTTP (server.md "Errors").
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         match self {

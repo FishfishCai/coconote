@@ -1,10 +1,8 @@
-// CodeMirror Yjs binding. Anonymous awareness — every connected client
-// gets a colour for its cursor; no user identity. The server (server-rs
-// handlers/collab.rs) is a full sync peer, not a relay: it keeps a yrs
-// Doc per room, initiates SyncStep1 to each new peer (pulling their
-// offline backlog), answers our SyncStep1 with SyncStep2, fans updates
-// out, and checkpoints the doc to disk every 5 s. Lazily imported by
-// the editor when collab is on.
+// CodeMirror Yjs binding, lazily imported when collab is on. Awareness is
+// anonymous (cursor colour only). The server (server-rs handlers/collab.rs)
+// is a full sync peer, not a relay: one yrs Doc per room, it initiates
+// SyncStep1 to each new peer (pulling their offline backlog), answers ours
+// with SyncStep2, fans updates out, and checkpoints to disk every 5s.
 
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import * as Y from "yjs";
@@ -20,7 +18,7 @@ import { getAuthToken } from "../lib/authed_fetch.ts";
 const MESSAGE_SYNC = 0;
 const MESSAGE_AWARENESS = 1;
 
-// editor.md §Collaboration — UI dot encodes 4 phases:
+// editor.md Collaboration - UI dot encodes 4 phases:
 // connecting (first try) | connected | reconnecting (after a drop) | disposed.
 export type CollabStatus =
   | "connecting"
@@ -33,21 +31,18 @@ export type CollabHandle = {
   awareness: Awareness;
   extension: Extension;
   disconnect: () => void;
-  /** Live connection state. */
   status: () => CollabStatus;
-  /** True once the initial SyncStep2 arrived — i.e. the doc content is
+  /** True once the initial SyncStep2 arrived - doc content is then
    *  authoritative even if empty. */
   synced: () => boolean;
   /** Subscribe to status flips. Returns an unsubscribe fn. */
   onStatusChange: (cb: (s: CollabStatus) => void) => () => void;
 };
 
-// Cursor color is generated once per browser session so the same user
-// keeps the same colour across page switches (vs randomising per
-// connectCollab, which made one peer look like many). Falls back to
-// a module-scoped cache when sessionStorage is unavailable (Safari
-// private mode, embedded webviews) so the color is stable per page
-// load at least.
+// Cursor colour is per browser session so a user keeps it across page
+// switches (randomising per connectCollab made one peer look like many).
+// When sessionStorage is unavailable (Safari private mode, embedded
+// webviews) a module-scoped cache keeps it stable per page load.
 let inMemoryCursorColor: string | null = null;
 function sessionCursorColor(): string {
   if (inMemoryCursorColor) return inMemoryCursorColor;
@@ -57,7 +52,7 @@ function sessionCursorColor(): string {
       inMemoryCursorColor = cached;
       return cached;
     }
-  } catch {/* sessionStorage unavailable — fall through */}
+  } catch {/* sessionStorage unavailable - fall through */}
   const hue = Math.floor(Math.random() * 360);
   const c = `hsl(${hue} 80% 45%)`;
   inMemoryCursorColor = c;
@@ -69,7 +64,7 @@ function sessionCursorColor(): string {
 
 /**
  * Connect to a collab session for `path`. Attach `extension` to your
- * EditorState; call `disconnect()` on unmount.
+ * EditorState, call `disconnect()` on unmount.
  */
 export function connectCollab(path: string): CollabHandle {
   const doc = new Y.Doc();
@@ -106,9 +101,9 @@ export function connectCollab(path: string): CollabHandle {
     status = s;
     for (const cb of statusSubscribers) cb(s);
   };
-  // editor.md §Collaboration: backoff 1, 2, 4, 8, 16, capped at 32 s,
+  // editor.md Collaboration: backoff 1, 2, 4, 8, 16, capped at 32s,
   // with jitter. reconnectAttempt is already incremented when this runs,
-  // so attempt 1 must map to 1 s (not 2 s).
+  // so attempt 1 must map to 1s (not 2s).
   const reconnectDelayMs = () => {
     const exp = Math.min(Math.max(reconnectAttempt - 1, 0), 5);
     return 1000 * 2 ** exp + Math.floor(Math.random() * 500);
@@ -117,10 +112,9 @@ export function connectCollab(path: string): CollabHandle {
   const open = () => {
     if (disposed) return;
     setStatus(everConnected ? "reconnecting" : "connecting");
-    // Capture the socket per-connection so a close/error event from a
-    // socket that's already been replaced (e.g. by an immediate
-    // reconnect) is ignored — otherwise it would schedule a parallel
-    // reconnect onto the live socket.
+    // Capture the socket per-connection so close/error from an already-
+    // replaced socket (e.g. immediate reconnect) is ignored - otherwise
+    // it would schedule a parallel reconnect onto the live socket.
     const sock = new WebSocket(wsUrl);
     ws = sock;
     sock.binaryType = "arraybuffer";
@@ -162,9 +156,9 @@ export function connectCollab(path: string): CollabHandle {
           "remote",
         );
         // The server's SyncStep2 answers our SyncStep1: initial content
-        // delivered (possibly empty — that's authoritative too).
+        // delivered (possibly empty - that's authoritative too).
         if (messageType === syncProtocol.messageYjsSyncStep2) synced = true;
-        // Reply only when the protocol wrote something — receiving a
+        // Reply only when the protocol wrote something - receiving a
         // Step2 writes nothing, and sending the bare 1-byte MESSAGE_SYNC
         // header would crash peers' decoders when the hub fans it out.
         if (encoding.length(replyEnc) > 1) {
@@ -176,10 +170,10 @@ export function connectCollab(path: string): CollabHandle {
       }
     });
     sock.addEventListener("close", () => {
-      if (ws !== sock) return; // superseded by a newer socket; ignore
+      if (ws !== sock) return; // superseded by a newer socket - ignore
       ws = null;
       if (disposed) return;
-      // Stay on "connecting" until the first success — spec keeps
+      // Stay on "connecting" until the first success - spec keeps
       // "reconnecting" for AFTER an established session drops.
       setStatus(everConnected ? "reconnecting" : "connecting");
       reconnectAttempt += 1;
@@ -191,7 +185,7 @@ export function connectCollab(path: string): CollabHandle {
   };
   open();
 
-  // Local doc updates → broadcast.
+  // Local doc updates -> broadcast.
   const onDocUpdate = (update: Uint8Array, origin: unknown) => {
     if (origin === "remote") return;
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -222,7 +216,7 @@ export function connectCollab(path: string): CollabHandle {
   };
   awareness.on("update", onAwarenessChange);
 
-  // editor.md: undo/redo must be Yjs-aware under collab — bind the
+  // editor.md: undo/redo must be Yjs-aware under collab - bind the
   // Y.UndoManager keymap above CodeMirror's history (which the attach
   // path disables for the session) so Cmd+Z can't revert peers' edits.
   const extension: Extension = [
@@ -230,14 +224,14 @@ export function connectCollab(path: string): CollabHandle {
     Prec.high(keymap.of(yUndoManagerKeymap)),
   ];
 
-  // editor.md §Collaboration: tab visible / network online / window
-  // focus → cancel pending backoff and try immediately. Resets the
+  // editor.md Collaboration: tab visible / network online / window
+  // focus -> cancel pending backoff and try immediately. Resets the
   // attempt counter so wake-on-broken-network doesn't wait the full
   // 32s capped delay.
   const triggerImmediateReconnect = () => {
     if (disposed) return;
     if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
-      // Already connected or handshaking — nothing to retry.
+      // Already connected or handshaking - nothing to retry.
       return;
     }
     if (reconnectTimer !== null) {
@@ -245,7 +239,7 @@ export function connectCollab(path: string): CollabHandle {
       reconnectTimer = null;
     }
     reconnectAttempt = 0;
-    // open() installs a fresh socket; the old one's close event is
+    // open() installs a fresh socket - the old one's close event is
     // ignored by the per-socket guard in open().
     open();
   };

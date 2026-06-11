@@ -1,10 +1,10 @@
-// setting.md §Shortcut: rebindable navigation/mode/panel actions. The keydown handler
-// re-reads on every event so rebinds take effect immediately. A
-// conflict (duplicate combo or unparseable input) is highlighted red
-// AND blocks persistence — the user must rebind the offending pair
-// before the change lands in localStorage.
+// setting.md Shortcut: rebindable navigation/mode/panel actions. The
+// keydown handler re-reads per event so rebinds apply immediately. A
+// conflict (duplicate combo or unparseable input) highlights red AND
+// blocks persistence until the user rebinds the offending pair.
 
 import { useEffect, useMemo, useState } from "preact/hooks";
+import type { ClientContext as Client } from "../../core/context.ts";
 import {
   DEFAULT_SHORTCUTS,
   groupBindingsByCombo,
@@ -28,30 +28,29 @@ function comboFromKeyboardEvent(ev: KeyboardEvent): string | null {
   return parts.join("+");
 }
 
-export function ShortcutsSection() {
+export function ShortcutsSection({ client }: { client: Client }) {
   const [bindings, setBindings] = useState<Record<ShortcutName, string>>(
     () => getAllShortcuts(),
   );
   const [recording, setRecording] = useState<ShortcutName | null>(null);
 
-  // Persist only when the binding set is well-formed AND conflict-free.
-  // A conflict means two actions share the same combo; saving anyway
-  // would silently override one of them — block until the user fixes
-  // the clash.
+  // Persist only when the binding set is well-formed AND conflict-free:
+  // two actions sharing a combo would silently override one of them,
+  // so block until the user fixes the clash.
   useEffect(() => {
     const normalized: Record<ShortcutName, string> = { ...bindings };
     for (const n of SHORTCUT_NAMES) {
       const norm = normalizeCombo(normalized[n]);
-      if (!norm) return; // malformed → don't persist
+      if (!norm) return; // malformed -> don't persist
       normalized[n] = norm;
     }
     const grouped = groupBindingsByCombo(normalized);
     for (const list of grouped.values()) {
-      if (list.length > 1) return; // duplicate combo → don't persist
+      if (list.length > 1) return; // duplicate combo -> don't persist
     }
-    // Persist through setUiOption — the ONE userPrefs writer — so a
-    // later settings change can't clobber the rebinds with a stale copy.
-    globalThis.client.setUiOption("shortcuts", normalized);
+    // Persist through setUiOption (the ONE userPrefs writer) so a later
+    // settings change can't clobber the rebinds with a stale copy.
+    client.setUiOption("shortcuts", normalized);
   }, [bindings]);
 
   useEffect(() => {

@@ -1,4 +1,4 @@
-// Content browser shell — owns the view selector (Path / Tag / Graph),
+// Content browser shell - owns the view selector (Path / Tag / Graph),
 // the shared filter input, and the Settings button. Each view lives in
 // cb_<name>_view.tsx and is switched in-place.
 
@@ -26,20 +26,20 @@ export function loadView(): ViewMode {
   try {
     const raw = localStorage.getItem(VIEW_KEY);
     if (raw === "path" || raw === "tag" || raw === "graph") return raw;
-  } catch { /* private browsing — fall through to default */ }
+  } catch { /* private browsing */ }
   return "path";
 }
 
 // `view` is controlled by MainUI so URL changes (back/forward,
-// Cmd+Shift+C, a tag chip) switch the view even while already mounted —
-// MainUI owns the state + localStorage persistence (setContentBrowserView).
-type Props = { client: Client; view: ViewMode; initialFilter?: string };
+// Cmd+Shift+C, a tag chip) switch the view even while mounted. MainUI
+// owns the state + localStorage persistence (setContentBrowserView).
+type Props = { client: Client; view: ViewMode; initialFilter: string };
 
-export function ContentBrowser({ client, view, initialFilter = "" }: Props) {
+export function ContentBrowser({ client, view, initialFilter }: Props) {
   const [filter, setFilter] = useState(initialFilter);
 
-  // Tag chips set initialFilter; sync prop → state so a second chip
-  // click takes effect even while the browser is already mounted.
+  // Tag chips set initialFilter. Sync prop -> state so a second chip
+  // click works while the browser is already mounted.
   useEffect(() => setFilter(initialFilter), [initialFilter]);
 
   const allPages = client.ui.viewState.allPages;
@@ -57,8 +57,8 @@ export function ContentBrowser({ client, view, initialFilter = "" }: Props) {
               role="tab"
               aria-selected={view === v}
               onClick={() => {
-                // Reflect in the URL; navigator routes back through
-                // setContentBrowserView, which updates the view (content.md).
+                // Reflect in the URL, the navigator routes back through
+                // setContentBrowserView which updates the view (content.md).
                 client.navigateRoute({ kind: "content", view: v });
               }}
             >

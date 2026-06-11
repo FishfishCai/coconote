@@ -5,7 +5,7 @@ import * as sass from "sass";
 
 import * as esbuild from "esbuild";
 
-// WebKit can't parse the lookbehind regex from a bundled dependency — swap
+// WebKit can't parse the lookbehind regex from a bundled dependency: swap
 // it for a no-op so Safari users don't hit a syntax error at startup.
 function patchBundledJS(code: string): string {
   return code.replaceAll("/(?<=\\n)/", "/()/");
@@ -60,7 +60,7 @@ export async function buildClient(): Promise<void> {
     absWorkingDir: process.cwd(),
     bundle: true,
     treeShaking: true,
-    // Source maps add ~7MB to the embedded bundle; flip locally to debug.
+    // Source maps add ~7MB to the embedded bundle. Flip locally to debug.
     sourcemap: false,
     minify: true,
     format: "esm",
@@ -80,14 +80,12 @@ async function copyAssets(dist: string) {
   await mkdir(dist, { recursive: true });
   await cp("client/assets/fonts", dist, { recursive: true });
   await cp("client/assets/html", dist, { recursive: true });
-  // PDF.js worker — shipped alongside the client bundle so PdfViewer
-  // can set GlobalWorkerOptions.workerSrc to `.client/pdf.worker.min.mjs`.
-  // pdf.js v6 calls `Uint8Array.prototype.toHex()` (TC39 Stage-3
-  // proposal-arraybuffer-base64) inside the worker. Electron 36 / older
-  // Chromium versions don't ship it yet → "a.toHex is not a function".
-  // The main-thread polyfill in client/core/uint8_base64_polyfill.ts
-  // doesn't reach the worker (separate global scope), so we prepend the
-  // same shim to the worker file at copy time.
+  // PDF.js worker, shipped alongside the client bundle so PdfViewer can set
+  // GlobalWorkerOptions.workerSrc to `.client/pdf.worker.min.mjs`. pdf.js v6
+  // calls Uint8Array.prototype.toHex() (TC39 proposal-arraybuffer-base64) in
+  // the worker, and Electron 36 / older Chromium lack it ("a.toHex is not a
+  // function"). The main-thread client/core/uint8_base64_polyfill.ts doesn't
+  // reach the worker's separate global scope, so prepend the shim here.
   const workerSrc = await readFile(
     "node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
     "utf-8",
@@ -97,14 +95,13 @@ async function copyAssets(dist: string) {
     PDF_WORKER_POLYFILL + workerSrc,
     "utf-8",
   );
-  // Side-band resources pdf.js v6 relies on for full-fidelity rendering
-  // (the official viewer.html ships all of them; we used to ship just
-  // the worker, which is why LaTeX PDFs rendered with missing ligatures
-  // + substituted math glyphs). Matches what zotero/reader bundles:
-  //   - cmaps/         CID-keyed font glyph→Unicode tables
+  // Side-band resources pdf.js v6 needs for full-fidelity rendering (the
+  // official viewer.html and zotero/reader ship all of them). Shipping just
+  // the worker is why LaTeX PDFs once lost ligatures + math glyphs.
+  //   - cmaps/          CID-keyed font glyph->Unicode tables
   //   - standard_fonts/ 14 built-in PDF font .pfb fallback data
-  //   - iccs/          embedded ICC color profile (sRGB compat)
-  //   - wasm/          JBIG2/JPEG2000/QCMS WebAssembly decoders
+  //   - iccs/           embedded ICC color profile (sRGB compat)
+  //   - wasm/           JBIG2/JPEG2000/QCMS WebAssembly decoders
   // getDocument() is wired with matching URLs in pdf/pdf_viewer.tsx.
   for (const sub of ["cmaps", "standard_fonts", "iccs", "wasm"]) {
     await cp(`node_modules/pdfjs-dist/${sub}`, path.join(dist, sub), {
@@ -129,7 +126,7 @@ async function copyAssets(dist: string) {
       await cp(path.join(katexFontDir, f), path.join(`${dist}/fonts`, f));
     }
   }
-  // Anchor on `}` not `;` — minified CSS omits the final `;` before `}`,
+  // Anchor on `}` not `;`: minified CSS omits the final `;` before `}`,
   // so `[^;]*;` would walk past the @font-face brace and eat the next rule.
   const slimmedKatexCss = katexCss.replace(
     /src:url\((fonts\/[^)]+\.woff2)\) format\(['"]woff2['"]\)[^}]*\}/g,
@@ -141,7 +138,6 @@ async function copyAssets(dist: string) {
     "utf-8",
   );
 
-  // HACK: Patch the JS by removing an invalid regex
   let bundleJs = await readFile(`${dist}/client.js`, "utf-8");
   bundleJs = patchBundledJS(bundleJs);
   await writeFile(`${dist}/client.js`, bundleJs, "utf-8");

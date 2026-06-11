@@ -38,7 +38,7 @@ export function hideMarksPlugin() {
           return;
         }
         // Only the first `>` on a line is a quote marker (rendered as the
-        // left border via `.coconote-line-blockquote`); any subsequent `>` on
+        // left border via `.coconote-line-blockquote`). Any subsequent `>` on
         // the same line is plain text. Reveal markers when the cursor is
         // anywhere inside the OUTERMOST enclosing Blockquote so sibling
         // lines (and sibling nesting levels) don't re-flow while editing.

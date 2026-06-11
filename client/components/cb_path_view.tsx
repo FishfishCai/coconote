@@ -1,9 +1,7 @@
-// Path view: the vault as a Finder-style folder tree, keyed on the
-// page's on-disk path. Right-click a page row → New / Rename / Remove
-// / Delete (analogous to a regular file manager).
-//
-// Tree shape: first path segment = a root (`main`, `@label/…`); each
-// subsequent `/` opens another folder. Leaves are pages.
+// Path view: the vault as a Finder-style folder tree keyed on the
+// page's on-disk path. First segment = a root (`main`, `@label/...`),
+// each further `/` opens a folder, leaves are pages. Right-click a
+// page row -> New / Rename / Remove / Delete (file-manager style).
 
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
@@ -16,23 +14,15 @@ import {
   PushModal,
   type PushTargetChoice,
 } from "./sync_modals.tsx";
-import { authedFetch } from "../lib/authed_fetch.ts";
-import { includePath } from "../lib/include.ts";
+import { fetchExcludedPaths, includePath } from "../lib/include.ts";
+import { nameToFsPath } from "../lib/path_url.ts";
+import type { SyncListings } from "../lib/sync_core.ts";
 import { toPath } from "../lib/ref.ts";
 import { pageMatchesQuery as pageMatches } from "../lib/page_match.ts";
 import { stringSetCodec, useLocalStorageState } from "../lib/dom_hooks.ts";
 
 const DISPLAY_MODE_KEY = "coconote.contentBrowserDisplayMode";
 type DisplayMode = "included" | "all";
-
-type ServerListEntry = {
-  type: "file" | "dir";
-  path: string;
-  page_id?: string;
-  title?: string;
-  tag?: string[];
-  coconote?: boolean;
-};
 
 const OPEN_KEY = "coconote.contentBrowserOpenPaths";
 
@@ -53,7 +43,7 @@ type PathNode = {
 
 function buildPathTree(
   pages: PageMeta[],
-  excludedNames: ReadonlySet<string> = new Set(),
+  excludedNames: ReadonlySet<string>,
 ): PathNode {
   const root: PathNode = {
     path: "",
@@ -68,10 +58,9 @@ function buildPathTree(
     const remote = p.origin?.kind === "remote";
     let cur = root;
     if (remote) cur.isLocal = false;
-    // content.md §Path view: top-level folders are the roots — local
-    // roots show their yaml name, url-mounted roots display "root<url>".
-    // Collapse the synthetic `@label` level into the remote root folder
-    // so the tree's top level is exactly the roots.
+    // content.md Path view: top level = the roots (local: yaml name,
+    // url-mounted: "root<url>"). Collapse the synthetic `@label` level
+    // into the remote root folder so the top level is exactly the roots.
     const folderParts = parts.slice(0, -1);
     const segs: { key: string; label: string }[] = [];
     let start = 0;
@@ -107,11 +96,11 @@ function buildPathTree(
     cur.pages.push({ page: p, included });
   };
   for (const p of pages) insert(p, true);
-  // Synthesize PageMeta-shaped rows for the excluded paths so the same
-  // PageRow renderer handles both. created/lastModified are sentinel
-  // 1970-01-01 — excluded rows are render-only and never participate
-  // in time-based sorts; if a future sort-by-mtime is added, change
-  // these to optional in PageMeta and treat undefined as "always last".
+  // Synthesize PageMeta-shaped rows for excluded paths so one PageRow
+  // renderer handles both. created/lastModified are sentinel 1970-01-01
+  // (excluded rows are render-only, never time-sorted). If a
+  // sort-by-mtime is added, make these optional in PageMeta and treat
+  // undefined as "always last".
   const EPOCH = new Date(0).toISOString();
   for (const fsPath of excludedNames) {
     const noMd = fsPath.endsWith(".md") ? fsPath.slice(0, -3) : fsPath;
@@ -127,7 +116,17 @@ function buildPathTree(
     };
     insert(synth, false);
   }
+  sortTree(root);
   return root;
+}
+
+/** Render order: child folders A-Z, pages by name. Sorting once inside
+ *  the useMemo'd build keeps per-keystroke filter renders sort-free. */
+function sortTree(node: PathNode) {
+  node.pages.sort((a, b) => a.page.name.localeCompare(b.page.name));
+  const kids = [...node.children.values()].sort(sortNodes);
+  node.children = new Map(kids.map((c) => [c.path, c]));
+  for (const c of kids) sortTree(c);
 }
 
 function buildCounts(root: PathNode, q: string): Map<string, number> {
@@ -177,8 +176,8 @@ export function CbPathView({ client, allPages, filter }: Props) {
   >(null);
   const [pushOne, setPushOne] = useState<string | null>(null);
   const [pullOne, setPullOne] = useState<string | null>(null);
-  // Batch push/pull over a folder: the first item collects the target
-  // interactively, later items auto-run with it; `choice` carries the
+  // Folder batch push/pull: the first item collects the target
+  // interactively, later items auto-run with it. `choice` carries the
   // collision dialog's "apply the same choice to the rest" memory.
   const [batchSync, setBatchSync] = useState<
     | null
@@ -190,6 +189,8 @@ export function CbPathView({ client, allPages, filter }: Props) {
       pushTarget?: PushTargetChoice;
       pullRoot?: string;
       choice: BatchChoice;
+      /** Listing cache shared by every item in the batch. */
+      listings: SyncListings;
     }
   >(null);
   // Bumped from refresh() so the excluded-list refetch fires even when
@@ -197,8 +198,8 @@ export function CbPathView({ client, allPages, filter }: Props) {
   // change the count).
   const [refreshTick, setRefreshTick] = useState(0);
 
-  // In "all" mode pull the unified list once and again whenever a file
-  // is flipped. Local roots only — remote rows can never be marked
+  // In "all" mode fetch the unified list once and again whenever a file
+  // is flipped. Local roots only: remote rows can never be marked
   // excluded from the client's perspective.
   useEffect(() => {
     if (displayMode !== "all") {
@@ -208,16 +209,8 @@ export function CbPathView({ client, allPages, filter }: Props) {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await authedFetch("/.file?all=1");
-        if (!r.ok) return;
-        const list = (await r.json()) as ServerListEntry[];
-        if (cancelled) return;
-        const excluded = new Set<string>();
-        for (const e of list) {
-          if (e.type !== "file") continue;
-          if (e.coconote === false) excluded.add(e.path);
-        }
-        setExcludedNames(excluded);
+        const excluded = await fetchExcludedPaths();
+        if (!cancelled) setExcludedNames(new Set(excluded));
       } catch {/* ignore */}
     })();
     return () => {
@@ -255,16 +248,12 @@ export function CbPathView({ client, allPages, filter }: Props) {
   };
 
   const onInclude = async (pageName: string) => {
-    // pageName drops the .md extension; restore for md/pdf paths.
-    const lower = pageName.toLowerCase();
-    const fsPath = lower.endsWith(".pdf") || lower.endsWith(".md")
-      ? pageName
-      : pageName + ".md";
+    const fsPath = nameToFsPath(pageName);
     try {
       await includePath(fsPath);
       // Optimistically drop the entry so the row leaves the greyed
-      // bucket immediately; the next /.file?all=1 round-trip via
-      // refresh() will confirm.
+      // bucket immediately, the next /.file?all=1 round-trip via
+      // refresh() confirms.
       setExcludedNames((prev) => {
         const next = new Set(prev);
         next.delete(fsPath);
@@ -284,11 +273,10 @@ export function CbPathView({ client, allPages, filter }: Props) {
     setFolderCtx({ folderPath, x: e.clientX, y: e.clientY, isRemote });
   };
 
-  // navigate(null) just shows the browser — it doesn't re-fetch. By
-  // the time onChanged fires the mutating action has awaited its
-  // server write, so re-pull the page list and also bump refreshTick
-  // so the excluded-list effect re-runs (Rename/Push/Pull/Retitle/
-  // Retag leave allPages.length unchanged).
+  // navigate(null) only shows the browser, it never re-fetches. By the
+  // time onChanged fires the mutating action has awaited its server
+  // write, so re-pull the page list and bump refreshTick so the
+  // excluded-list effect re-runs (see refreshTick above).
   const refresh = () => {
     void client.updatePageListCache();
     setRefreshTick((n) => n + 1);
@@ -300,19 +288,12 @@ export function CbPathView({ client, allPages, filter }: Props) {
   ) => {
     const queue: string[] = [];
     for (const p of allPages) {
-      const inFolder = folderPath === ""
-        ? true
-        : p.name === folderPath || p.name.startsWith(folderPath + "/");
+      const inFolder = p.name === folderPath ||
+        p.name.startsWith(folderPath + "/");
       if (!inFolder) continue;
       const isRemote = p.origin?.kind === "remote";
       if (kind === "push" && !isRemote) {
-        // Page names: md drops the extension, pdf keeps it. A dotted
-        // page name ("notes.v2") still needs the .md restored.
-        const lower = p.name.toLowerCase();
-        const fsPath = lower.endsWith(".pdf") || lower.endsWith(".md")
-          ? p.name
-          : p.name + ".md";
-        queue.push(fsPath);
+        queue.push(nameToFsPath(p.name));
       } else if (kind === "pull" && isRemote) {
         queue.push(p.name);
       }
@@ -322,8 +303,9 @@ export function CbPathView({ client, allPages, filter }: Props) {
       kind,
       queue,
       index: 0,
-      label: folderPath || "vault",
+      label: folderPath,
       choice: { current: null },
+      listings: {},
     });
   };
 
@@ -359,7 +341,7 @@ export function CbPathView({ client, allPages, filter }: Props) {
       {tree.children.size === 0
         ? <p className="coconote-cb-empty">No pages found.</p>
         : (
-          [...tree.children.values()].sort(sortNodes).map((node) => (
+          [...tree.children.values()].map((node) => (
             <PathFolder
               key={node.path}
               node={node}
@@ -381,7 +363,6 @@ export function CbPathView({ client, allPages, filter }: Props) {
           y={ctxMenu.y}
           isRemote={ctxMenu.isRemote}
           isExcluded={ctxMenu.isExcluded}
-          showRename={!ctxMenu.isRemote && !ctxMenu.isExcluded}
           onClose={() => setCtxMenu(null)}
           onChanged={refresh}
           onPush={(p) => setPushOne(p)}
@@ -430,6 +411,7 @@ export function CbPathView({ client, allPages, filter }: Props) {
           initialTarget={batchSync.pushTarget}
           autoRun={batchSync.index > 0 && !!batchSync.pushTarget}
           batchChoice={batchSync.choice}
+          listings={batchSync.listings}
           onTargetChosen={(t) =>
             setBatchSync((s) => (s ? { ...s, pushTarget: t } : s))}
           onClose={batchNext}
@@ -443,6 +425,7 @@ export function CbPathView({ client, allPages, filter }: Props) {
           initialRoot={batchSync.pullRoot}
           autoRun={batchSync.index > 0 && !!batchSync.pullRoot}
           batchChoice={batchSync.choice}
+          listings={batchSync.listings}
           onRootChosen={(root) =>
             setBatchSync((s) => (s ? { ...s, pullRoot: root } : s))}
           onClose={batchNext}
@@ -502,7 +485,7 @@ function PathFolder(
       </div>
       {expanded && (
         <div className="coconote-cb-folder-body">
-          {[...node.children.values()].sort(sortNodes).map((child) => (
+          {[...node.children.values()].map((child) => (
             <PathFolder
               key={child.path}
               node={child}
@@ -515,17 +498,14 @@ function PathFolder(
               onFolderContext={onFolderContext}
             />
           ))}
-          {filteredPages
-            .slice()
-            .sort((a, b) => a.page.name.localeCompare(b.page.name))
-            .map((l) => (
-              <PageRow
-                key={l.page.ref + (l.included ? "" : "?excluded")}
-                leaf={l}
-                client={client}
-                onContext={onContext}
-              />
-            ))}
+          {filteredPages.map((l) => (
+            <PageRow
+              key={l.page.ref + (l.included ? "" : "?excluded")}
+              leaf={l}
+              client={client}
+              onContext={onContext}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -542,12 +522,12 @@ function PageRow(
   const p = leaf.page;
   const isRemote = p.origin?.kind === "remote";
   const excluded = !leaf.included;
-  // In path view the path itself is already implied by the tree
-  // position, so show the leaf basename + title (if distinct).
+  // The tree position already implies the path, so show the leaf
+  // basename + title (if distinct).
   const basename = p.name.split("/").pop() ?? p.name;
-  // For "title test1 · basename test1.pdf" the suffix is redundant —
-  // hide it whenever the title matches either the full basename or
-  // the basename with any single extension stripped.
+  // Hide the basename suffix when the title matches the full basename
+  // or the basename minus one extension (e.g. title "test1" next to
+  // "test1.pdf" would be redundant).
   const basenameStem = basename.replace(/\.[a-z0-9]+$/i, "");
   const showBasename =
     !!p.title && p.title !== basename && p.title !== basenameStem;
@@ -555,12 +535,11 @@ function PageRow(
     if (excluded) return;
     client.navigate({ path: toPath(p.name) });
   };
-  // <button> instead of <a href>: an anchor's href is followed under
-  // certain WebView paths (e.g. macOS WKWebView re-emits a click after
-  // a right-click in some cases) which would race the context menu
-  // open. A button has no default activation behavior, so right-click
-  // can NEVER navigate. Cmd+Click in spec only applies to wikilinks
-  // inside the editor, not Content browser rows.
+  // <button> not <a href>: some WebViews (e.g. macOS WKWebView) can
+  // re-emit a click after a right-click, following the href and racing
+  // the context menu open. A button has no default activation, so
+  // right-click can NEVER navigate. The spec's Cmd+Click applies only
+  // to editor wikilinks, not Content browser rows.
   return (
     <button
       type="button"

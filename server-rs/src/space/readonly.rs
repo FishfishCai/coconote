@@ -34,16 +34,11 @@ impl SpacePrimitives for ReadOnlySpacePrimitives {
         Ok((data, downgrade(e)))
     }
     async fn list_under_prefix(&self, prefix: &str) -> Result<Vec<String>> {
-        // Reads are allowed; without this forward the empty default
+        // Reads are allowed: without this forward the empty default
         // impl would hide assets from read-only vaults.
         self.inner.list_under_prefix(prefix).await
     }
-    async fn write_file(
-        &self,
-        _path: &str,
-        _data: &[u8],
-        _mtime: Option<i64>,
-    ) -> Result<Entry> {
+    async fn write_file(&self, _path: &str, _data: &[u8]) -> Result<Entry> {
         Err(Error::NotAllowed)
     }
     async fn delete_file(&self, _path: &str) -> Result<()> {

@@ -2,7 +2,7 @@
 // a new editor feature means editing this file directly.
 //
 // `BASE_EXTENSIONS` are always active. `RENDER_MODE_EXTENSIONS` are
-// installed only in `render` / `read` mode; `source` mode drops them.
+// installed only in `render` / `read` mode, `source` mode drops them.
 
 import { Compartment, type Extension } from "@codemirror/state";
 import type { ClientContext as Client } from "../core/context.ts";
@@ -43,7 +43,7 @@ const RENDER_MODE_EXTENSIONS: Array<(c: Client) => Extension[]> = [
   (c) => [cleanWikiLinkPlugin(c)],
   (c) => [wikiCompletionPlugin(c)],
   (c) => [inlineContentPlugin(c)],
-  (c) => [calloutPlugin(c)],
+  () => [calloutPlugin()],
   (c) => [hoverPreviewPlugin(c)],
   () => [hideMarksPlugin()],
   () => [horizontalRulePlugin()],
@@ -64,7 +64,7 @@ function renderModeExtensionsFor(client: Client): Extension[] {
 }
 
 export function collectModuleExtensions(client: Client): Extension[] {
-  // Compartment reused across rebuilds — recreating it would detach
+  // Compartment reused across rebuilds - recreating it would detach
   // reconfigureMode from the live view.
   if (!client.renderModeCompartment) {
     client.renderModeCompartment = new Compartment();
@@ -75,19 +75,12 @@ export function collectModuleExtensions(client: Client): Extension[] {
   ];
 }
 
-// Switches editor mode WITHOUT rebuilding state — keeps undo history,
+// Switches editor mode WITHOUT rebuilding state - keeps undo history,
 // scroll position, widget state and selection intact.
 export function reconfigureMode(client: Client): void {
-  const view = client.editorView;
-  if (!view) return;
-  const effects = [];
-  if (client.renderModeCompartment) {
-    effects.push(
+  client.editorView.dispatch({
+    effects: [
       client.renderModeCompartment.reconfigure(renderModeExtensionsFor(client)),
-    );
-  }
-  if (client.editModeCompartment) {
-    effects.push(
       client.editModeCompartment.reconfigure(
         editModeExtensionsFor(
           client,
@@ -95,7 +88,6 @@ export function reconfigureMode(client: Client): void {
           currentMode(client),
         ),
       ),
-    );
-  }
-  if (effects.length > 0) view.dispatch({ effects });
+    ],
+  });
 }

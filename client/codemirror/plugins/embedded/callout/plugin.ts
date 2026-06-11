@@ -1,7 +1,6 @@
 import { syntaxTree } from "@codemirror/language";
 import { Decoration } from "@codemirror/view";
 import type { Range } from "@codemirror/state";
-import type { ClientContext as Client } from "../../../../core/context.ts";
 import {
   decoratorStateField,
   isCursorInRange,
@@ -12,7 +11,7 @@ import {
 } from "../../../../lib/callout.ts";
 import { CalloutPrefixWidget, CalloutSuffixWidget } from "./widgets.ts";
 
-export function calloutPlugin(_client: Client) {
+export function calloutPlugin() {
   return decoratorStateField((state) => {
     const widgets: Range<Decoration>[] = [];
     // LaTeX-style shared counter: all numbered theorem-like callouts
@@ -42,7 +41,7 @@ export function calloutPlugin(_client: Client) {
 
         const openerLine = state.doc.lineAt(node.from);
         // Shared scan (lib/callout.ts): stops at end-of-doc or another
-        // opener — both mean unclosed → bail without decorating.
+        // opener - both mean unclosed -> bail without decorating.
         const bounds = findCalloutBounds(
           (n) => (n <= state.doc.lines ? state.doc.line(n) : null),
           openerLine.number,
@@ -114,7 +113,7 @@ export function calloutPlugin(_client: Client) {
 
         const isProof = cssKey === "proof";
         if (!cursorInside) {
-          // Hidden closer — no extra row between body's last line and the
+          // Hidden closer - no extra row between body's last line and the
           // next paragraph. Proof's ∎ floats at end of last body line.
           if (isProof && tpl.suffix && bodyLines.length > 0) {
             widgets.push(
@@ -129,7 +128,7 @@ export function calloutPlugin(_client: Client) {
               .range(bounds.closerFrom),
           );
         } else {
-          // Cursor inside → reveal closer so `:::` is editable. It also
+          // Cursor inside -> reveal closer so `:::` is editable. It also
           // carries the bottom border / padding for the frame.
           widgets.push(
             Decoration.line({
@@ -145,7 +144,7 @@ export function calloutPlugin(_client: Client) {
       },
     });
 
-    // `true` second arg sorts; no need for the manual pre-sort.
+    // `true` second arg sorts - no manual pre-sort needed.
     return Decoration.set(widgets, true);
   });
 }

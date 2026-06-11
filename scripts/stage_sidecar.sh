@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Copy the just-built coconote server into electron/binaries/<platform-arch>/
-# where electron-builder's `extraResources` mapping picks it up. The
-# host's release binary is assumed already built — Makefile's `app`
-# target runs `cargo build --release` first.
+# Stage the just-built coconote server at electron/binaries/<platform-arch>/
+# for electron-builder's `extraResources`. Assumes the host release binary
+# exists (Makefile `app` runs `cargo build --release` first).
 #
-# builder.config.json deliberately pins no arch (its schema allows no
-# comment saying so): the Makefile / package.sh / CI pass --arm64/--x64
-# for the HOST arch, so the packaged arch always matches what is staged
-# here — a hardcoded pin would ship an installer without a server.
+# builder.config.json pins no arch on purpose (its schema allows no comment
+# saying so): Makefile / package.sh / CI pass --arm64/--x64 for the HOST, so
+# the packaged arch always matches what is staged here. A hardcoded pin
+# would ship an installer without a server.
 
 set -euo pipefail
 
@@ -15,8 +14,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 # Platform/arch must match electron-builder's ${platform}-${arch} macro
-# (builder.config.json extraResources), which expands to process.platform
-# (darwin/linux/win32) and process.arch (arm64/x64) — NOT mac/win.
+# (builder.config.json extraResources): process.platform (darwin/linux/win32)
+# and process.arch (arm64/x64), NOT mac/win.
 case "$(uname -s)" in
   Darwin) PLATFORM=darwin ;;
   Linux)  PLATFORM=linux ;;

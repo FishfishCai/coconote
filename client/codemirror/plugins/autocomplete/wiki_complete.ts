@@ -33,13 +33,13 @@ const headingCache = new Map<
     lastModified: string;
     headings: string[];
     anchors: string[];
-    /** Callout opener labels — `::: theorem:mylabel` → "mylabel". */
+    /** Callout opener labels - `::: theorem:mylabel` -> "mylabel". */
     calloutLabels: string[];
   }
 >();
 
 // Separate cache for PDF anchors so a stale notes.json change doesn't
-// silently miss in autocomplete; refreshed every time the trigger fires.
+// silently miss in autocomplete. Refreshed every time the trigger fires.
 const pdfAnchorCache = new Map<string, { ts: number; names: string[] }>();
 const PDF_CACHE_TTL_MS = 5_000;
 
@@ -57,7 +57,7 @@ async function loadPdfAnchors(pdfPath: string): Promise<string[]> {
   } catch {
     // Cache the failure as an EMPTY entry: an absent entry is
     // indistinguishable from "not loaded yet", so bailing without
-    // caching loops fetch → startCompletion → fetch forever. The TTL
+    // caching loops fetch -> startCompletion -> fetch forever. The TTL
     // retries after 5 s.
     pdfAnchorCache.set(pdfPath, { ts: Date.now(), names: [] });
     return [];
@@ -74,7 +74,7 @@ function pageListLastModified(client: Client, pageName: string): string {
 }
 
 function getPageAnchors(client: Client, pageName: string): {
-  /** False ⇒ no valid cache entry — caller should kick loadPageAnchors. */
+  /** False => no valid cache entry - caller should kick loadPageAnchors. */
   loaded: boolean;
   headings: string[];
   anchors: string[];
@@ -82,7 +82,7 @@ function getPageAnchors(client: Client, pageName: string): {
 } {
   const cached = headingCache.get(pageName);
   // An entry with ZERO names is still a loaded entry (the page may
-  // genuinely have no headings/anchors/labels) — "loaded" must be
+  // genuinely have no headings/anchors/labels) - "loaded" must be
   // explicit, or the completion source refetches + re-triggers itself
   // forever for such pages.
   if (cached && cached.lastModified === pageListLastModified(client, pageName)) {
@@ -113,7 +113,7 @@ async function loadPageAnchors(client: Client, pageName: string) {
       return false;
     });
     // Callout labels live in plain text (the parser keeps `::: ...`
-    // as a FencedDivOpener but we don't traverse there yet); a flat
+    // as a FencedDivOpener but we don't traverse there yet). A flat
     // line scan is the cheapest correct approach.
     const calloutLabels: string[] = [];
     for (const line of text.split("\n")) {
@@ -127,8 +127,8 @@ async function loadPageAnchors(client: Client, pageName: string) {
       calloutLabels,
     });
   } catch {
-    // Page may not exist yet. Still cache an empty entry — leaving the
-    // cache unwritten would loop fetch → startCompletion → fetch.
+    // Page may not exist yet. Still cache an empty entry - leaving the
+    // cache unwritten would loop fetch -> startCompletion -> fetch.
     headingCache.set(pageName, {
       lastModified,
       headings: [],
@@ -163,7 +163,7 @@ function wikiCompletions(client: Client) {
       if (sep === "%" && pageName.toLowerCase().endsWith(".pdf")) {
         const resolved = resolvePdfWikiLinkPath(
           pageName,
-          client.currentPath?.(),
+          client.currentPath(),
           client.allKnownFiles,
           client.ui.viewState.allPages,
         );
@@ -182,7 +182,7 @@ function wikiCompletions(client: Client) {
         // Serve the cached names, refreshing in the background once
         // the TTL lapses (loadPdfAnchors no-ops while fresh) so a
         // failed / stale sidecar heals without a reload. No
-        // startCompletion here — the next keystroke re-queries, so
+        // startCompletion here - the next keystroke re-queries, so
         // this cannot re-trigger itself into a loop.
         void loadPdfAnchors(resolved);
         const options: Completion[] = cached.names.map((n) => ({
@@ -274,7 +274,7 @@ function wikiCompletions(client: Client) {
       options,
       // Sigil chars (# @ % :) and `|` must INVALIDATE the result so
       // the source re-runs and switches to heading/anchor/pdf-anchor/
-      // label completion — leaving `:`/`%` out kept the page-list
+      // label completion - leaving `:`/`%` out kept the page-list
       // result alive and those popups never appeared.
       validFor: /^[^\]\n#@%:|]*$/,
     };
@@ -289,10 +289,10 @@ export function wikiCompletionPlugin(client: Client) {
       closeOnBlur: true,
       maxRenderedOptions: 50,
     }),
-    // editor.md: "Press Tab or Enter to select a candidate" — the
+    // editor.md: "Press Tab or Enter to select a candidate" - the
     // default completionKeymap only binds Enter. Prec.highest so Tab
     // outranks the snippet-expansion and indent handlers while the
-    // popup is open; acceptCompletion returns false when no completion
+    // popup is open. acceptCompletion returns false when no completion
     // is active, letting Tab fall through to those.
     Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
   ];

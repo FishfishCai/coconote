@@ -17,7 +17,7 @@
   .cm-line {
     padding: 0;
 
-    // Only h1–h4 line classes exist (registry.ts; markdown.md spec).
+    // Only h1-h4 line classes exist (registry.ts, markdown.md spec).
     &.coconote-line-h1,
     &.coconote-line-h2,
     &.coconote-line-h3,
@@ -139,7 +139,7 @@
     visibility: hidden;
   }
 
-  // Default bullet • U+2022; deeper levels overridden below.
+  // Default bullet • (U+2022). Deeper levels overridden below.
   .cm-list-bullet::after {
     visibility: visible;
     position: absolute;
@@ -148,8 +148,8 @@
 
   // Bullets CYCLE per depth (markdown.md): • ◦ ▪ ‣ then around again.
   // lineWrapper stacks .coconote-line-li-1..N, so "exactly depth N" is
-  // li-N:not(li-N+1). Two full cycles are spelled out (depth ≤ 8);
-  // deeper levels fall back to the base • — i.e. the cycle restart.
+  // li-N:not(li-N+1). Two full cycles are spelled out (depth <= 8),
+  // deeper levels fall back to the base • - the cycle restart.
   .coconote-line-li-2:not(.coconote-line-li-3) .cm-list-bullet::after,
   .coconote-line-li-6:not(.coconote-line-li-7) .cm-list-bullet::after {
     content: "\25E6"; /* ◦ */
@@ -163,7 +163,7 @@
     content: "\2023"; /* ‣ */
   }
 
-  // Replace widget empties `---` lines; draw the rule via centered border.
+  // A replace widget empties `---` lines. The rule is the centered border.
   .coconote-line-hr {
     position: relative;
     color: transparent;

@@ -26,11 +26,11 @@ export class ContentManager {
   // Mtime (epoch ms) for optimistic-concurrency PUT stale-write detection.
   private currentMtime = 0;
   // Every save() call's promise settles when the flush that covers it
-  // actually completes (write landed / legitimately skipped) — never
+  // actually completes (write landed / legitimately skipped) - never
   // before, so `await save(true)` really means "data is safe".
   private saveWaiters: { resolve(): void; reject(e: unknown): void }[] = [];
   private saveInFlight = false;
-  // Settling-scroll timers for the current page; cleared on navigation
+  // Settling-scroll timers for the current page, cleared on navigation
   // so a leftover timer can't scroll the NEXT page to this page's anchor.
   private cancelScroll?: () => void;
 
@@ -57,7 +57,7 @@ export class ContentManager {
 
   private async flushSave(): Promise<void> {
     if (this.saveInFlight) {
-      // A write is on the wire — re-flush once it settles so the latest
+      // A write is on the wire - re-flush once it settles so the latest
       // text still lands (two concurrent PUTs would race mtimes).
       this.saveTimeout = setTimeout(() => void this.flushSave(), 100);
       return;
@@ -68,24 +68,23 @@ export class ContentManager {
     ) {
       return this.settleSave();
     }
-    // editor.md §Collaboration: when a collab session is attached AND
-    // the WS is actually connected, the server checkpoints the Yjs doc
-    // to disk every 5s — the client's HTTP PUT is redundant and races
-    // against that checkpoint, producing spurious stale-write 409s.
-    // During connecting/reconnecting/disposed the server cannot
-    // checkpoint, so we MUST fall through to HTTP PUT (otherwise
-    // edits live only in the local Yjs doc and exceed the spec's
-    // 5-second worst-case data-loss bound on tab close).
+    // editor.md Collaboration: with a session attached AND the WS
+    // connected, the server checkpoints the Yjs doc to disk every 5s -
+    // the client's HTTP PUT is redundant and races that checkpoint
+    // (spurious stale-write 409s). During connecting/reconnecting/
+    // disposed the server cannot checkpoint, so we MUST fall through to
+    // HTTP PUT or edits live only in the local Yjs doc and exceed the
+    // spec's 5s worst-case data-loss bound on tab close.
     const collabConnected =
-      this.client.collabHandle?.status?.() === "connected";
+      this.client.collabHandle?.status() === "connected";
     if (collabConnected) {
       this.client.ui.markPageSaved();
       this.client.onPageSaved?.();
       return this.settleSave();
     }
     if (this.client.editorView.composing) {
-      // Mid-IME composition: defer the write AND the waiters with it —
-      // resolving now would break the "settled ⇒ on disk" contract.
+      // Mid-IME composition: defer the write AND the waiters with it -
+      // resolving now would break the "settled -> on disk" contract.
       this.saveTimeout = setTimeout(
         () => void this.flushSave(),
         autoSaveInterval,
@@ -137,7 +136,7 @@ export class ContentManager {
       const meta = await this.client.space.writePage(pageName, text, undefined);
       this.currentMtime = Date.parse(meta.lastModified) || 0;
       // Only clear the dirty flag when nothing changed since the
-      // conflicting snapshot; later keystrokes still need their save.
+      // conflicting snapshot - later keystrokes still need their save.
       if (this.client.editorView.state.sliceDoc(0) === text) {
         this.client.ui.markPageSaved();
         this.client.onPageSaved?.();
@@ -174,7 +173,6 @@ export class ContentManager {
     const path = locationState.path;
     if (!isMarkdownPath(path)) throw Error("Not a markdown path");
 
-    // A navigation kills any pending settle-scroll for the old page.
     this.cancelScroll?.();
 
     const { loadingDifferentPath } = await this.leaveCurrentPage(path);
@@ -185,7 +183,7 @@ export class ContentManager {
       doc = await this.client.space.readPage(pageName);
     } catch (e: unknown) {
       // Only a genuine 404 creates a fresh page. Offline/server errors
-      // must NOT synthesize an empty editor — typing into it would later
+      // must NOT synthesize an empty editor - typing into it would later
       // save with no mtime guard and silently overwrite the real file.
       if (errMessage(e) !== notFoundError.message) throw e;
       doc = {
@@ -204,7 +202,7 @@ export class ContentManager {
     this.currentMtime = Date.parse(doc.meta.lastModified) || 0;
 
     if (loadingDifferentPath || doc.meta.perm === "ro") {
-      // y-codemirror.next replays yText empty→full at pos 0, so the
+      // y-codemirror.next replays yText empty->full at pos 0, so the
       // editor must be empty when collab attaches or the doc gets
       // duplicated on save. Collab is always on for rw paths.
       const willHaveCollab = doc.meta.perm !== "ro" && !!path;
@@ -224,11 +222,11 @@ export class ContentManager {
       }
     } else {
       const collabLive = this.client.collabHandle?.path === path &&
-        this.client.collabHandle?.status?.() === "connected";
-      // While a collab session is live the CRDT is the source of truth;
-      // replaying the (≤5s stale) disk checkpoint into it would
+        this.client.collabHandle?.status() === "connected";
+      // While a collab session is live the CRDT is the source of truth:
+      // replaying the (<=5s stale) disk checkpoint into it would
       // broadcast a revert of every peer's latest edits. Meta was
-      // refreshed above — the text needs nothing.
+      // refreshed above - the text needs nothing.
       if (!collabLive) this.applyExternalPatches(doc.text);
     }
 
@@ -249,7 +247,6 @@ export class ContentManager {
   }
 
   private navigateWithinPage(pageState: LocationState) {
-    if (!isMarkdownPath(pageState.path)) return;
     let pos: number | undefined;
     if (pageState.details) {
       const pageText = this.client.editorView.state.sliceDoc();
@@ -293,14 +290,14 @@ export class ContentManager {
       const want = pageState.scrollAnchorPos;
       const dispatchScroll = () => {
         if (view.state.doc.length === 0) return;
-        // Clamp against the doc as it is NOW — widgets may have changed it.
+        // Clamp against the doc as it is NOW - widgets may have changed it.
         const pos = Math.max(0, Math.min(want, view.state.doc.length));
         view.dispatch({
           effects: EditorView.scrollIntoView(pos, { y: "start", yMargin: 5 }),
         });
       };
-      // Cancel on first user scroll input — their position is
-      // authoritative — and on navigation (loadPage calls cancelScroll).
+      // Cancel on first user scroll input (their position is
+      // authoritative) and on navigation (loadPage calls cancelScroll).
       const timers: number[] = [];
       const cancel = () => {
         for (const t of timers) clearTimeout(t);

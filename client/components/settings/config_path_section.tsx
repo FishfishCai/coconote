@@ -1,9 +1,7 @@
-// setting.md §Config file. Renders in both the Electron desktop shell and
-// the browser-against-headless-server case; the api helper hides the
-// difference. Reset writes the pointer + restarts; on next boot the
-// server reads `<dir>/coconote.yaml`, overwriting it with a default if
-// missing or unparseable, so the input never needs client-side
-// validation.
+// setting.md Config file. The api helper hides Electron-shell vs
+// browser-against-headless-server. Reset writes the pointer + restarts:
+// on next boot the server reads `<dir>/coconote.yaml`, overwriting it
+// with a default if missing/unparseable, so no client-side validation.
 
 import { useEffect, useState } from "preact/hooks";
 import { applyConfigPath, getConfigPath } from "../../lib/config_path_api.ts";
@@ -19,9 +17,8 @@ export function ConfigPathSection() {
   const onReset = async () => {
     setBusy(true);
     // applyConfigPath() either restarts the host (Electron) or returns
-    // after the server re-execs. The catch covers transport errors
-    // that we don't currently have anywhere to surface — re-enable the
-    // form so the user isn't stuck.
+    // after the server re-execs. Transport errors have nowhere to
+    // surface yet, so just re-enable the form so the user isn't stuck.
     try {
       await applyConfigPath(draft);
     } finally {

@@ -1,8 +1,7 @@
 // Shared wrapper for the content-browser context menus: dismiss on
-// outside click / Escape, clamp the (x, y) anchor to the viewport so a
-// right-click near the bottom or right edge doesn't push the menu
-// off-screen, and swallow clicks / native context-menu inside the box.
-// (The PDF-side menus still hand-roll this — follow-up batch.)
+// outside click / Escape, clamp the (x, y) anchor to the viewport so
+// edge right-clicks don't push the menu off-screen, swallow clicks /
+// native context-menu inside the box. (PDF menus still hand-roll this.)
 
 import type { ComponentChildren } from "preact";
 import { useMenuPosition } from "../lib/menu_position.ts";

@@ -90,6 +90,11 @@ export function attachWidgetEventHandlers(
   }
 }
 
+// Cache keys embed the full widget source (TeX / markdown), so cap the
+// map and evict oldest-inserted entries to bound memory across long
+// sessions.
+const WIDGET_META_CAP = 4000;
+
 // Caches the measured height and nudges CM to re-read estimatedHeight,
 // realigning heightMap with the DOM. Skipped during IME composition.
 export function measureAndCacheWidgetHeight(
@@ -100,9 +105,8 @@ export function measureAndCacheWidgetHeight(
 ) {
   setTimeout(() => {
     const view = ctx.editorView;
-    if (!view) return;
     // Fast scrolling can unmount the DOM before the async render finishes.
-    // Detached node has offsetHeight 0; caching that poisons the next
+    // Detached node has offsetHeight 0 - caching that poisons the next
     // render so the widget renders as a gap.
     if (!dom.isConnected) return;
     const h = dom.offsetHeight;
@@ -110,6 +114,12 @@ export function measureAndCacheWidgetHeight(
     const prev = ctx.widgetMeta.get(cacheKey);
     if (prev?.height === h && prev?.block === block) return;
     ctx.widgetMeta.set(cacheKey, { height: h, block });
+    if (ctx.widgetMeta.size > WIDGET_META_CAP) {
+      for (const key of ctx.widgetMeta.keys()) {
+        if (ctx.widgetMeta.size <= WIDGET_META_CAP) break;
+        ctx.widgetMeta.delete(key);
+      }
+    }
     if (!view.composing) {
       view.dispatch({ selection: view.state.selection });
     }

@@ -1,10 +1,7 @@
-// Shared filter predicate for the Content browser (content.md):
-//   "Match scope covers folder names, file names, tags (at every
-//    level), titles, and headings inside files."
-//
-// `q` is the filter string already normalised to lower-case (Path
-// view strips the leading `#` it uses for tag-chip navigation before
-// calling).
+// Shared Content-browser filter predicate (content.md: "Match scope
+// covers folder names, file names, tags (at every level), titles, and
+// headings inside files"). `q` is already lower-cased - Path view
+// strips its tag-chip leading `#` before calling.
 
 import type { PageMeta } from "coconote/type/page";
 

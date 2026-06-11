@@ -1,9 +1,7 @@
-// Sidecar lifecycle + config-pointer helpers. Single source of truth
-// for: probing :40704, spawning the bundled coconote binary, locating
-// it inside the packaged app or the dev tree, and reading / writing
-// the `<standard config dir>/config-path` pointer that redirects the
-// yaml lookup (welcome.md §coconote.yaml). The pointer file format is
-// kept stable across shell versions so an existing redirect survives.
+// Sidecar lifecycle + config-pointer helpers: probe :40704, spawn/locate
+// the bundled coconote binary (packaged app or dev tree), and read/write
+// the `<standard config dir>/config-path` pointer that redirects the yaml
+// lookup (welcome.md). Pointer format is stable across shell versions.
 
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
@@ -42,9 +40,8 @@ export async function probe() {
     return body && body.app === "coconote" ? "coconote" : "foreign";
   } catch (e) {
     // Node's fetch maps connection-refused to TypeError with cause.code
-    // ECONNREFUSED. Anything else (timeout, parse, etc.) is "foreign"
-    // — we don't want to clobber a port held by something we can't
-    // identify.
+    // ECONNREFUSED. Anything else (timeout, parse, etc.) is "foreign": we
+    // don't want to clobber a port held by something we can't identify.
     const code = e?.cause?.code;
     if (code === "ECONNREFUSED") return "free";
     return "foreign";
@@ -77,14 +74,11 @@ export function resolveServerBinary() {
 
   const isWindows = process.platform === "win32";
   const candidates = [];
-  // Packaged: electron-builder copies electron/binaries into
-  // Resources/binaries via the `extraResources` mapping in
-  // builder.config.json.
+  // Packaged: builder.config.json `extraResources` copies
+  // electron/binaries to Resources/binaries.
   if (process.resourcesPath) {
     candidates.push(join(process.resourcesPath, "binaries"));
   }
-  // Dev: electron/binaries is staged by `make app` / package.sh.
-  candidates.push(join(__dirname, "binaries"));
   // Dev fallback: repo's server-rs cargo output.
   candidates.push(resolve(__dirname, "..", "server-rs", "target", "release"));
   candidates.push(resolve(__dirname, "..", "server-rs", "target", "debug"));
@@ -101,9 +95,8 @@ export function resolveServerBinary() {
 
 export function spawnSidecar(bin) {
   shutdownOwned();
-  // detached:false keeps the sidecar in our process group, so a hard
-  // crash of the shell tears it down too; clean exits go through
-  // shutdownOwned (SIGTERM).
+  // detached:false keeps the sidecar in our process group: a hard shell
+  // crash tears it down too. Clean exits go through shutdownOwned (SIGTERM).
   const child = spawn(bin, ["-p", String(PORT)], {
     stdio: ["ignore", "ignore", "ignore"],
     detached: false,
@@ -112,9 +105,9 @@ export function spawnSidecar(bin) {
   child.on("exit", () => {
     if (owned === child) owned = null;
   });
-  // spawn reports ENOENT/EACCES asynchronously via 'error' (it doesn't
-  // throw), so without this listener a bad binary path would surface only
-  // as the generic 5s health-wait timeout.
+  // spawn reports ENOENT/EACCES asynchronously via 'error' (no throw), so
+  // without this listener a bad binary path would only surface as the
+  // generic 5s health-wait timeout.
   child.on("error", (err) => {
     console.error("coconote: sidecar spawn failed:", err);
     if (owned === child) owned = null;
@@ -133,7 +126,7 @@ export function shutdownOwned() {
   } catch {
     return;
   }
-  // Best-effort SIGKILL fallback. We don't await — quit must be fast.
+  // Best-effort SIGKILL fallback. We don't await: quit must be fast.
   setTimeout(() => {
     try {
       child.kill("SIGKILL");
@@ -145,12 +138,11 @@ export function shutdownOwned() {
 
 /**
  * Resolve once the child most recently handed to shutdownOwned() has
- * actually exited, bounded by `timeoutMs` (> the 2s SIGKILL fallback,
- * so a stuck child is force-killed before we give up). Callers that
- * relaunch the shell must await this: app.exit() straight after the
- * SIGTERM would let the relaunched shell probe the still-draining old
- * server and adopt it with the old config. Resolves immediately when
- * nothing was owned (borrowed server) or the child is already gone.
+ * actually exited, bounded by `timeoutMs` (> the 2s SIGKILL fallback, so
+ * a stuck child is force-killed before we give up). Relaunching callers
+ * must await this: app.exit() right after SIGTERM lets the relaunched
+ * shell probe the still-draining old server and adopt the old config.
+ * Resolves immediately if nothing was owned or the child already exited.
  */
 export function waitForExit(timeoutMs = 3000) {
   const child = lastShutdown;
@@ -167,11 +159,10 @@ export function waitForExit(timeoutMs = 3000) {
 }
 
 // ---------------------------------------------------------------------------
-// Config-path pointer (setting.md §Config file)
+// Config-path pointer (setting.md "Config file")
 //
-// The pointer file at `<standard config dir>/config-path` overrides the
-// yaml lookup. Reads/writes the same file as the Rust side in
-// server-rs/src/config.rs::{read,write}_config_pointer.
+// `<standard config dir>/config-path` overrides the yaml lookup. Same
+// file as server-rs/src/config.rs::{read,write}_config_pointer.
 // ---------------------------------------------------------------------------
 
 function standardConfigDir() {
@@ -190,8 +181,8 @@ function configPointerPath() {
 }
 
 /**
- * Effective config dir — pointer file's content trimmed, or the
- * standard dir when no pointer is set. Pre-fills the Setting input.
+ * Effective config dir: pointer file content trimmed, or the standard
+ * dir when no pointer is set. Pre-fills the Setting input.
  */
 export function readEffectiveConfigDir() {
   const ptr = configPointerPath();
@@ -200,16 +191,15 @@ export function readEffectiveConfigDir() {
       const raw = readFileSync(ptr, "utf8").trim();
       if (raw) return raw;
     } catch {
-      /* unreadable → fall through to default */
+      /* unreadable: fall through to default */
     }
   }
   return standardConfigDir();
 }
 
 /**
- * Write the pointer file. Clearing — empty input or a value that
- * matches the standard dir — removes the pointer so the on-disk state
- * stays minimal.
+ * Write the pointer file. Clearing (empty input, or a value matching the
+ * standard dir) removes the pointer so on-disk state stays minimal.
  */
 export function writeConfigPointer(dir) {
   const ptr = configPointerPath();

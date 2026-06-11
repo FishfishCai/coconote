@@ -1,16 +1,7 @@
-// Spec API (server.md + setting.md). Total surface:
-//
-//   GET     /.health
-//   GET     /.file
-//   GET/HEAD/PUT/DELETE  /.file/<path>
-//   GET/DELETE           /.history/<page_id>
-//   POST                 /.history/<page_id>/restore
-//   POST                 /.history/<page_id>/pin
-//   WS                   /.collab/<path>
-//   GET/PATCH            /.config        (setting.md §Local + §Remote + §Config file)
-//
-// Any GET that doesn't match falls back to the embedded client bundle
-// (server.md).
+// Spec API routes (server.md + setting.md): GET /.health, GET /.file,
+// GET/HEAD/PUT/DELETE /.file/<path>, GET/DELETE /.history/<page_id>,
+// POST .../restore and .../pin, WS /.collab/<path>, GET/PATCH /.config.
+// Any unmatched GET falls back to the embedded client bundle (server.md).
 
 use crate::handlers::{auth, collab, config, fs, health, history, ssr};
 use crate::state::AppState;
@@ -33,8 +24,8 @@ pub fn build_router(state: AppState) -> Router {
         .head(fs::get_or_head)
         .put(fs::put)
         .delete(fs::delete)
-        // Axum's default body cap is 2MB; raise to MAX_PUT_BYTES so
-        // editor-side large-paste-over-HTTP and PDF/asset uploads work.
+        // Axum's default body cap is 2MB. Raise to MAX_PUT_BYTES so
+        // editor large-paste-over-HTTP and PDF/asset uploads work.
         .layer(DefaultBodyLimit::max(MAX_PUT_BYTES));
     let history_id: MethodRouter<AppState> = MethodRouter::new()
         .get(history::list_or_preview)
@@ -43,13 +34,12 @@ pub fn build_router(state: AppState) -> Router {
         .get(config::get_config)
         .patch(config::patch_config);
 
-    // Cross-vault push/pull requires browsers to call a remote
-    // coconote server from the local one's origin. server.md doesn't
-    // specify CORS but the browser blocks cross-origin fetches without
-    // these headers; permissive ACAO is OK because every endpoint
-    // already enforces bearer auth (loopback bypass remains intact).
-    // X-Content-Hash etc. need to be exposed so the client can read
-    // them on cross-origin responses.
+    // Cross-vault push/pull makes the browser call a remote coconote
+    // server from the local one's origin. server.md doesn't specify CORS,
+    // but the browser blocks cross-origin fetches without these headers.
+    // Permissive ACAO is OK because every endpoint already enforces
+    // bearer auth (loopback bypass intact). X-Content-Hash etc. are
+    // exposed so the client can read them on cross-origin responses.
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods([
@@ -72,7 +62,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/.history/:page_id/pin", post(history::pin))
         .route("/.collab/*path", get(collab::ws_handler))
         .route("/.config", config_root)
-        // The handler itself 405s anything but GET/HEAD — an unmatched
+        // The handler itself 405s anything but GET/HEAD: an unmatched
         // POST/DELETE must not come back as a 200 index.html.
         .fallback(ssr::static_or_index)
         .layer(middleware::from_fn_with_state(
@@ -80,9 +70,9 @@ pub fn build_router(state: AppState) -> Router {
             auth::require_bearer,
         ))
         .layer(cors)
-        // gzip text responses (client.js ~590K -> ~185K) — the biggest
+        // gzip text responses (client.js ~590K -> ~185K), the biggest
         // win on a remote browser's first load. tower-http skips bodies
-        // that are already compressed or not worth it; binary assets
+        // already compressed or not worth it, binary assets
         // (woff2/png/wasm) pass through. Loopback desktop traffic also
         // negotiates it at negligible cost.
         .layer(CompressionLayer::new())

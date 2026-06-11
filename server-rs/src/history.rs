@@ -1,27 +1,8 @@
-// SQLite-backed version history. Two tables (history.md §Storage model):
-//
-//   blobs(hash TEXT PK, bytes BLOB)        — content-addressable pool
-//   versions(id PK, page_id, ts, save_type, manifest JSON)
-//
-// `manifest` is a flat JSON `{filename: hash, ...}` mapping the full
-// file set of one page at one moment (md body + every image under
-// `.<name>.assets/` for a md page; just the `.<name>.json` sidecar for
-// a pdf page). save_type is one of:
-//
-//   create / edit / push / pull / pin
-//
-// Retention (history.md §Retention):
-//   - create / push / pull / pin: never pruned
-//   - edit: time-window decay
-//       < 1h     keep all
-//       1h-1d    1 per hour
-//       1d-7d    1 per day
-//       7d-30d   1 per week
-//       > 30d    1 per month
-//
-// `restore` is NOT a save_type — restoring a snapshot writes a new
-// `edit` row (history.md §Restore). `pin` clones the latest row's
-// manifest with a fresh ts.
+// SQLite version history (history.md Storage model): blobs(hash, bytes)
+// content-addressable pool + versions(id, page_id, ts, save_type, manifest),
+// manifest = flat {filename: hash} for a page's full file set at one moment.
+// restore is NOT a save_type (writes a new edit row), pin clones the latest
+// row's manifest with a fresh ts.
 
 use anyhow::Context;
 use directories::ProjectDirs;
@@ -34,7 +15,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[derive(Clone)]
 pub struct HistoryDb {
     pool: Pool<Sqlite>,
 }
@@ -61,9 +41,8 @@ impl SaveType {
         }
     }
 
-    /// Parse the `?save_type=...` query value on PUT /.file/<path>.
-    /// `create` is server-decided (first row for a page_id), so it is
-    /// NOT accepted from the wire — clients can only set edit/push/pull.
+    /// Parse `?save_type=` on PUT /.file/<path>. `create` is server-decided
+    /// (first row for a page_id) and never accepted from the wire.
     pub fn from_put_query(s: &str) -> Option<Self> {
         match s {
             "edit" => Some(SaveType::Edit),
@@ -84,34 +63,30 @@ fn save_type_from_str(s: &str) -> SaveType {
     }
 }
 
-/// One row of `/.history/<page_id>` list response. Spec server.md:
-/// "without query, lists snapshots `[{ts, save_type}, ...]`".
+/// One row of the `/.history/<page_id>` list (server.md: `[{ts, save_type}, ...]`).
 #[derive(Debug, Serialize)]
 pub struct VersionMeta {
     pub ts: i64,
     pub save_type: SaveType,
 }
 
-/// A page's "full file set" at one ts — filenames → content hashes.
-/// Stored as the flat `{filename: hash, ...}` JSON object history.md
-/// specifies; `main_file` is derived from the filename shapes on read
-/// (and never serialized).
+/// A page's full file set at one ts, stored as the flat {filename: hash}
+/// JSON history.md specifies. `main_file` is derived from filename shapes
+/// on read and never serialized.
 #[derive(Debug)]
 pub struct Manifest {
-    /// The filename whose body the preview endpoint returns (server.md:
-    /// "?ts=<ms> returns the main md text of that snapshot"). For md
-    /// pages this is the .md file; for pdf pages, the sidecar
-    /// `.<name>.json`.
+    /// Filename whose body the preview endpoint returns (server.md: "?ts=<ms>
+    /// returns the main md text"): the .md file for md pages, the
+    /// `.<name>.json` sidecar for pdf pages.
     pub main_file: String,
-    /// {filename → blake3 hex hash}. Filenames are relative to the
-    /// page's directory: the page basename for the main file,
-    /// `.<stem>.assets/<f>` for images.
+    /// {filename -> blake3 hex hash}, relative to the page's directory:
+    /// page basename for the main file, `.<stem>.assets/<f>` for images.
     pub files: indexmap::IndexMap<String, String>,
 }
 
 impl Serialize for Manifest {
     fn serialize<S: Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
-        // history.md §Storage model: manifest JSON is flat {filename: hash}.
+        // history.md: manifest JSON is flat {filename: hash}.
         self.files.serialize(s)
     }
 }
@@ -121,8 +96,7 @@ impl<'de> Deserialize<'de> for Manifest {
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum Wire {
-            /// Rows written before the flat format; kept readable so
-            /// existing DBs survive the upgrade.
+            /// Pre-flat rows, kept readable so existing DBs survive.
             Legacy {
                 main_file: String,
                 files: indexmap::IndexMap<String, String>,
@@ -139,7 +113,7 @@ impl<'de> Deserialize<'de> for Manifest {
     }
 }
 
-/// `.{stem}.json` with no directory part — the pdf sidecar shape.
+/// `.{stem}.json` with no directory part: the pdf sidecar shape.
 pub fn is_sidecar_name(name: &str) -> bool {
     !name.contains('/')
         && name
@@ -148,9 +122,8 @@ pub fn is_sidecar_name(name: &str) -> bool {
             .is_some_and(|stem| !stem.is_empty())
 }
 
-/// Pick the flat manifest's main entry by filename shape: a top-level
-/// `*.md` is an md page's body; a top-level `.{stem}.json` is a pdf
-/// page's sidecar; everything else (`.{stem}.assets/<f>`) is an asset.
+/// Pick the main entry by filename shape: top-level `*.md` = md body,
+/// top-level `.{stem}.json` = pdf sidecar, rest (`.{stem}.assets/<f>`) = assets.
 fn derive_main_file(files: &indexmap::IndexMap<String, String>) -> String {
     for k in files.keys() {
         if !k.contains('/') && k.to_ascii_lowercase().ends_with(".md") {
@@ -165,10 +138,9 @@ fn derive_main_file(files: &indexmap::IndexMap<String, String>) -> String {
     files.keys().next().cloned().unwrap_or_default()
 }
 
-/// Orphan-blob GC: drop every blob no surviving version references.
-/// The first branch covers the flat `{filename: hash}` manifest (all
-/// text values at the JSON root); the second covers the legacy
-/// `{main_file, files:{...}}` shape older rows may still carry.
+/// Orphan-blob GC: drop blobs no surviving version references. First branch
+/// covers flat {filename: hash} manifests (text values at the JSON root),
+/// second the legacy {main_file, files:{...}} shape older rows may carry.
 const BLOB_GC_SQL: &str = "DELETE FROM blobs WHERE hash NOT IN (\
     SELECT json_each.value FROM versions, json_each(json(versions.manifest)) \
     WHERE json_each.type = 'text' \
@@ -177,17 +149,13 @@ const BLOB_GC_SQL: &str = "DELETE FROM blobs WHERE hash NOT IN (\
     json_each(json(versions.manifest), '$.files'))";
 
 impl HistoryDb {
-    /// Per-vault DB at $XDG_DATA_HOME/coconote/history-<scope>.sqlite.
-    /// `scope` is a stable string identifying the active vault
-    /// (`config:<path>` for multi-root, `vault:<folder>` for single).
+    /// Per-vault DB at $XDG_DATA_HOME/coconote/history-<scope>.sqlite. `scope`
+    /// identifies the vault: `config:<path>` multi-root, `vault:<folder>` single.
     pub async fn open(scope: &str) -> anyhow::Result<Self> {
         let db_path = db_path(scope)?;
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent).context("create history dir")?;
         }
-        // Pre-schema DBs (a `versions.content`/`kind` column, or no
-        // `blobs` table) are renamed to `<file>.bak`; the new schema
-        // is created fresh.
         if db_path.exists() {
             if let Err(e) = rename_legacy_if_needed(&db_path).await {
                 tracing::warn!("history: legacy detection failed: {e}");
@@ -244,17 +212,14 @@ impl HistoryDb {
         Ok(row.map(|(b,)| b))
     }
 
-    /// Record one version. Caller has already produced the manifest
-    /// (filename → hash) and the corresponding blobs.
+    /// Record one version (caller supplies manifest and blobs).
     ///
-    /// `save_type = None` lets the row decide create-vs-edit itself:
-    /// the CASE in the INSERT checks for a prior row of this page_id in
-    /// the same statement, so two racing first writes can't both land
-    /// as `create`. Blob and version inserts share one transaction so
-    /// the pruner's blob GC can never observe the blobs without the
-    /// row referencing them. ts is forced strictly increasing per page
-    /// (max(now, MAX(ts)+1)) — (page_id, ts) is the wire address of a
-    /// version and must stay unique even within one millisecond.
+    /// `save_type = None`: the INSERT's CASE checks for a prior row of this
+    /// page_id in the same statement, so racing first writes can't both land
+    /// as `create`. Blob and version inserts share one transaction so the
+    /// pruner's blob GC never sees blobs without their referencing row. ts is
+    /// forced strictly increasing per page (max(now, MAX(ts)+1)): (page_id, ts)
+    /// is the wire address of a version, unique even within one millisecond.
     pub async fn record(
         &self,
         page_id: &str,
@@ -293,9 +258,8 @@ impl HistoryDb {
         Ok(rowid)
     }
 
-    /// Single-file convenience: builds a 1-entry manifest, stores the
-    /// blob, inserts the row. Used by fs::put for plain md saves and by
-    /// pdf sidecar writes.
+    /// Single-file convenience (1-entry manifest). Used by fs::put for plain
+    /// md saves and pdf sidecar writes.
     pub async fn record_single(
         self: &Arc<Self>,
         page_id: &str,
@@ -314,7 +278,7 @@ impl HistoryDb {
             .await
     }
 
-    /// `/.history/<page_id>` list — newest first.
+    /// `/.history/<page_id>` list, newest first.
     pub async fn list_id(&self, page_id: &str) -> sqlx::Result<Vec<VersionMeta>> {
         let rows: Vec<(i64, String)> = sqlx::query_as(
             "SELECT ts, save_type FROM versions WHERE page_id = ? ORDER BY ts DESC",
@@ -331,8 +295,7 @@ impl HistoryDb {
             .collect())
     }
 
-    /// `/.history/<page_id>?ts=<ms>` preview — returns the main md (or
-    /// sidecar) text of that snapshot.
+    /// `?ts=<ms>` preview: main md (or sidecar) text of that snapshot.
     pub async fn preview_at(
         &self,
         page_id: &str,
@@ -347,7 +310,7 @@ impl HistoryDb {
         self.get_blob(hash).await
     }
 
-    /// Whole manifest at one ts — for Restore.
+    /// Whole manifest at one ts (for Restore).
     pub async fn manifest_at(
         &self,
         page_id: &str,
@@ -366,7 +329,7 @@ impl HistoryDb {
         Ok(serde_json::from_str(&json).ok())
     }
 
-    /// Most recent row for a page_id — used by /pin (clone manifest).
+    /// Most recent row's manifest, used by /pin (clones it).
     pub async fn latest_manifest(
         &self,
         page_id: &str,
@@ -383,9 +346,9 @@ impl HistoryDb {
         Ok(serde_json::from_str(&json).ok())
     }
 
-    /// DELETE /.history/<page_id>?ts=<ms> — exactly one row (server.md:
-    /// "deletes a single version row"). New inserts keep ts unique per
-    /// page; legacy same-ts duplicates go one per call.
+    /// DELETE /.history/<page_id>?ts=<ms>: exactly one row (server.md
+    /// "deletes a single version row"). New inserts keep ts unique per page,
+    /// legacy same-ts duplicates go one per call.
     pub async fn delete_at(&self, page_id: &str, ts: i64) -> sqlx::Result<u64> {
         let r = sqlx::query(
             "DELETE FROM versions WHERE id = \
@@ -398,16 +361,14 @@ impl HistoryDb {
         Ok(r.rows_affected())
     }
 
-    /// Apply the spec-defined retention policy to one page_id.
-    /// `create / push / pull / pin` rows are always kept. `edit` rows
-    /// decay: <1h all, 1h-1d 1/hr, 1d-7d 1/day, 7d-30d 1/wk, >30d 1/mo.
+    /// history.md Retention for one page_id: create/push/pull/pin always kept,
+    /// edit decays (<1h all, 1h-1d 1/hr, 1d-7d 1/day, 7d-30d 1/wk, >30d 1/mo).
     pub async fn prune_id(&self, page_id: &str) -> sqlx::Result<u64> {
         self.prune_id_at(page_id, now_ms()).await
     }
 
-    /// Same as `prune_id` but with `now` injected — exposed for unit
-    /// tests of the history.md §Retention time-decay buckets. Does NOT
-    /// garbage-collect blobs; the pruner runs that once per cycle.
+    /// `prune_id` with `now` injected (for retention bucket tests). Does NOT
+    /// GC blobs: the pruner runs that once per cycle.
     pub async fn prune_id_at(&self, page_id: &str, now: i64) -> sqlx::Result<u64> {
         let h = 60 * 60 * 1000_i64;
         let d = 24 * h;
@@ -427,7 +388,7 @@ impl HistoryDb {
                 keep.insert(*id);
             }
         }
-        // 2) edit decay — newest in each bucket survives.
+        // 2) edit decay: newest in each bucket survives.
         let mut last_hour = i64::MIN;
         let mut last_day = i64::MIN;
         let mut last_week = i64::MIN;
@@ -472,8 +433,8 @@ impl HistoryDb {
             .collect();
         let mut deleted = 0u64;
         if !drop_ids.is_empty() {
-            // ids are server-generated integers; inlining them keeps a
-            // single statement without hitting the bind-param limit.
+            // ids are server-generated integers, safe to inline (one
+            // statement, no bind-param limit).
             let id_list = drop_ids
                 .iter()
                 .map(|i| i.to_string())
@@ -490,14 +451,14 @@ impl HistoryDb {
         Ok(deleted)
     }
 
-    /// Drop every blob no surviving version references. Single atomic
-    /// statement, shared by the pruner cycle and the boot orphan sweep.
+    /// Drop blobs no surviving version references. Single atomic statement,
+    /// shared by the pruner cycle and the boot orphan sweep.
     pub async fn gc_orphan_blobs(&self) -> sqlx::Result<u64> {
         let r = sqlx::query(BLOB_GC_SQL).execute(&self.pool).await?;
         Ok(r.rows_affected())
     }
 
-    /// Return every page_id that has at least one version row.
+    /// Every page_id with at least one version row.
     pub async fn known_page_ids(&self) -> sqlx::Result<Vec<String>> {
         let rows: Vec<(String,)> =
             sqlx::query_as("SELECT DISTINCT page_id FROM versions")
@@ -506,9 +467,8 @@ impl HistoryDb {
         Ok(rows.into_iter().map(|(s,)| s).collect())
     }
 
-    /// Drop every versions row whose page_id is NOT in `live_ids`, then
-    /// garbage-collect any blob no surviving row references. Returns
-    /// (rows_deleted, blobs_collected).
+    /// Drop versions rows whose page_id is NOT in `live_ids`, then GC
+    /// unreferenced blobs. Returns (rows_deleted, blobs_collected).
     pub async fn drop_orphan_page_ids(
         &self,
         live_ids: &std::collections::HashSet<String>,
@@ -529,8 +489,8 @@ impl HistoryDb {
         Ok((rows_deleted, blobs))
     }
 
-    /// Sweep every page roughly every 5 minutes, then collect orphan
-    /// blobs once per cycle (NOT per page — the GC is full-table).
+    /// Sweep every page ~every 5 minutes, then collect orphan blobs once per
+    /// cycle (NOT per page: the GC is full-table).
     pub fn spawn_pruner(self: &Arc<Self>) {
         let me = self.clone();
         tokio::spawn(async move {
@@ -559,10 +519,8 @@ impl HistoryDb {
 
 use crate::util::now_ms;
 
-/// Rename a pre-schema DB at `db_path` to `<file>.bak` so the new
-/// schema starts fresh. Legacy is detected by the old single-table
-/// layout: a `versions.content` or `versions.kind` column, or the
-/// `blobs` table missing entirely.
+/// Rename a pre-schema DB to `<file>.bak` so the new schema starts fresh.
+/// Legacy = a `versions.content`/`kind` column, or no `blobs` table.
 async fn rename_legacy_if_needed(db_path: &std::path::Path) -> anyhow::Result<()> {
     let opts = SqliteConnectOptions::new().filename(db_path);
     let pool = SqlitePoolOptions::new()
@@ -607,9 +565,8 @@ fn db_path(scope: &str) -> anyhow::Result<PathBuf> {
     Ok(pd.data_dir().join(format!("history-{hash}.sqlite")))
 }
 
-// Deterministic so the on-disk filename stays stable across restarts;
-// DefaultHasher uses a process-randomized seed and would abandon the
-// prior DB every reboot.
+// Deterministic so the on-disk filename survives restarts (DefaultHasher's
+// process-randomized seed would abandon the prior DB every reboot).
 fn scope_hash(s: &str) -> String {
     blake3::hash(s.as_bytes()).to_hex()[..16].to_string()
 }
@@ -665,7 +622,7 @@ mod tests {
                 .fetch_one(&db.pool)
                 .await
                 .unwrap();
-        // history.md: flat {filename: hash}; no main_file/files wrapper.
+        // history.md: flat {filename: hash}, no main_file/files wrapper.
         let v: serde_json::Value = serde_json::from_str(&json).unwrap();
         let obj = v.as_object().unwrap();
         assert!(obj.contains_key("f.md"));
@@ -767,7 +724,7 @@ mod tests {
                 .await
                 .unwrap();
         }
-        // Force them to be "old" via direct UPDATE.
+        // Backdate well past every retention window.
         sqlx::query("UPDATE versions SET ts = ts - ?")
             .bind(40_i64 * 24 * 60 * 60 * 1000)
             .execute(&db.pool)
@@ -782,7 +739,6 @@ mod tests {
     async fn prune_edit_decay() {
         let db = Arc::new(fresh_db().await);
         let now = now_ms();
-        // Inject edit rows at exact ages.
         for (i, age_ms) in [
             0_i64,
             10 * 60 * 1000,
@@ -797,13 +753,11 @@ mod tests {
         }
         db.prune_id("p").await.unwrap();
         let after = db.list_id("p").await.unwrap();
-        // Within last hour: rows at 0 and 10min both kept. 2h and 3h
-        // sit in different hour-buckets so both survive the 1/hr rule.
-        // 3d sits alone in its day-bucket. Expect all 5 rows.
+        // 0 and 10min are <1h (kept), 2h and 3h sit in different hour
+        // buckets, 3d alone in its day bucket: all 5 survive.
         assert_eq!(after.len(), 5);
     }
 
-    /// Insert one `edit` row at `ts` for `page_id` (flat manifest).
     async fn insert_edit_at(db: &HistoryDb, page_id: &str, ts: i64, tag: &str) {
         let m = format!(r#"{{"f.md":"{tag}"}}"#);
         sqlx::query("INSERT OR IGNORE INTO blobs (hash, bytes) VALUES (?, ?)")
@@ -823,12 +777,11 @@ mod tests {
         .unwrap();
     }
 
-    /// history.md §Retention: create / push / pull / pin rows are never
-    /// pruned, no matter how old they get.
+    /// history.md Retention: create/push/pull/pin are never pruned.
     #[tokio::test]
     async fn prune_keeps_all_non_edit() {
         let db = Arc::new(fresh_db().await);
-        // Backdate well into the "monthly" window.
+        // Backdate into the monthly window.
         let very_old_ms = 365_i64 * 24 * 60 * 60 * 1000;
         let now = 1_700_000_000_000_i64;
         for (i, st) in ["create", "push", "pull", "pin"].iter().enumerate() {
@@ -856,7 +809,7 @@ mod tests {
         assert_eq!(kept.len(), 4, "create/push/pull/pin must all survive prune");
     }
 
-    /// history.md §Retention: every `edit` row younger than 1 hour is kept.
+    /// history.md Retention: every edit younger than 1 hour is kept.
     #[tokio::test]
     async fn prune_keeps_all_edits_under_hour() {
         let db = Arc::new(fresh_db().await);
@@ -868,15 +821,13 @@ mod tests {
         assert_eq!(db.list_id("p").await.unwrap().len(), 4);
     }
 
-    /// history.md §Retention: the 1h–1d window collapses to one
-    /// survivor per hour bucket ("keep the last of each hour").
+    /// history.md Retention: 1h-1d keeps the last edit of each hour bucket.
     #[tokio::test]
     async fn prune_edits_1h_to_1d_keeps_one_per_hour() {
         let db = Arc::new(fresh_db().await);
         let h_ms = 60 * 60 * 1000_i64;
-        let now = 100 * h_ms; // bucket-aligned so `ts/h` gives a clean number
+        let now = 100 * h_ms; // bucket-aligned so `ts/h` is clean
         // Three edits in the SAME hour bucket (5h ago, +5min, +10min).
-        // ts = now - 5h, now - 5h + 5min, now - 5h + 10min all share ts/h.
         let bucket_start = now - 5 * h_ms;
         for (i, off) in [0_i64, 5 * 60 * 1000, 10 * 60 * 1000].iter().enumerate() {
             insert_edit_at(&db, "p", bucket_start + *off, &format!("a{i}")).await;
@@ -884,12 +835,11 @@ mod tests {
         // Plus one edit in a different hour bucket (3h ago).
         insert_edit_at(&db, "p", now - 3 * h_ms, "b").await;
         db.prune_id_at("p", now).await.unwrap();
-        // Two buckets in the 1h-1d window → 2 survivors.
+        // Two buckets in the 1h-1d window -> 2 survivors.
         assert_eq!(db.list_id("p").await.unwrap().len(), 2);
     }
 
-    /// history.md §Retention: the 1d–7d window collapses to one
-    /// survivor per day bucket.
+    /// history.md Retention: 1d-7d keeps one survivor per day bucket.
     #[tokio::test]
     async fn prune_edits_1d_to_7d_keeps_one_per_day() {
         let db = Arc::new(fresh_db().await);
@@ -905,8 +855,7 @@ mod tests {
         assert_eq!(db.list_id("p").await.unwrap().len(), 2);
     }
 
-    /// history.md §Retention: the 7d–30d window collapses to one
-    /// survivor per week bucket.
+    /// history.md Retention: 7d-30d keeps one survivor per week bucket.
     #[tokio::test]
     async fn prune_edits_7d_to_30d_keeps_one_per_week() {
         let db = Arc::new(fresh_db().await);
@@ -922,7 +871,7 @@ mod tests {
         assert_eq!(db.list_id("p").await.unwrap().len(), 2);
     }
 
-    /// history.md §Retention: beyond 30d, one survivor per month bucket.
+    /// history.md Retention: beyond 30d, one survivor per month bucket.
     #[tokio::test]
     async fn prune_edits_over_30d_keeps_one_per_month() {
         let db = Arc::new(fresh_db().await);
@@ -938,8 +887,7 @@ mod tests {
         assert_eq!(db.list_id("p").await.unwrap().len(), 2);
     }
 
-    /// Blob GC keeps blobs referenced by either manifest shape and
-    /// collects the rest.
+    /// Blob GC keeps blobs referenced by either manifest shape, collects the rest.
     #[tokio::test]
     async fn gc_respects_flat_and_legacy_manifests() {
         let db = Arc::new(fresh_db().await);

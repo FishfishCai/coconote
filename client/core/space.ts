@@ -50,36 +50,21 @@ export class Space {
   }
 
   isListedPage(fileMeta: FileMeta): boolean {
-    // Underscore-prefix hides the basename, not the whole path —
-    // `notes/_draft.md` and `_draft.md` are both hidden, but a normal
-    // file under a folder whose name starts with `_` is not. Spec
-    // file.md keeps the rule basename-only.
+    // Underscore-prefix hides by basename only (file.md): `notes/_draft.md`
+    // is hidden, a normal file under a `_`-prefixed folder is not.
     const slash = fileMeta.name.lastIndexOf("/");
     const base = slash >= 0 ? fileMeta.name.slice(slash + 1) : fileMeta.name;
     if (base.startsWith("_")) return false;
-    // .md is the primary content type; .pdf opens in the dedicated
-    // PdfViewer and is also a first-class vault page. Other types
-    // (images, json, etc.) are accessed via wikilink transclusion and
-    // stay out of the Content browser.
+    // .md and .pdf (opened in the PdfViewer) are first-class vault
+    // pages. Other types (images, json, ...) are reached via wikilink
+    // transclusion and stay out of the Content browser.
     return fileMeta.name.endsWith(".md") || fileMeta.name.endsWith(".pdf");
   }
 
   async fetchPageList(): Promise<PageMeta[]> {
-    return (await this.deduplicatedFileList())
+    return (await this.spacePrimitives.fetchFileList())
       .filter(this.isListedPage)
       .map((m) => fileMetaToPageMeta(m));
-  }
-
-  async deduplicatedFileList(): Promise<FileMeta[]> {
-    const files = await this.spacePrimitives.fetchFileList();
-    const seen = new Map<string, FileMeta>();
-    for (const f of files) {
-      const existing = seen.get(f.name);
-      if (!existing || existing.lastModified < f.lastModified) {
-        seen.set(f.name, f);
-      }
-    }
-    return [...seen.values()];
   }
 }
 
@@ -92,10 +77,9 @@ function fileMetaToPageMeta(
   nameOverride?: string,
   origin?: PageOrigin,
 ): PageMeta {
-  // For remote: caller provides the @<label>-prefixed name.
-  // For local: .md files have their extension stripped (conventional
-  // page-name form used everywhere else in the client); other types
-  // (.pdf) keep their extension so the navigator can dispatch them.
+  // Remote: caller provides the @<label>-prefixed name. Local: .md
+  // files get their extension stripped (the client's page-name form),
+  // other types (.pdf) keep it so the navigator can dispatch them.
   let name: string;
   if (nameOverride !== undefined) {
     name = nameOverride;

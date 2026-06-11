@@ -1,11 +1,7 @@
-// Presentational dialogs for the PDF viewer: the highlight right-click
-// menu and the comment / anchor input modals. Split out of
-// pdf_viewer.tsx — these are self-contained components with no shared
-// closure state.
-//
-// The modals use a themed shell instead of window.prompt/alert: Electron
-// no-ops window.prompt, so the anchor flow (which used to call it) would
-// silently fail in the desktop build.
+// Presentational PDF-viewer dialogs: highlight right-click menu and the
+// comment / anchor input modals. Themed shells instead of
+// window.prompt/alert: Electron no-ops window.prompt, so prompt-based
+// flows would silently fail in the desktop build.
 
 import { useState } from "preact/hooks";
 import type { ComponentChildren } from "preact";
@@ -15,8 +11,8 @@ import { ModalActions } from "../components/modal_actions.tsx";
 import { Modal } from "../components/modal.tsx";
 import { type Color, HIGHLIGHT_COLORS } from "./notes_client.ts";
 
-/** Title + Cancel/Save on the unified Modal base; Cmd/Ctrl+Enter submits
- *  (Esc=cancel is handled by Modal). */
+/** Title + Cancel/Save on the unified Modal base. Cmd/Ctrl+Enter submits,
+ *  Esc=cancel is handled by Modal. */
 function ModalShell(
   { title, submitLabel, onCancel, onSubmit, children }: {
     title: string;
@@ -68,7 +64,7 @@ export function CommentModal(
         autoFocus
         value={body}
         spellcheck={false}
-        placeholder="Comment text — leave empty + Save to delete."
+        placeholder="Comment text - leave empty + Save to delete."
         onInput={(e) => setBody((e.target as HTMLTextAreaElement).value)}
       />
     </ModalShell>
@@ -147,9 +143,8 @@ export function HighlightContextMenu({
   onRemove(): void;
 }) {
   const { ref, x: mx, y: my } = useMenuPosition(x, y);
-  // Same dismissal as the content-browser menus (shared hook): outside
-  // click / right-click / Escape close it; clicks inside are swallowed
-  // by stopPropagation so they don't self-dismiss.
+  // Outside click / right-click / Escape dismiss (shared hook). Inside
+  // clicks are swallowed by stopPropagation so they don't self-dismiss.
   useDismissOnOutside(onClose);
   return (
     <div

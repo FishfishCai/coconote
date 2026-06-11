@@ -16,8 +16,8 @@ type Props = {
 export function Settings({ client, uiOptions }: Props) {
   const set = (k: string, v: unknown) => client.setUiOption(k, v);
   // Snippets persist to the server-side snippet.json sidecar (editor.md
-  // §Snippet — same lookup path as coconote.yaml). The local Config
-  // mirror keeps the editor responsive without a round trip.
+  // Snippet, same lookup path as coconote.yaml). The local mirror keeps
+  // the editor responsive without a round trip.
   const onSnippetsChange = (v: string) => {
     set("snippets", v);
     void patchConfig({ snippets: v })
@@ -43,7 +43,7 @@ export function Settings({ client, uiOptions }: Props) {
         value={uiOptions.snippets}
         onChange={onSnippetsChange}
       />
-      <ShortcutsSection />
+      <ShortcutsSection client={client} />
       <PagesSection client={client} />
       <RemoteVaultsSection />
       <ConfigPathSection />

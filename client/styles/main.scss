@@ -1,5 +1,5 @@
 // Entry point bundled by build_client.ts. Order matters where specificity
-// ties exist — `prose` comes after `editor` so the polish layer wins.
+// ties exist - `prose` comes after `editor` so the polish layer wins.
 
 @use "theme";
 @use "colors";
@@ -16,8 +16,8 @@
 @use "hover_preview";
 @use "sync";
 
-/* Collab WS state dot — green = connected, yellow = (re)connecting,
- * faint = no live session (editor.md §Collaboration). */
+/* Collab WS state dot: green = connected, yellow = (re)connecting,
+ * faint = no live session (editor.md Collaboration). */
 .coconote-collab-status {
   position: fixed;
   top: 8px;

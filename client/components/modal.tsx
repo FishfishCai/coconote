@@ -1,14 +1,7 @@
-// The single modal base for the whole app. Built on the native <dialog>
-// so every popup gets the same top-layer rendering, dimmed ::backdrop,
-// Esc-to-close and focus trap for free — no hand-rolled overlay divs or
-// z-index juggling. Popups compose it as:
-//
-//   <Modal title="…" size="large" loading={…} onClose={…}>body</Modal>
-//
-// `title` renders a header (title + close ×) that shows immediately, so a
-// panel pops up instantly and its async content fills in afterwards. While
-// `loading`, the body area shows a standard "Loading…" placeholder; the
-// caller drops it once data (or an error) is ready.
+// The single modal base for the whole app, built on native <dialog>:
+// top-layer rendering, dimmed ::backdrop, Esc-to-close and focus trap
+// for free (no overlay divs or z-index juggling). `title` renders an
+// immediate header so async content fills in, `loading` a placeholder.
 
 import { useEffect, useRef } from "preact/hooks";
 import type { ComponentChildren } from "preact";
@@ -40,8 +33,8 @@ export function Modal({
     dialog.style.opacity = "0";
     dialog.showModal();
     // Safari: a CodeMirror editor's flex sizing inside <dialog> needs one
-    // extra reflow. Toggle display after first paint; keep it hidden until
-    // then to suppress the visible jump. No-op when no .cm-editor is shown.
+    // extra reflow. Toggle display after first paint, hidden until then
+    // to suppress the visible jump. No-op when no .cm-editor is shown.
     const reveal = () => {
       requestAnimationFrame(() => {
         setTimeout(() => {

@@ -50,7 +50,7 @@ export class CalloutPrefixWidget extends WidgetType {
 }
 
 // Suffix glyph (currently only `∎` for proof). Floated right at end of the
-// last body line — see callout.scss `.coconote-callout-proof-suffix`.
+// last body line - see callout.scss `.coconote-callout-proof-suffix`.
 export class CalloutSuffixWidget extends WidgetType {
   constructor(readonly suffix: string, readonly cssClass: string) {
     super();

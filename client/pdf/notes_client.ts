@@ -5,7 +5,7 @@
 
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { newPageId } from "../lib/id.ts";
-import { pdfSidecarPath } from "../lib/path_url.ts";
+import { pdfSidecarPath, pdfStem } from "../lib/path_url.ts";
 import { fileUrl } from "../spaces/constants.ts";
 import { type CollabHandle, connectCollab } from "../collab/collab_extension.ts";
 
@@ -28,15 +28,14 @@ export type Highlight = {
   text: string;
 };
 
-// pdf.md: { name, highlightId }. No `id` field — the highlightId
-// is the join key.
+// pdf.md: { name, highlightId }. No `id` field - highlightId is the join key.
 export type Anchor = {
   highlightId: string;
   name: string;
 };
 
-// pdf.md: { highlightId, body, ts }. Spec uses `ts`, not
-// `createdAt`; and there's no separate `id`.
+// pdf.md: { highlightId, body, ts }. Spec uses `ts`, not `createdAt`,
+// and there is no separate `id`.
 export type Comment = {
   highlightId: string;
   body: string;
@@ -63,13 +62,8 @@ export type PdfNotes = {
   comments: Comment[];
 };
 
-// Single sidecar-naming rule lives in lib/path_url.ts; re-exported under
-// the name this module's callers already use.
+// The single sidecar-naming rule lives in lib/path_url.ts.
 export const sidecarPath = pdfSidecarPath;
-
-function pdfStem(pdfPath: string): string {
-  return (pdfPath.split("/").pop() ?? pdfPath).replace(/\.pdf$/i, "");
-}
 
 function emptySidecar(): PdfSidecar {
   return {
@@ -129,7 +123,6 @@ export async function saveSidecar(
 }
 
 
-/** Format an auto-anchor name based on already-used names. */
 export function nextAutoAnchorName(existing: Anchor[]): string {
   let n = 1;
   const taken = new Set(existing.map((a) => a.name));
@@ -139,13 +132,12 @@ export function nextAutoAnchorName(existing: Anchor[]): string {
 
 // --- Live collaboration on the sidecar (pdf.md: same channel as md) ---
 //
-// The whole sidecar JSON rides one Y.Text over /.collab/<sidecar>, exactly
-// like a markdown body. The server seeds it from disk, fans updates out,
-// checkpoints to disk every 5s, and records history. One session is shared
-// by the PDF viewer and the metadata panel via ref-counting so they edit
-// the same in-memory sidecar. Concurrent structural edits merge at the text
-// level (last consistent state wins), acceptable for the single-user /
-// few-peer case this targets.
+// The whole sidecar JSON rides one Y.Text over /.collab/<sidecar>, like a
+// markdown body: the server seeds it from disk, fans updates out,
+// checkpoints every 5s, and records history. One ref-counted session is
+// shared by the PDF viewer and the metadata panel so they edit the same
+// in-memory sidecar. Concurrent structural edits merge at the text level
+// (last consistent state wins), fine for the single-user / few-peer target.
 
 type SidecarListener = (s: PdfSidecar) => void;
 
@@ -173,9 +165,8 @@ function emitSidecar(s: SidecarSession): void {
 }
 
 /** Open (or join) the collab session for `pdfPath`'s sidecar. `onChange`
- *  fires immediately with the current state and again on every remote
- *  update. Returns a release fn; the session closes when the last holder
- *  releases. */
+ *  fires immediately with the current state and on every remote update.
+ *  The session closes when the last holder releases. */
 export function openSidecarSession(
   pdfPath: string,
   onChange: SidecarListener,
@@ -238,8 +229,8 @@ export function updateSidecarSession(
   let next = mutate(s.current);
   // Heal a freshly-created sidecar so its identity is stable: without an
   // id every checkpoint write would have the server inject a new one,
-  // churning the page_id and fragmenting history. Mirrors the old
-  // HTTP save path (id anchors history; title defaults to the filename).
+  // churning the page_id and fragmenting history. Title defaults to the
+  // filename.
   if (!next.metadata.id) {
     next = {
       ...next,

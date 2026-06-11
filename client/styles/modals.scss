@@ -1,7 +1,7 @@
 @use "shared";
 
-// Unified modal base — every popup is a native <dialog class="coconote-modal">
-// (see components/modal.tsx). Structure only; colours live in colors.scss.
+// Unified modal base - every popup is a native <dialog class="coconote-modal">
+// (see components/modal.tsx). Structure only, colours live in colors.scss.
 
 .coconote-modal {
   inset: 0;
@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
 
-  // No dimming — just the centered box floats over the page. (The
+  // No dimming - just the centered box floats over the page. (The
   // backdrop still exists and captures the click-outside-to-close.)
   &::backdrop {
     background: transparent;
@@ -28,7 +28,7 @@
   }
 }
 
-// Width variants; height stays content-driven except for `large`.
+// Width variants. Height stays content-driven except for `large`.
 .coconote-modal-small   { width: auto; min-width: 340px; max-width: min(460px, 92vw); }
 .coconote-modal-default { width: auto; min-width: 360px; max-width: min(560px, 92vw); }
 .coconote-modal-wide    { width: min(720px, 92vw); }
@@ -59,15 +59,15 @@
   color: inherit;
 }
 
-// Body fills the remaining height; inner content supplies its own padding.
+// Body fills the remaining height. Inner content supplies its own padding.
 .coconote-modal-body {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
 }
-// Short popups (forms / prompts) scroll the body; the large panel lets its
-// own list/preview columns scroll instead.
+// Short popups (forms / prompts) scroll the body. The large panel lets
+// its own list/preview columns scroll instead.
 .coconote-modal-default .coconote-modal-body,
 .coconote-modal-small .coconote-modal-body,
 .coconote-modal-wide .coconote-modal-body { overflow: auto; }
@@ -81,7 +81,7 @@
   padding: 2px 0 0 3px;
 }
 // Safari: CM's .cm-scroller height:100% creates a circular height
-// dependency inside flex <dialog>; height:auto breaks the cycle.
+// dependency inside flex <dialog>. height:auto breaks the cycle.
 .coconote-modal .cm-scroller {
   height: auto;
 }
@@ -123,7 +123,7 @@
   }
 }
 
-// ---- PDF metadata form (pdf_metadata_panel.tsx); shares .coconote-prompt ----
+// ---- PDF metadata form (pdf_metadata_panel.tsx), shares .coconote-prompt ----
 .coconote-pdf-meta {
   .coconote-pdf-meta-row {
     display: flex;
@@ -148,10 +148,5 @@
       min-width: 0;
       box-sizing: border-box;
     }
-  }
-
-  .coconote-error {
-    color: var(--editor-wiki-link-missing-color);
-    font-size: 0.9em;
   }
 }

@@ -9,7 +9,7 @@ import { authedFetch, setAuthToken } from "../lib/authed_fetch.ts";
 import { Client } from "./client.ts";
 import { Config } from "./config.ts";
 import type { BootConfig } from "../types/ui.ts";
-import { USER_PREFS_KEY } from "../lib/user_prefs.ts";
+import { readUserPrefs } from "../lib/user_prefs.ts";
 
 const TOKEN_KEY = "coconote.authToken";
 
@@ -17,18 +17,17 @@ globalThis.addEventListener("unhandledrejection", (event) => {
   console.error("Unhandled promise rejection:", event.reason);
 });
 
-// Pre-suppress the native context menu app-wide (the desktop shell's
-// Back / Reload / Inspect, a browser's Print / Save). Capture phase, so
-// preventDefault runs before any element handler; the spec-defined
-// right-click handlers (PDF highlights, content-browser rows, …) still
-// receive the event afterwards and draw their own menus.
+// Suppress the native context menu app-wide (shell Back/Reload/Inspect,
+// browser Print/Save). Capture phase, so preventDefault runs before any
+// element handler. The spec-defined right-click handlers (PDF highlights,
+// content-browser rows, ...) still receive the event and draw their own menus.
 document.addEventListener("contextmenu", (e) => {
   e.preventDefault();
 }, true);
 
 safeRun(async () => {
   // welcome.md: browser clients on remote instances present the auth
-  // token; loopback desktop clients never need one. Seed the module
+  // token, loopback desktop clients never need one. Seed the module
   // token from a previous login before the first request goes out.
   try {
     setAuthToken(localStorage.getItem(TOKEN_KEY) ?? undefined);
@@ -48,7 +47,7 @@ safeRun(async () => {
       } catch { /* private browsing */ }
       showTokenGate(
         hadToken
-          ? "Token rejected — enter the server's current auth token."
+          ? "Token rejected - enter the server's current auth token."
           : "This server requires its auth token to continue.",
       );
       return;
@@ -62,21 +61,19 @@ safeRun(async () => {
   }
 
   const config = new Config();
-  // Read-only vault flag (server-rs handlers/config.rs) — makes the
-  // editor read-only up front. Stored under `_boot.*` so Config is the
+  // Read-only vault flag (server-rs handlers/config.rs) makes the editor
+  // read-only up front. Stored under `_boot.*` so Config stays the
   // single source of truth.
   config.set(["_boot", "readOnly"], bootConfig?.readOnly ?? false);
 
-  // UI prefs live entirely in localStorage (the server doesn't ship a
-  // `ui` block); Settings edits persist there without touching the yaml.
-  try {
-    const raw = localStorage.getItem(USER_PREFS_KEY);
-    if (raw) config.set("ui", JSON.parse(raw));
-  } catch (_) { /* malformed — ignore */ }
+  // UI prefs live entirely in localStorage (the server ships no `ui`
+  // block) - Settings edits persist without touching the yaml.
+  const prefs = readUserPrefs();
+  if (Object.keys(prefs).length > 0) config.set("ui", prefs);
 
-  // The server-side snippet.json is the source of truth (editor.md
-  // §Snippet); if present it overrides any localStorage copy so
-  // edits to the file land without a localStorage clear.
+  // Server-side snippet.json is the source of truth (editor.md Snippet):
+  // it overrides any localStorage copy so file edits land without a
+  // localStorage clear.
   if (bootConfig?.snippets) {
     const ui = { ...(config.get("ui") ?? {}), snippets: bootConfig.snippets };
     config.set("ui", ui);
@@ -133,7 +130,7 @@ function showTokenGate(message: string): void {
     if (!v) return;
     try {
       localStorage.setItem(TOKEN_KEY, v);
-    } catch { /* private browsing — token lives for this load only */ }
+    } catch { /* private browsing - token lives for this load only */ }
     location.reload();
   });
   wrap.append(h, p, form);
@@ -153,8 +150,8 @@ async function cachedFetch(path: string): Promise<string> {
       throw offlineError;
     }
     if (response.status === 404) return "";
-    // 401/403: never fall back to a cached copy — the API calls that
-    // follow would all fail; surface the token gate instead.
+    // 401/403: never fall back to a cached copy - the API calls that
+    // follow would all fail. Surface the token gate instead.
     if (response.status === 401 || response.status === 403) {
       throw notAuthenticatedError;
     }

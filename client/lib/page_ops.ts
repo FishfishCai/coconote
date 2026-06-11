@@ -1,5 +1,5 @@
 // Page-level file operations for the content-browser context menus
-// (content.md §Right-click menu). The menus stay dispatch-only — every
+// (content.md Right-click menu). The menus stay dispatch-only: every
 // multi-step transaction (rename with rollback, physical delete with
 // sidecar/assets cleanup, New Markdown admission) lives here.
 
@@ -12,7 +12,7 @@ import { stripFrontmatter } from "../markdown/frontmatter.ts";
 import { loadSidecar, saveSidecar, sidecarPath } from "../pdf/notes_client.ts";
 
 /** PUT a text body to `/.file/<path>`. Throws on a non-2xx response. */
-export async function putFileBody(path: string, body: string): Promise<void> {
+async function putFileBody(path: string, body: string): Promise<void> {
   const r = await authedFetch(fileUrl(path), {
     method: "PUT",
     headers: { "Content-Type": "application/octet-stream" },
@@ -21,7 +21,7 @@ export async function putFileBody(path: string, body: string): Promise<void> {
   if (!r.ok) throw new Error(`PUT ${r.status} ${await r.text()}`);
 }
 
-/** PUT `/.file/<path>?type=dir` — create a folder. */
+/** PUT `/.file/<path>?type=dir` - create a folder. */
 export async function putDirectory(path: string): Promise<void> {
   const r = await authedFetch(`${fileUrl(path)}?type=dir`, {
     method: "PUT",
@@ -29,17 +29,17 @@ export async function putDirectory(path: string): Promise<void> {
   if (!r.ok) throw new Error(`PUT ${r.status} ${await r.text()}`);
 }
 
-/** content.md §Remove (markdown flavour): the file stays on disk but
+/** content.md Remove (markdown flavour): the file stays on disk but
  *  its frontmatter `coconote:` flips to false so it drops out of the
  *  index. Mirror of lib/include.ts `includeMarkdown`. */
-export async function removeMarkdownFromIndex(path: string): Promise<void> {
+async function removeMarkdownFromIndex(path: string): Promise<void> {
   const r = await authedFetch(fileUrl(path));
   if (!r.ok) throw new Error(`read ${r.status}`);
   const next = setFrontmatterKey(await r.text(), "coconote", "false");
   await putFileBody(path, next);
 }
 
-/** content.md §Remove: flip a page out of the index, by file kind. The
+/** content.md Remove: flip a page out of the index, by file kind. The
  *  file stays on disk (md frontmatter / pdf sidecar `coconote: false`). */
 export async function removeFromIndex(fullPath: string): Promise<void> {
   const lower = fullPath.toLowerCase();
@@ -77,18 +77,18 @@ export async function deleteFolder(
   fullPaths: string[],
 ): Promise<void> {
   for (const fp of fullPaths) await deletePage(fp);
-  // The server only deletes empty dirs; ignore failure when subdirs remain.
+  // The server only deletes empty dirs - ignore failure when subdirs remain.
   try {
     await authedFetch(fileUrl(folderPath), { method: "DELETE" });
   } catch { /* non-empty or already gone */ }
 }
 
-/** Rename / move a page: read old → probe target (refuse to clobber) →
- *  PUT new → DELETE old, rolling the copy back if the delete fails so
+/** Rename / move a page: read old -> probe target (refuse to clobber) ->
+ *  PUT new -> DELETE old, rolling the copy back if the delete fails so
  *  two files never share the same `id:`. Then carries the PDF sidecar /
  *  markdown assets folder along and rewrites every [[wikilink]] that
- *  pointed at the old name (content.md §Rename — same rule for .md and
- *  .pdf). Throws when the core move fails; sidecar / assets / wikilink
+ *  pointed at the old name (content.md Rename - same rule for .md and
+ *  .pdf). Throws when the core move fails, sidecar / assets / wikilink
  *  follow-ups only log. */
 export async function renamePage(
   fullPath: string,
@@ -127,7 +127,6 @@ export async function renamePage(
     throw new Error(`delete old ${delRes.status}`);
   }
 
-  // Move the PDF sidecar alongside, if any.
   if (isPdf) {
     const oldSc = fileUrl(sidecarPath(fullPath));
     const newSc = fileUrl(sidecarPath(newFullPath));
@@ -143,8 +142,7 @@ export async function renamePage(
     }
   }
 
-  // Move the markdown assets folder, if any. file.md:
-  // ".<name>.assets/ follows the markdown file on rename".
+  // file.md: ".<name>.assets/ follows the markdown file on rename".
   if (isMd) {
     try {
       await moveAssetsFolder(fullPath, newFullPath);
@@ -154,7 +152,7 @@ export async function renamePage(
   }
 
   // Rewrite every [[wikilink]] in the vault that pointed at the
-  // old name (content.md §Rename — same rule for .md and .pdf).
+  // old name (content.md Rename - same rule for .md and .pdf).
   try {
     await refactorLinks(fullPath, newFullPath);
   } catch (e) {
@@ -163,7 +161,7 @@ export async function renamePage(
 }
 
 /** Physically delete a page plus its PDF sidecar / markdown assets
- *  folder (content.md §Delete). The caller owns the confirmation UI. */
+ *  folder (content.md Delete). The caller owns the confirmation UI. */
 export async function deletePage(fullPath: string): Promise<void> {
   const lower = fullPath.toLowerCase();
   const isMd = lower.endsWith(".md");
@@ -179,18 +177,18 @@ export async function deletePage(fullPath: string): Promise<void> {
     }).catch(() => {});
   } else if (isMd) {
     // Clean up the .<name>.assets/ folder so it doesn't have to
-    // wait for the server's boot-time orphan sweep (file.md §Delete).
+    // wait for the server's boot-time orphan sweep (file.md Delete).
     await deleteAssetsFolder(assetsDirFor(fullPath));
   }
 }
 
 export type CreateMarkdownResult = "created" | "admitted" | "already-included";
 
-/** "New Markdown" (content.md §Right-click menu → Folder): create
+/** "New Markdown" (content.md Right-click menu -> Folder): create
  *  `<target>` with `coconote: true` frontmatter. A same-named file
  *  already on disk with `coconote: false` gets the key flipped instead
- *  of being overwritten; one that is ALREADY included is left untouched
- *  (no bogus edit row) — the caller surfaces "already exists". */
+ *  of being overwritten. One that is ALREADY included is left untouched
+ *  (no bogus edit row) - the caller surfaces "already exists". */
 export async function createMarkdownPage(
   target: string,
 ): Promise<CreateMarkdownResult> {
@@ -215,7 +213,7 @@ function hasCoconoteTrue(body: string): boolean {
   return /^coconote[ \t]*:[ \t]*true[ \t]*(#.*)?$/m.test(yaml);
 }
 
-/** `notes/foo.md` → `notes/.foo.assets`. Mirrors orphan.rs naming
+/** `notes/foo.md` -> `notes/.foo.assets`. Mirrors orphan.rs naming
  *  (file.md: `<name>` carries no extension). Same derivation as
  *  `mdAssetsPrefix`, minus its trailing slash. */
 function assetsDirFor(mdPath: string): string {
@@ -256,10 +254,10 @@ async function moveAssetsFolder(
 }
 
 /** Delete every file under `dir` (the markdown's `.<name>.assets/`),
- *  then the directory itself (content.md §Right-click menu: Delete
+ *  then the directory itself (content.md Right-click menu: Delete
  *  "physically deletes the file and its assets folder"). The server's
- *  DELETE accepts empty dirs; absent/non-empty failures are quietly
- *  ignored — the boot-time orphan sweep is the backstop. */
+ *  DELETE accepts empty dirs. Absent/non-empty failures are quietly
+ *  ignored - the boot-time orphan sweep is the backstop. */
 async function deleteAssetsFolder(dir: string): Promise<void> {
   const prefix = dir + "/";
   const listRes = await authedFetch(

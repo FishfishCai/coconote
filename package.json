@@ -20,7 +20,8 @@
   "files": [
     "client/lib",
     "client/types",
-    "client/markdown/transclusion.ts"
+    "client/markdown/transclusion.ts",
+    "client/markdown/parser/constants.ts"
   ],
   "scripts": {
     "build": "tsx build/build_client.ts",

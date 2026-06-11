@@ -1,14 +1,7 @@
-// Shared "Cancel + primary action" modal footer. Several modals (sync
-// push/pull, the merge view, and the PDF comment/anchor dialogs) all
-// render the same two-button bar: a neutral Cancel on the left and a
-// single primary action on the right. This component centralizes that
-// markup while keeping the rendered DOM and CSS classes identical to
-// each call site, so existing stylesheets keep matching.
-//
-// Most sites use the `coconote-modal-actions` / `coconote-modal-primary`
-// classes. The PDF dialogs use a different class family
-// (`coconote-pdf-comment-actions` / `-cancel` / `-save`); the `variant`
-// prop selects that family without changing any rendered class.
+// Shared "Cancel + primary action" modal footer (sync push/pull, merge
+// view, PDF comment/anchor dialogs). Rendered DOM and CSS classes stay
+// identical to the original call sites so existing stylesheets keep
+// matching: `variant` picks the modal or pdf class family.
 
 import type { JSX } from "preact";
 
@@ -40,7 +33,7 @@ export function ModalActions({
   cancelLabel?: string;
   onConfirm(): void;
   /** Primary button label (already includes any busy copy, e.g.
-   *  "Pushing…"). */
+   *  "Pushing..."). */
   confirmLabel: JSX.Element | string;
   /** Disables the Cancel button (used while a request is in flight). */
   busy?: boolean;
@@ -48,9 +41,8 @@ export function ModalActions({
   disabled?: boolean;
   /** Optional tooltip for the primary button. */
   confirmTitle?: string;
-  /** Which class family to emit. `modal` is the default
-   *  `coconote-modal-*` bar; `pdf` emits the `coconote-pdf-comment-*`
-   *  bar used by the PDF dialogs. */
+  /** Class family: `modal` (default) emits the `coconote-modal-*` bar,
+   *  `pdf` the `coconote-pdf-comment-*` bar used by the PDF dialogs. */
   variant?: Variant;
 }) {
   const v = VARIANTS[variant];

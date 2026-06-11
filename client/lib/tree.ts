@@ -18,16 +18,6 @@ export function addParentPointers(tree: ParseTree) {
   }
 }
 
-export function removeParentPointers(tree: ParseTree) {
-  tree.parent = undefined;
-  if (!tree.children) {
-    return;
-  }
-  for (const child of tree.children) {
-    removeParentPointers(child);
-  }
-}
-
 export function findParentMatching(
   tree: ParseTree,
   matchFn: (tree: ParseTree) => boolean,
@@ -82,30 +72,13 @@ export function traverseTree(
   tree: ParseTree,
   // Return true to stop traversal into children.
   matchFn: (tree: ParseTree) => boolean,
-  // Log visitor errors but keep traversing.
-  catchVisitorErrors = false,
 ): void {
-  let stop = false;
-  if (catchVisitorErrors) {
-    try {
-      stop = matchFn(tree);
-    } catch (e: unknown) {
-      const detail = e instanceof Error ? (e.stack ?? e.message) : String(e);
-      console.error(
-        `traverseTree visitor failed at node ${tree.type}@${tree.from}:`,
-        detail,
-      );
-      return;
-    }
-  } else {
-    stop = matchFn(tree);
-  }
-  if (stop) {
+  if (matchFn(tree)) {
     return;
   }
   if (tree.children) {
     for (const child of tree.children) {
-      traverseTree(child, matchFn, catchVisitorErrors);
+      traverseTree(child, matchFn);
     }
   }
 }
@@ -120,7 +93,7 @@ export function nodeAtPos(tree: ParseTree, pos: number): ParseTree | null {
   for (const child of tree.children) {
     const n = nodeAtPos(child, pos);
     if (n && n.text !== undefined) {
-      // text node — return its parent (caller wants non-text)
+      // text node - return its parent (caller wants non-text)
       return tree;
     }
     if (n) {
