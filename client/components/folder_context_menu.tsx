@@ -165,18 +165,25 @@ export function FolderContextMenu(
           <>
             <button type="button" onClick={onNewMarkdown}>New Markdown</button>
             <button type="button" onClick={onNewFolder}>New Folder</button>
-            {onPushFolder && (
-              <button type="button" onClick={onPush}>Push</button>
-            )}
-            {!isRoot && (
-              <>
-                <button type="button" onClick={onRename}>Rename</button>
-                <button type="button" onClick={onRemove}>Remove</button>
-                <button type="button" className="danger" onClick={onDelete}>
-                  Delete
-                </button>
-              </>
-            )}
+            {isRoot
+              // Root: keep just the create + sync items.
+              ? (onPushFolder && (
+                <button type="button" onClick={onPush}>Push</button>
+              ))
+              // Sub-folder: same action order as the file menu
+              // (Rename, Remove, Push, Delete).
+              : (
+                <>
+                  <button type="button" onClick={onRename}>Rename</button>
+                  <button type="button" onClick={onRemove}>Remove</button>
+                  {onPushFolder && (
+                    <button type="button" onClick={onPush}>Push</button>
+                  )}
+                  <button type="button" className="danger" onClick={onDelete}>
+                    Delete
+                  </button>
+                </>
+              )}
           </>
         )}
     </ContextMenuShell>

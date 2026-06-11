@@ -18,6 +18,7 @@ import {
   nextAutoAnchorName,
   openSidecarSession,
   type PdfNotes,
+  sidecarPath,
   updateSidecarSession,
 } from "./notes_client.ts";
 import {
@@ -126,16 +127,31 @@ export function PdfViewer({ path, initialAnchor }: Props) {
   // every remote change. Flush a pending local edit before releasing so
   // the last change reaches the doc and the server checkpoint.
   useEffect(() => {
-    const { release } = openSidecarSession(path, (sc) => {
+    const { release, handle } = openSidecarSession(path, (sc) => {
       setNotes({
         highlights: sc.highlights,
         anchors: sc.anchors,
         comments: sc.comments,
       });
     });
+    // Drive the shared top-right status dot, like the markdown editor.
+    // disconnect is a no-op: the session's own ref-counted release()
+    // owns teardown, so navigator's detach only clears the dot.
+    const scPath = sidecarPath(path);
+    globalThis.client.collabHandle = {
+      path: scPath,
+      extension: [],
+      disconnect: () => {},
+      status: handle.status,
+      synced: handle.synced,
+      onStatusChange: handle.onStatusChange,
+    };
     return () => {
       flushNotes();
       release();
+      if (globalThis.client.collabHandle?.path === scPath) {
+        globalThis.client.collabHandle = undefined;
+      }
     };
   }, [path]);
 

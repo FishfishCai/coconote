@@ -201,6 +201,10 @@ async function doLoad(
 }
 
 function applySpecialRoute(client: Client, route: SpecialRoute): void {
+  // Leaving the editor / PDF viewer for Content or Settings drops the live
+  // collab session so the status dot reverts to grey (navigate() does this
+  // for path nav; the special routes need it too).
+  if (client.collabHandle) detachCollab(client);
   if (route.kind === "setting") {
     client.ui.hideContentBrowser();
     client.ui.hidePdfViewer?.();
