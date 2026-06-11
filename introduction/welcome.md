@@ -6,12 +6,14 @@ title: welcome
 
 # Coconote
 
-A self-hosted markdown notebook, shipping as a desktop app or a headless server. Both modes are configured through `coconote.yaml`.
+Coconote is a self-hosted markdown notebook. It runs in either of two modes, and both are configured through a single `coconote.yaml`:
 
-- **Desktop app** — launches a native window with the UI embedded.
-- **Headless server** — backend HTTP/WS only; edit remotely via a browser pointed at the server URL after entering the `auth` token.
+- **Desktop app** — a native window with the UI built in. Nothing else to set up.
+- **Headless server** — backend HTTP/WS only. Edit from any device by pointing a browser at the server URL and entering the `auth` token.
 
 ## coconote.yaml
+
+A single file drives everything:
 
 ```yaml
 port: 40704
@@ -25,29 +27,43 @@ url:
   - https://coconote.example.com
 ```
 
-Four top-level fields:
+It has four top-level fields:
 
-- **port** — HTTP server port.
-- **auth** — bearer token. **Required**; defaults to `"coconote"` if omitted. Browser clients on remote instances enter this value at login. Loopback (`127.0.0.1`) is always exempt — local desktop clients never need to present it.
-- **root** — mapping for local roots. See below.
-- **url** — list for remote roots. See below.
+- **port** — the HTTP server port.
+- **auth** — the bearer token. **Required**; defaults to `coconote` if omitted. Remote browser clients enter it at login. Loopback (`127.0.0.1`) is always exempt, so local desktop clients never present it.
+- **root** — local roots, written as a `name → absolute path` mapping (see below).
+- **url** — remote roots, written as a list of server URLs (see below).
 
-`port` and `auth` can only be changed by editing `coconote.yaml` directly (no UI). Restart the server for changes to take effect.
+`port` and `auth` change only by editing `coconote.yaml` directly — there is no UI for them, and the server must restart for the change to take effect. `root` and `url` can also be managed live from the app — see [[setting]].
 
-`coconote.yaml` lives in the standard per-user config dir: `~/.config/coconote/` on macOS / Linux (respects `$XDG_CONFIG_HOME`), `%APPDATA%\coconote\` on Windows. On every boot the server checks that dir for a parseable `coconote.yaml`. The desktop app's Setting can redirect this directory.
+### Where it lives
 
-## Roots (local + remote)
+`coconote.yaml` sits in the standard per-user config directory:
 
-The two kinds of root coexist in one vault:
+- **macOS / Linux** — `~/.config/coconote/` (respects `$XDG_CONFIG_HOME`).
+- **Windows** — `%APPDATA%\coconote\`.
 
-- **Local root** — `root:` is a `name - absolute path` mapping; you choose the name. Local roots must be absolute paths; the server rejects these dangerous mount points: `/`、`/etc`、`/var`、`/usr`、`/bin`、`/sbin`、`/boot`、`/proc`、`/sys`、`/dev`、`/System`、`/Library`. Symlinks are resolved before validation.
+The server checks that directory for a parseable `coconote.yaml` on every boot. The desktop app's Setting can redirect the directory to another location.
 
-- **Remote root** — `url:` is a list of URLs, each pointing to a remote coconote server. Connecting to one mounts **all of that server's roots** (its own `root:` mapping) into your vault wholesale; you don't pick the names — they come from the remote yaml.
+## Roots (local and remote)
 
-Each file's logical path looks like: `<source URL>/<rootname>/<relative path inside the root>/<filename>`
+A vault is assembled from roots, and the two kinds coexist:
 
-`<source URL>` is the URL of the server that file lives on — for a local root it's your own server (`http://localhost:<port>`, where port comes from yaml); for a url-mounted root it's the corresponding entry in `url:`.
+- **Local root** — one entry under `root:`: a `name → absolute path` pair whose name you choose. The path must be absolute. For safety the server refuses to mount these system locations: `/`, `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `/dev`, `/System`, `/Library`. Symlinks are resolved before this check.
+- **Remote root** — one URL under `url:`, pointing at another coconote server. Connecting to it mounts **all** of that server's roots (its own `root:` mapping) into your vault at once; you don't pick their names — they come from the remote yaml.
 
+### How a file is addressed
+
+Every file has a logical path of this shape:
+
+```
+<source URL>/<root name>/<path inside the root>/<filename>
+```
+
+`<source URL>` names the server the file lives on:
+
+- a **local** root → your own server, `http://localhost:<port>` (the `port` from your yaml).
+- a **url-mounted** root → the matching entry in `url:`.
 
 ## Map
 
@@ -57,7 +73,7 @@ Recommended reading order:
 - [[markdown]] — the markdown syntax we render.
 - [[pdf]] — PDF reader.
 - [[wikilink]] — `[[…]]` link jumps.
-- [[editor]] — shortcuts, snippets, autocomplete, hover and collab.
+- [[editor]] — shortcuts, snippets, autocomplete, hover, and collab.
 - [[content]] — Path / Tag / Graph views.
 - [[setting]] — settings panel.
 - [[history]] — version history, push / pull / merge.
