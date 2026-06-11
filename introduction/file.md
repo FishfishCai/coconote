@@ -6,49 +6,38 @@ title: file
 
 # File
 
-Coconote supports three file types: **markdown**, **PDF**, and **images**. Markdown and PDF are first-class — both render in dedicated viewers. Images are second-class — they can only appear embedded inside markdown files.
+Coconote handles three file types: **markdown**, **PDF**, and **images**. Markdown and PDF each open in their own viewer. Images are second-class: they appear only embedded inside markdown files.
+
+## Common fields
+
+Markdown files and PDFs share the same four fields. In a markdown file they live in the frontmatter. In a PDF they live in the `.<name>.json` sidecar (see below).
+
+- **id**: auto-generated, and used for version tracking. It is 16 lowercase Crockford base32 characters (alphabet `0123456789abcdefghjkmnpqrstvwxyz`, which already omits the look-alike `i l o u`). On write it is regenerated if it is missing or collides with another id in the vault. Editable, but not recommended.
+- **coconote**: a boolean gate. Only `coconote: true` (lowercase) counts as included in Coconote. Any other value (`false`, missing, a string) is excluded. See "Including and removing" below.
+- **title**: a display name shown instead of the filename, and treated like the filename when searching or resolving links. Starts equal to the filename.
+- **tag**: a list of tags that classify the file. Multiple are allowed, and `/` marks hierarchy, for example `research/algebra`. No depth limit and no reserved names. Clicking a tag opens the Tag view filtered to files that carry it (see [[content]]).
 
 ## Markdown
 
-A markdown file is named `<filename>.md` and carries the following frontmatter:
+A markdown file is named `<filename>.md` and carries the common fields plus `prereq` in its frontmatter:
 
 ```yaml
 ---
 id: 1234abcd5678efgh    # auto-generated
-coconote: true              # only `true` makes the file visible to Coconote
+coconote: true          # only `true` makes the file visible to Coconote
 title: ...              # display name
-tag: [...]              # YAML array of tags
+tag: [...]              # tags
 prereq: [...]           # prerequisite files
 ---
 ```
 
-Five fields:
+- **prereq**: a list of prerequisite files, clickable like a link. See [[wikilink]] for the syntax.
 
-- **id**: Auto-generated on creation and re-checked on save; if missing, regenerated. Used for version tracking. User-editable, but not recommended. Generation rule: 16 lowercase Crockford base32 characters (alphabet `0123456789abcdefghjkmnpqrstvwxyz`, with the easily-confused `i / l / o / u` removed); on write, regenerated if it would collide with another id in the vault.
-
-- **coconote**: Boolean. **Only `coconote: true` (lowercase) is treated as included in Coconote**; any other value (`false`, missing, a string, …) is treated as excluded. New files get `coconote: true` written automatically. Three ways to include an existing markdown file:
-    1. Edit `coconote` to `true` outside Coconote.
-    2. In the Content browser, create a new file at the same filepath with the same filename — if such a file already exists, instead of creating a duplicate, that file's `coconote` flips to `true`.
-    3. In the Content browser, switch to *show all supported files* mode, right-click the markdown file, and choose **Include in Coconote**.
-
-    **Reverse:** to remove a file from Coconote, set `coconote: false` — its assets folder (see below) is preserved. Or, in the Content browser, right-click the markdown file and choose **Remove**.
-
-- **title**: A user-friendly display name distinct from the filename, with equal standing in lookups. Initialized to the filename when the file is created.
-
-- **tag**: File classification in YAML-array form; multiple tags allowed, `/` delimits hierarchy. Example: `tag: [research/algebra, math/calculus]`. Tags are clickable and jump to `content/tag` filtered to files sharing them. No depth limit, no reserved names.
-
-- **prereq**: Prerequisite-file marker; clickable. See [[wikilink]] for syntax.
-
-When a markdown file references images, an `.<name>.assets/` folder is created alongside it to hold them; with no images referenced, no folder is created. `<name>` is the basename **without** the `.md` extension — `notes/foo.md` pairs with `notes/.foo.assets/`. The folder follows the markdown file on rename, move, and delete. **A markdown file may only reference images inside its own assets folder.** Images pasted or dropped into the editor are automatically saved into that folder.
+If a markdown file references images, an `.<name>.assets/` folder is created beside it to hold them (none is created if it references no images). `<name>` is the basename without the `.md`, so `notes/foo.md` pairs with `notes/.foo.assets/`. The folder follows the file on rename, move, and delete. A markdown file may reference images only inside its own assets folder, and images pasted or dropped into the editor are saved there automatically.
 
 ## PDF
 
-A PDF file carries a sidecar `.<name>.json`, where `<name>` is the basename **without** the `.pdf` extension — `papers/foo.pdf` pairs with `papers/.foo.json`. The sidecar follows the PDF on rename, move, and delete. It holds the PDF's metadata and per-file operations (highlights, anchors and comments — see [[pdf]] for their structure). The sidecar is **not** created automatically. Two ways to include an existing PDF into Coconote, both of which auto-create the sidecar:
-
-1. Create `.<name>.json` externally with `coconote: true` inside.
-2. In the Content browser, switch to *show all supported files* mode, right-click the PDF, and choose **Include in Coconote**.
-
-**Reverse:** to remove a PDF from Coconote, set `coconote: false` outside Coconote — its sidecar is preserved. Or, in the Content browser, right-click the PDF and choose **Remove**.
+A PDF carries a sidecar `.<name>.json`, where `<name>` is the basename without the `.pdf`, so `papers/foo.pdf` pairs with `papers/.foo.json`. The sidecar holds the common fields plus the PDF's highlights, anchors, and comments (see [[pdf]] for those), and it follows the PDF on rename, move, and delete.
 
 ```json
 {
@@ -64,16 +53,18 @@ A PDF file carries a sidecar `.<name>.json`, where `<name>` is the basename **wi
 }
 ```
 
-Four metadata fields:
+Two differences from markdown: the fields sit in the sidecar's `metadata` object as JSON (so `tag` is a JSON array), and `title` and `tag` are editable from the PDF metadata panel (see [[pdf]]).
 
-- **id**: Same generation rule as markdown (see above).
+## Including and removing
 
-- **coconote**: Boolean. **Only `coconote: true` (lowercase) is treated as included**; any other value is treated as excluded. When `.<name>.json` is created, `coconote: true` is auto-written.
+A new markdown file is included automatically (`coconote: true` is written for you). A PDF starts with no sidecar, so it must be included explicitly, which creates the sidecar. Ways to include an existing file:
 
-- **title**: A user-friendly display name distinct from the filename, with equal standing in lookups. Initialized to the filename when `.<name>.json` is created. Editable from the PDF metadata panel; see [[pdf]].
+- Set `coconote: true` yourself: edit a markdown file's frontmatter, or create a PDF's `.<name>.json` with `coconote: true` in its `metadata`.
+- In the Content browser, switch to *show all supported files* mode, right-click the file, and choose **Include in Coconote**.
+- Markdown only: in the Content browser, create a file at an existing markdown file's path. Coconote does not duplicate it, it flips that file's `coconote` to `true`.
 
-- **tag**: File classification in JSON-array form; multiple tags allowed, `/` delimits hierarchy. Example: `"tag": ["research/algebra", "math/calculus"]`. No depth limit, no reserved names. Editable from the PDF metadata panel; see [[pdf]].
+To remove a file, set `coconote: false`, or right-click it and choose **Remove**. Its companion (assets folder or sidecar) is kept.
 
 ## Orphan files
 
-At server startup, root folders are scanned for orphan `.<name>.json` and `.<name>.assets/` entries; orphans are auto-deleted.
+A companion left without its file (a `.<name>.json` or `.<name>.assets/` whose `.pdf` or `.md` is gone) is an orphan. The server deletes orphans when it scans the root folders at startup.
