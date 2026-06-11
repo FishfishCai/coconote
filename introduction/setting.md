@@ -6,63 +6,63 @@ title: setting
 
 # Setting
 
-Visit `/.setting` to open the settings panel. Every choice is persisted to `localStorage`.
+Open the settings panel at the in-app route `/.setting` (type it as a path in the address bar). Every choice is persisted to `localStorage`.
 
 ## Appearance
 
 - **Dark mode**: flips `data-theme` between `light` / `dark` on the document root. Follows OS preference on first run. Key: `coconote.darkMode`.
-- **Font size** (12 – 28 px): CSS variable `--editor-font-size`.
-- **Content width** (28 – 80 rem): CSS variable `--editor-width`.
+- **Font size** (12 - 28 px): CSS variable `--editor-font-size`.
+- **Content width** (28 - 80 rem): CSS variable `--editor-width`.
 - Colour rows
-    - **Accent**: `--accent-h/s/l` (HSL three components). Active links, primary buttons, and focus rings use this colour. Stored as HSL so hover / selection variants can be derived at different saturations.
+    - **Accent**: `--accent-h/s/l` (the three HSL components). Active links, primary buttons, and focus rings use this colour. Stored as HSL so hover and selection variants can use different saturations.
     - **Highlight**: `--editor-highlight-background-color`. The yellow of `==marker==`.
-    - **Missing link**: `--editor-wiki-link-missing-color`. The red dashed underline of unresolved `[[…]]`.
+    - **Missing link**: `--editor-wiki-link-missing-color`. The red dashed underline of an unresolved `[[...]]`.
     - **Code background**: `--editor-code-background-color`. Background for inline + fenced code blocks.
     - **Hover background**: `--background-secondary-alt`. Button hover, modal hint hover, settings group hover.
 - Font
-    - **Prose font**: body / most markdown.
-    - **UI font**: chip, content browser, settings.
+    - **Prose font**: body and most markdown.
+    - **UI font**: chrome surfaces (status chip, content browser, settings).
     - **Monospace font**: code block, inline code, math fallback.
 
-Each accepts a full CSS `font-family` value, e.g. `Inter, system-ui, sans-serif`; leave empty to fall back to the theme default.
+Each accepts a full CSS `font-family` value, e.g. `Inter, system-ui, sans-serif`. Leave empty to fall back to the theme default.
 
 ## Snippet
 
-Embedded JSON editor; saves on blur. Compiled rules take effect the next time you open a page (no reload needed). Full syntax in [[editor]].
+A snippet is a user-defined editing or rendering rule (see [[editor]]). This panel is an embedded JSON editor for those rules and saves when it loses focus. The edited JSON is compiled into rules that take effect the next time you open a page.
 
 ## Shortcut
 
-Bind custom keybindings. The panel lists every configurable action with its current binding; each action can be bound to a set of key combinations (e.g. `Cmd+K`, `Ctrl+Shift+P`). Changes take effect immediately.
+Bind custom keybindings. The panel lists every configurable action and its current binding. Each action can have several key combinations (e.g. `Cmd+K`, `Ctrl+Shift+P`). Changes take effect immediately.
 
-Conflict handling: if the same combination is already taken by another action, the UI highlights the clash and requires unbinding the original before submitting.
+Conflict handling: if a combination is already used by another action, the UI flags the clash and you must unbind the original before saving.
 
-Saved to `localStorage["coconote.userPrefs"].shortcuts`. Only Coconote's custom navigation / mode actions are rebindable; markdown-editing keys (`Tab` / `Enter` / `Backspace`) and system-level shortcuts (undo / redo / copy-paste / find / cursor motion, etc.) use the defaults and cannot be rebound.
+Saved to `localStorage["coconote.userPrefs"].shortcuts`. Only Coconote's custom navigation and mode actions are rebindable. Markdown-editing keys (`Tab` / `Enter` / `Backspace`) and system-level shortcuts (undo / redo / copy-paste / find / cursor motion, etc.) use the defaults and cannot be rebound.
 
 Rebindable actions:
 
-- **Mode switch** (cycle through render / source / read): default `Cmd / Ctrl + M`.
+- **Mode switch** (cycle the editor through render, source, and read views): default `Cmd / Ctrl + M`.
 - **Open version history panel**: default `Cmd / Ctrl + Shift + H`.
-- **Pin current version** (prevents retention pruning; see [[history]]): default `Cmd / Ctrl + Shift + P`.
-- **Open PDF metadata panel** (only active in the PDF viewer; see [[pdf]]): default `Cmd / Ctrl + Shift + M`.
+- **Pin current version** (keeps a version from being auto-deleted by retention, see [[history]]): default `Cmd / Ctrl + Shift + P`.
+- **Open PDF metadata panel** (only active in the PDF viewer, see [[pdf]]): default `Cmd / Ctrl + Shift + M`.
 - **Back to Content page**: default `Cmd / Ctrl + Shift + C`.
 - **Back to previous page**: default `Cmd / Ctrl + Shift + B`.
 
 ## Local
 
-Lists the local roots configured in `coconote.yaml`'s `root:`. The header has `+` to add a root; each row has `−` to remove. Validation rules and the yaml schema are in [[welcome]].
+Lists the local roots configured in `coconote.yaml`'s `root:` (a root is a top-level source folder, defined in [[welcome]]). The header has `+` to add a root, each row has `−` to remove. Validation rules and the yaml schema are also in [[welcome]]. Every add and remove rewrites `coconote.yaml` atomically and reloads the file index in place, with no restart.
 
-- Add `+`: a modal asks for the root's **name** + **absolute path**, then writes back to `coconote.yaml` and atomically reloads the file index — no restart needed.
-- Remove `−`: confirm and the entry is dropped; the yaml is also atomically rewritten.
+- Add `+`: a modal asks for the root's **name** and **absolute path**.
+- Remove `−`: confirm, and the entry is dropped.
 
 ## Remote
 
-Lists the remote URLs configured in `coconote.yaml`'s `url:`. `+ / −` UI is the same as Local.
+Lists the remote URLs configured in `coconote.yaml`'s `url:`. The `+ / −` UI and the atomic yaml rewrite behave the same as Local, on the `url:` list instead of `root:`.
 
-- Add `+`: a modal asks for the URL (`http(s)://host:port`, no trailing slash) and an optional token (used as the remote's `auth`). `Add` probes `/.health` to confirm the other side really is a coconote server.
-- Remove `−`: confirm and the corresponding entry in `coconote.yaml`'s `url:` list is atomically removed.
+- Add `+`: a modal asks for the URL (`http(s)://host:port`, no trailing slash) and an optional token (saved as the remote's `auth` field, sent when contacting it). `Add` probes `/.health` to confirm the other side really is a coconote server.
+- Remove `−`: confirm, and the entry is dropped.
 
 After a successful add, every root of that remote appears in the unified Content browser (see [[content]]).
 
 ## Config file
 
-Shows the **directory** where `coconote.yaml` lives (default = standard config dir). Edit + `Reset` to redirect and restarts. On startup the server reads `<dir>/coconote.yaml`; if it's missing or unparseable, it writes a fresh default in place.
+Shows the **directory** where `coconote.yaml` lives (default = the OS standard config directory). Edit the path and click `Reset` to point at a new directory, which restarts the server. On startup the server reads `<dir>/coconote.yaml`. If it is missing or unparseable, the server writes a fresh default there.
