@@ -1,0 +1,166 @@
+// Pure force-directed layout for the Graph view (content.md §Graph
+// view): node seeding, prereq/wikilink edge construction, and the
+// per-frame integrator. No DOM / Preact here — cb_graph_view.tsx owns
+// rendering and interaction.
+
+import type { PageMeta } from "coconote/type/page";
+import { resolveWikiLink } from "./wikilink.ts";
+
+export type Node = {
+  id: string;
+  page: PageMeta;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  fixed: boolean; // user is dragging or pinned
+};
+
+export type Edge = { from: string; to: string };
+
+export type SimParams = {
+  /** content.md §Graph view "attraction strength" — edge spring constant. */
+  attract: number;
+  /** content.md §Graph view "repulsion strength" — pairwise Coulomb. */
+  repulse: number;
+};
+
+// Stable starting positions so re-renders don't reshuffle the layout.
+// Hash the page name into an angle so the same set of pages always
+// fans out the same way before the simulation runs.
+function seedPosition(
+  name: string,
+  i: number,
+  n: number,
+): { x: number; y: number } {
+  // Use index for the dominant angle (uniform around the circle); hash
+  // for the radial jitter (so the ring isn't perfectly circular).
+  const angle = (i / Math.max(n, 1)) * Math.PI * 2;
+  let h = 0;
+  for (let j = 0; j < name.length; j++) h = (h * 31 + name.charCodeAt(j)) | 0;
+  const jitter = ((h >>> 0) % 100) / 100;
+  const r = 200 + jitter * 60;
+  return { x: 500 + Math.cos(angle) * r, y: 350 + Math.sin(angle) * r };
+}
+
+export function buildGraph(
+  pages: PageMeta[],
+): { nodes: Node[]; edges: Edge[] } {
+  // Only local pages contribute edges — remote prereqs would need a
+  // cross-vault resolver we don't have. Remote pages still appear as
+  // nodes (greyed) if they are reachable as prereq targets.
+  const nodes: Node[] = pages.map((p, i) => {
+    const { x, y } = seedPosition(p.name, i, pages.length);
+    return { id: p.name, page: p, x, y, vx: 0, vy: 0, fixed: false };
+  });
+
+  const edges: Edge[] = [];
+  const edgeKey = new Set<string>();
+  const addEdge = (from: string, q: string) => {
+    const r = resolveWikiLink(q, pages);
+    if (r.kind !== "ok") return;
+    const to = r.page.name;
+    if (to === from) return;
+    const k = `${from}\0${to}`;
+    if (edgeKey.has(k)) return;
+    edgeKey.add(k);
+    edges.push({ from, to });
+  };
+  for (const p of pages) {
+    if (p.origin?.kind === "remote") continue;
+    // content.md §Graph view: "driven by both the `prereq:` field
+    // in frontmatter and wikilinks". Dedup happens via edgeKey so
+    // a target named in both prereq and the body counts once.
+    for (const q of p.prereq ?? []) addEdge(p.name, q);
+    for (const q of p.wikilinks ?? []) addEdge(p.name, q);
+  }
+  return { nodes, edges };
+}
+
+// One simulation step. Mutates `nodes` in place and returns the max
+// per-node displacement applied this tick so the caller can park the
+// animation loop once the layout has settled.
+export function step(
+  nodes: Node[],
+  edges: Edge[],
+  byId: Map<string, Node>,
+  params: SimParams,
+): number {
+  const REPULSE = params.repulse;
+  const SPRING = params.attract;
+  const REST_LEN = 110; // spring rest length
+  const GRAVITY = 0.001; // weak pull toward centre so disconnected components don't drift off
+  const DAMPING = 0.78;
+  const MAX_STEP = 18; // clamp per-tick movement to avoid runaway nodes
+
+  // Coulomb repulsion — O(N²). Adequate for single-user vault sizes.
+  // Fixed nodes (under the user's cursor while dragging) must still
+  // EXERT force on neighbours so the rest of the layout reacts in real
+  // time; they just don't move themselves. The previous `if (a.fixed)
+  // continue;` short-circuit dropped both halves of every pair where
+  // the dragged node was the lower-indexed one — Obsidian-style live
+  // physics depends on the dragged node continuing to repel.
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    for (let j = i + 1; j < nodes.length; j++) {
+      const b = nodes[j];
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const d2 = dx * dx + dy * dy + 0.01;
+      const f = REPULSE / d2;
+      const d = Math.sqrt(d2);
+      const fx = (dx / d) * f;
+      const fy = (dy / d) * f;
+      if (!a.fixed) {
+        a.vx += fx;
+        a.vy += fy;
+      }
+      if (!b.fixed) {
+        b.vx -= fx;
+        b.vy -= fy;
+      }
+    }
+  }
+
+  // Spring attraction along each edge.
+  for (const e of edges) {
+    const a = byId.get(e.from);
+    const b = byId.get(e.to);
+    if (!a || !b) continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const d = Math.sqrt(dx * dx + dy * dy) + 0.01;
+    const f = SPRING * (d - REST_LEN);
+    const fx = (dx / d) * f;
+    const fy = (dy / d) * f;
+    if (!a.fixed) {
+      a.vx += fx;
+      a.vy += fy;
+    }
+    if (!b.fixed) {
+      b.vx -= fx;
+      b.vy -= fy;
+    }
+  }
+
+  // Gravity + damping + integrate.
+  let maxMove = 0;
+  for (const n of nodes) {
+    if (n.fixed) {
+      n.vx = 0;
+      n.vy = 0;
+      continue;
+    }
+    n.vx += (500 - n.x) * GRAVITY;
+    n.vy += (350 - n.y) * GRAVITY;
+    n.vx *= DAMPING;
+    n.vy *= DAMPING;
+    const dx = Math.max(-MAX_STEP, Math.min(MAX_STEP, n.vx));
+    const dy = Math.max(-MAX_STEP, Math.min(MAX_STEP, n.vy));
+    n.x += dx;
+    n.y += dy;
+    const m = Math.max(Math.abs(dx), Math.abs(dy));
+    if (m > maxMove) maxMove = m;
+  }
+  return maxMove;
+}

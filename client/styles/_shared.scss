@@ -1,0 +1,141 @@
+// Shared variables + mixins. No CSS output of its own — safe to @use
+// from any partial without affecting bundle order.
+
+// ---- Shell geometry ---------------------------------------------------------
+// Horizontal gutter shared by the Settings / Content-browser panes:
+// at least 1.5rem, otherwise whatever centres a 56rem column.
+$shell-gutter: max(1.5rem, calc((100% - 56rem) / 2));
+
+// ---- Modal overlay ----------------------------------------------------------
+// Full-viewport dimmed backdrop that centres its dialog. All overlays
+// sit on the same --layer-modal rung (see theme.scss ladder).
+@mixin modal-overlay($background: var(--background-modifier-cover)) {
+  position: fixed;
+  inset: 0;
+  background: $background;
+  z-index: var(--layer-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ---- Context menu -----------------------------------------------------------
+// Scaffolding shared by the Content-browser and PDF context menus.
+// Callers add sizing (padding / min-width / shadow) and item hover.
+@mixin context-menu {
+  position: fixed;
+  z-index: var(--layer-menu);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+@mixin context-menu-item {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+
+// ---- Prose typography -------------------------------------------------------
+// One look for markdown content, consumed by the editor surface
+// (prose.scss) and the hover-preview card (hover_preview.scss).
+// Selector wiring and surface extras (margins, CM-specific !important)
+// stay with each caller.
+
+// Heading scale. $line-classes additionally targets the CM line classes
+// (only h1–h4 exist — markdown.md spec stops at four levels; h5/h6
+// elements still occur in rendered HTML and get the down-styled look).
+// $margin: null drops the declaration entirely (editor lines must not
+// carry margins — CM's heightMap ignores them).
+@mixin prose-headings($line-classes: false, $margin: null) {
+  $h1: "h1";
+  $h2: "h2";
+  $h3: "h3";
+  $h4: "h4";
+  @if $line-classes {
+    $h1: ".coconote-line-h1, h1";
+    $h2: ".coconote-line-h2, h2";
+    $h3: ".coconote-line-h3, h3";
+    $h4: ".coconote-line-h4, h4";
+  }
+  #{$h1} {
+    font-size: var(--h1-size);
+    font-weight: var(--h1-weight);
+    margin: $margin;
+  }
+  #{$h2} {
+    font-size: var(--h2-size);
+    font-weight: var(--h2-weight);
+    margin: $margin;
+  }
+  #{$h3} {
+    font-size: var(--h3-size);
+    font-weight: var(--h3-weight);
+    line-height: 1.35;
+    margin: $margin;
+  }
+  #{$h4} {
+    font-size: var(--h4-size);
+    font-weight: var(--h4-weight);
+    margin: $margin;
+  }
+  h5,
+  h6 {
+    font-size: var(--h5-size);
+    font-weight: var(--h5-weight);
+    color: var(--text-muted);
+    margin: $margin;
+  }
+}
+
+// Inline code chip (`.coconote-code` in CM, `tt`/`code` in rendered HTML).
+@mixin prose-code-inline($radius: var(--radius-s)) {
+  background: var(--editor-code-background-color);
+  padding: 0.1em 0.35em;
+  border-radius: $radius;
+  font-family: var(--font-monospace);
+  font-size: 0.88em;
+}
+
+// Code block text metrics; background + spacing are per surface.
+@mixin prose-code-block-text {
+  font-family: var(--font-monospace);
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+
+@mixin prose-blockquote {
+  color: var(--text-muted);
+  border-left: 3px solid var(--text-accent);
+  font-style: italic;
+}
+
+@mixin prose-link {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+@mixin prose-link-hover {
+  color: var(--text-accent-hover);
+  text-decoration: underline;
+}
+
+@mixin prose-table {
+  border-collapse: collapse;
+  border: 1px solid var(--background-modifier-border);
+  font-size: 0.875em;
+}
+
+@mixin prose-table-head-cell {
+  background: var(--background-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--background-modifier-border);
+}

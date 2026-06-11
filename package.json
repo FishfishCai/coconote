@@ -1,0 +1,71 @@
+{
+  "name": "coconote",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A self-hosted markdown notebook.",
+  "license": "AGPL-3.0-or-later",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    "./constants": "./client/lib/constants.ts",
+    "./lib/async": "./client/lib/async.ts",
+    "./lib/tree": "./client/lib/tree.ts",
+    "./lib/ref": "./client/lib/ref.ts",
+    "./lib/resolve": "./client/lib/resolve.ts",
+    "./lib/transclusion": "./client/markdown/transclusion.ts",
+    "./type/client": "./client/types/client.ts",
+    "./type/page": "./client/types/page.ts"
+  },
+  "files": [
+    "client/lib",
+    "client/types",
+    "client/markdown/transclusion.ts"
+  ],
+  "scripts": {
+    "build": "tsx build/build_client.ts",
+    "build:client": "tsx build/build_client.ts",
+    "check": "tsc --noEmit",
+    "lint": "biome lint .",
+    "fmt": "biome format --write .",
+    "fmt:check": "biome format ."
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "6.20.1",
+    "@codemirror/commands": "6.10.3",
+    "@codemirror/lang-css": "6.3.1",
+    "@codemirror/lang-javascript": "6.2.5",
+    "@codemirror/lang-markdown": "6.5.0",
+    "@codemirror/language": "6.12.3",
+    "@codemirror/legacy-modes": "6.5.2",
+    "@codemirror/search": "6.5.11",
+    "@codemirror/state": "6.6.0",
+    "@codemirror/view": "6.41.0",
+    "@lezer/common": "1.5.1",
+    "@lezer/highlight": "1.2.3",
+    "@lezer/markdown": "1.6.3",
+    "@replit/codemirror-lang-nix": "6.0.1",
+    "fast-diff": "1.3.0",
+    "katex": "^0.16.47",
+    "lib0": "^0.2.117",
+    "mime": "4.1.0",
+    "pdfjs-dist": "^6.0.227",
+    "preact": "10.28.2",
+    "y-codemirror.next": "^0.3.5",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.31"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.6",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.27.3",
+    "playwright": "^1.60.0",
+    "sass": "^1.97.3",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=24.13.0",
+    "npm": ">=10.0.0"
+  }
+}

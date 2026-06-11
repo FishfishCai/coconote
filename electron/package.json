@@ -1,0 +1,23 @@
+{
+  "name": "coconote-electron",
+  "productName": "coconote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Electron desktop shell for Coconote.",
+  "license": "AGPL-3.0-or-later",
+  "author": "Wenxi Cai <caiwenxi2004@gmail.com>",
+  "homepage": "https://github.com/FishfishCai/coconote",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac dmg",
+    "build:linux": "electron-builder --linux deb AppImage",
+    "build:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}

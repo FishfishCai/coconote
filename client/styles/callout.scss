@@ -1,0 +1,104 @@
+// Frame built from per-line border edges (CM emits one DOM line per row).
+// Scoped under `#coconote-main .cm-editor` to outrank blockquote's border-left.
+//
+// HEIGHT INVARIANT: keep callout lines at the editor's default
+// line-height. The frame is drawn with `box-shadow` insets, not
+// padding-top/bottom, so CodeMirror's heightMap stays accurate;
+// padding-left/right is fine.
+#coconote-main .cm-editor {
+  .coconote-callout {
+    --callout-frame-color: var(--background-modifier-border-hover);
+    background: transparent !important;
+    border-left: 1px solid var(--callout-frame-color) !important;
+    border-right: 1px solid var(--callout-frame-color);
+    padding-left: 1.4rem !important;
+    padding-right: 1.4rem !important;
+    font-family: "STIXTwoText", "Latin Modern Roman", Cambria, Georgia,
+      "Times New Roman", serif;
+    // Override blockquote italic — body templates control italics.
+    font-style: normal;
+  }
+  // Body padding zeroed — visual breathing room comes from first/last
+  // line padding only, kept small so the heightMap re-measure when
+  // scrolling into the section is barely visible.
+  .coconote-callout.coconote-callout-body {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .coconote-callout.coconote-callout-first {
+    border-top: 1px solid var(--callout-frame-color);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding-top: 0 !important;
+  }
+  .coconote-callout.coconote-callout-last {
+    border-bottom: 1px solid var(--callout-frame-color);
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    padding-bottom: 0 !important;
+  }
+  .coconote-callout-head { font-weight: 700; }
+
+  // Opener span inherits bold+serif from head; closer has no span — style line.
+  .coconote-callout-head .coconote-meta,
+  .coconote-callout-closer {
+    color: var(--editor-meta-color);
+    font-family: var(--font-monospace);
+    font-weight: normal;
+    font-style: normal;
+  }
+  .coconote-callout-body.coconote-callout-italic { font-style: italic; }
+  .coconote-callout-body.coconote-callout-narrower { max-width: 90%; margin-right: auto; }
+
+  // Proof: borderless, hanging-indented body.
+  .coconote-callout.coconote-callout-proof {
+    border-left: 0 !important;
+    border-right: 0;
+    border-top: 0;
+    border-bottom: 0;
+    border-radius: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  .coconote-callout.coconote-callout-proof.coconote-callout-head { padding-left: 0 !important; }
+  .coconote-callout.coconote-callout-proof.coconote-callout-body { padding-left: 2em !important; }
+  .coconote-callout.coconote-callout-proof.coconote-callout-closer { padding-left: 0 !important; }
+}
+
+.coconote-callout-suffix {
+  font-style: normal;
+  // CodeNewRoman lacks ∎ (U+220E).
+  font-family: "STIXTwoMath", "Cambria Math", "Latin Modern Math",
+    "DejaVu Sans", "Segoe UI Symbol", system-ui, serif;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+.coconote-callout-proof-suffix {
+  float: right;
+  margin-left: 0.5em;
+}
+.coconote-callout-closer-hidden {
+  // Hides the `:::` closer line without removing it from layout —
+  // `display: none` made CodeMirror's heightMap allocate a full line
+  // for the closer at first paint, then shrink to 0 after measuring,
+  // pushing every callout below by ~24 px and chopping off content
+  // past the viewport until the user scrolled it into view. Zero-box
+  // collapse keeps heightMap honest from the start.
+  height: 0 !important;
+  min-height: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.coconote-image-fallback {
+  color: var(--text-muted);
+  font-style: italic;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}

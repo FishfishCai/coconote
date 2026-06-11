@@ -1,0 +1,47 @@
+.coconote-frontmatter-chip {
+  padding: 0.25em 0.7em;
+  margin: 0.5em 0;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-accent);
+  background: rgba(120, 82, 238, 0.08);
+  border: 1px dashed rgba(120, 82, 238, 0.35);
+  border-radius: var(--radius-s);
+  display: inline-block;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover { background: rgba(120, 82, 238, 0.15); }
+}
+
+.coconote-frontmatter-chip-block {
+  padding: 0.3em 0;
+}
+
+.coconote-frontmatter-tag,
+.coconote-frontmatter-prereq {
+  display: inline-block;
+  margin-left: 0.4em;
+  padding: 0.15em 0.55em;
+  font-family: var(--font-monospace);
+  font-size: 0.78em;
+  color: var(--text-accent);
+  background: rgba(120, 82, 238, 0.10);
+  border-radius: 999px;
+  user-select: none;
+}
+
+// `flow-root` establishes a block formatting context so KaTeX's
+// `.katex-display { margin: 1em 0 }` stays inside the widget — otherwise
+// the gap is invisible to CM's heightMap, drifting click positions below
+// the widget by one line per block.
+.coconote-tex-display {
+  display: flow-root;
+  text-align: center;
+}
+
+// KaTeX failure: tex.ts replaces the widget content with
+// "[TeX error: …]" and tags it with this class.
+.coconote-tex-error {
+  color: var(--color-red);
+}

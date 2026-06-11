@@ -1,0 +1,3 @@
+[build]
+# Speed up incremental compile in this workspace.
+incremental = true

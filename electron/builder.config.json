@@ -1,0 +1,68 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "io.coconote.shell",
+  "productName": "Coconote",
+  "publish": null,
+  "electronLanguages": [
+    "en"
+  ],
+  "compression": "maximum",
+  "afterPack": "./mac_postprocess.cjs",
+  "directories": {
+    "output": "dist",
+    "buildResources": "icons"
+  },
+  "files": [
+    "main.js",
+    "lifecycle.js",
+    "preload.cjs",
+    "package.json",
+    "icons/icon.png"
+  ],
+  "extraResources": [
+    {
+      "from": "binaries/${platform}-${arch}",
+      "to": "binaries",
+      "filter": [
+        "**/*"
+      ]
+    }
+  ],
+  "asarUnpack": [],
+  "mac": {
+    "category": "public.app-category.productivity",
+    "target": [
+      "dmg"
+    ],
+    "icon": "icons/icon.icns",
+    "darkModeSupport": true,
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false
+  },
+  "dmg": {
+    "title": "Coconote-${version}",
+    "writeUpdateInfo": false,
+    "format": "ULFO"
+  },
+  "linux": {
+    "target": [
+      "deb",
+      "AppImage"
+    ],
+    "icon": "icons/icon.png",
+    "category": "Office",
+    "synopsis": "Self-hosted, local-first markdown notebook.",
+    "maintainer": "Wenxi Cai <caiwenxi2004@gmail.com>"
+  },
+  "win": {
+    "target": [
+      "nsis"
+    ],
+    "icon": "icons/icon.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}

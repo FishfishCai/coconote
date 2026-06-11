@@ -1,0 +1,62 @@
+[package]
+name = "coconote"
+version = "1.0.0"
+edition = "2021"
+description = "Self-hosted markdown notebook server (Coconote)."
+license = "AGPL-3.0-or-later"
+build = "build.rs"
+
+[lib]
+name = "coconote"
+path = "src/lib.rs"
+
+[[bin]]
+name = "coconote"
+path = "src/bin/coconote.rs"
+
+[dependencies]
+axum = { version = "0.7", features = ["ws", "macros"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "macros"] }
+
+include_dir = "0.7"
+walkdir = "2"
+tempfile = "3"
+
+anyhow = "1"
+thiserror = "1"
+
+clap = { version = "4", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+time = { version = "0.3", features = ["formatting", "macros"] }
+
+arc-swap = "1"
+percent-encoding = "2"
+futures = "0.3"
+bytes = "1"
+async-trait = "0.1"
+filetime = "0.2"
+subtle = "2"
+blake3 = "1"
+rand = "0.8"
+dashmap = "6"
+indexmap = { version = "2", features = ["serde"] }
+directories = "5"
+
+# Yjs CRDT (collab)
+yrs = "0.21"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

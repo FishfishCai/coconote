@@ -1,0 +1,42 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+  "files": {
+    "includes": [
+      "client/**",
+      "build/**",
+      "electron/main.js",
+      "electron/preload.cjs",
+      "electron/lifecycle.js",
+      "!client/assets"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "noNonNullAssertion": "off",
+        "useTemplate": "off",
+        "useImportType": "off",
+        "useNodejsImportProtocol": "off"
+      },
+      "complexity": {
+        "useArrowFunction": "off",
+        "noForEach": "off"
+      },
+      "suspicious": {
+        "noAssignInExpressions": "off",
+        "noExplicitAny": "warn"
+      },
+      "correctness": {
+        "noUnusedFunctionParameters": "warn"
+      },
+      "a11y": {
+        "recommended": false
+      }
+    }
+  },
+  "formatter": {
+    "enabled": false
+  }
+}

@@ -1,0 +1,102 @@
+.coconote-modal-box {
+  // `<dialog>` shown via `showModal()` is centered by the user agent
+  // when margin is `auto` and no explicit top/left are set; default UA
+  // styles vary, so set it explicitly. `inset: 0 + margin: auto`
+  // anchors the box at the geometric centre of the viewport.
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  width: auto;
+  min-width: 360px;
+  max-width: min(560px, 92vw);
+  max-height: 88vh;
+  border-radius: 8px;
+  overflow: hidden;
+
+  @media only screen and (max-width: 600px) {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 16px);
+    border-radius: 0;
+  }
+
+  .cm-content {
+    padding: 0;
+
+    .cm-line {
+      padding: 2px 0 0 3px;
+    }
+  }
+
+  // Safari: CM's .cm-scroller height:100% creates a circular height
+  // dependency inside flex <dialog>; height:auto breaks the cycle.
+  .cm-scroller {
+    height: auto;
+  }
+
+  .coconote-prompt {
+    padding: 14px 16px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    > label {
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+
+      // Single-line prompt: input grows to fill the remaining row.
+      input[type="text"] {
+        flex: 1 1 220px;
+        min-width: 0;
+        padding: 6px 8px;
+        font-family: var(--font-monospace, monospace);
+        box-sizing: border-box;
+      }
+    }
+
+    .coconote-prompt-buttons {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 6px;
+      gap: 10px;
+    }
+  }
+
+  // pdf.md §Metadata panel: multi-field form for id/coconote/title/tag.
+  // Each row = label on the left, input filling the remainder.
+  .coconote-pdf-meta {
+    .coconote-pdf-meta-title {
+      font-size: 1.05em;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .coconote-pdf-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      > label {
+        flex: 0 0 88px;
+        font-weight: bold;
+      }
+
+      > input[type="text"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 6px 8px;
+        font-family: var(--font-monospace, monospace);
+        box-sizing: border-box;
+      }
+    }
+
+    .coconote-error {
+      color: var(--editor-wiki-link-missing-color);
+      font-size: 0.9em;
+    }
+  }
+}

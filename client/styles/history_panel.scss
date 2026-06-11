@@ -1,0 +1,140 @@
+@use "shared";
+
+.coconote-history-overlay {
+  @include shared.modal-overlay;
+}
+
+.coconote-history-panel {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  width: 80vw;
+  max-width: 1100px;
+  height: 80vh;
+  border-radius: var(--radius-m);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--background-modifier-border);
+    font-weight: 600;
+  }
+
+  .coconote-history-close {
+    background: transparent;
+    border: 0;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: inherit;
+  }
+}
+
+.coconote-history-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.coconote-history-list {
+  width: clamp(220px, 25%, 320px);
+  overflow-y: auto;
+  border-right: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+
+  .coconote-history-row {
+    display: flex;
+    justify-content: space-between;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: 0.45rem 0.8rem;
+    cursor: pointer;
+    color: inherit;
+    border-bottom: 1px solid var(--background-modifier-border);
+    font: inherit;
+    &:hover { background: var(--background-modifier-hover); }
+    &.selected {
+      background: var(--background-secondary-alt);
+      font-weight: 600;
+    }
+  }
+  .coconote-history-time { flex: 1; opacity: 0.85; }
+  .coconote-history-error { padding: 0.6rem; color: var(--color-red); }
+  // Per-kind chip — keys must stay in sync with server SaveType
+  // (server-rs/src/history.rs: create / edit / push / pull / pin).
+  .coconote-history-chip {
+    font-size: 0.7em;
+    padding: 0.08em 0.5em;
+    border-radius: var(--radius-s);
+    color: var(--text-on-accent);
+    margin-right: 0.4em;
+    white-space: nowrap;
+    text-transform: lowercase;
+    letter-spacing: 0.02em;
+  }
+  .coconote-history-row.kind-create  .coconote-history-chip { background: var(--color-green); }
+  .coconote-history-row.kind-edit    .coconote-history-chip { background: var(--text-muted); }
+  .coconote-history-row.kind-push    .coconote-history-chip { background: var(--color-blue); }
+  .coconote-history-row.kind-pull    .coconote-history-chip { background: var(--color-cyan); }
+  .coconote-history-row.kind-pin     .coconote-history-chip { background: var(--color-purple); }
+}
+
+.coconote-history-preview {
+  flex: 1;
+  padding: 0.8rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  pre {
+    flex: 1;
+    overflow: auto;
+    background: var(--editor-code-block-background-color);
+    padding: 0.6rem;
+    border-radius: var(--radius-m);
+    font-family: var(--font-monospace);
+    font-size: 0.85em;
+  }
+  // Git-diff red/green block (history.md §Diff). `add` lines come from
+  // the current on-disk text but aren't in the selected snapshot;
+  // `del` lines are the inverse.
+  .coconote-history-diff {
+    .coconote-history-diff-line {
+      display: block;
+      white-space: pre-wrap;
+      padding: 0 0.4rem;
+    }
+    .coconote-history-diff-add {
+      background: rgba(46, 160, 67, 0.18);
+      color: var(--color-green);
+    }
+    .coconote-history-diff-del {
+      background: rgba(248, 81, 73, 0.18);
+      color: var(--color-red);
+    }
+  }
+  .coconote-history-actions {
+    margin-top: 0.6rem;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+  .coconote-history-restore,
+  .coconote-history-delete {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--button-background-color);
+    cursor: pointer;
+    font: inherit;
+    &:disabled { opacity: 0.5; cursor: wait; }
+  }
+  .coconote-history-delete {
+    color: var(--color-red);
+    border-color: rgba(160, 32, 32, 0.4);
+  }
+}

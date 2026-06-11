@@ -1,0 +1,300 @@
+@use "shared";
+
+// PDF reader styles. Surfaces are built from the shared theme tokens
+// (--background-*, --text-*, --interactive-accent) so the viewer follows
+// dark mode and the accent setting like the markdown editor does; only
+// canvas inversion + highlight compositing need explicit dark overrides.
+
+.coconote-pdf-viewer {
+  // Containing block for the absolutely-positioned selection toolbar
+  // (pdf_viewer.tsx computes its coords relative to this element).
+  position: relative;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-interface, system-ui, sans-serif);
+  height: 100%;
+  // #coconote-main is `flex-direction: row`; without flex:1 the viewer
+  // shrinks to its widest child (= page = 765 px) and sits at the
+  // left edge instead of filling the pane.
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// Errors surface as a small banner at the top of the scroll pane.
+.coconote-pdf-error-banner {
+  background: color-mix(in srgb, var(--color-red) 10%, var(--background-primary));
+  color: var(--color-red);
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-red) 30%, var(--background-primary));
+  font-size: 0.85rem;
+}
+
+.coconote-pdf-scroll {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 1.2rem 0;
+  background: var(--background-secondary);
+}
+
+.coconote-pdf-page {
+  position: relative;
+  // Literal white: this is the PDF "paper", not a themed surface
+  // (dark mode swaps it below, before the canvas inversion kicks in).
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+  // Parent is flex-direction:column; without flex-shrink:0 the 22
+  // pages get crushed to ~9 px each to fit the viewport. Inline
+  // height (990px) is meant to win — set explicit shrink to honor it.
+  flex-shrink: 0;
+  &.flash {
+    animation: coconote-pdf-flash 1.2s ease-out;
+  }
+}
+
+@keyframes coconote-pdf-flash {
+  0%   { box-shadow: 0 0 0 4px var(--interactive-accent); }
+  100% { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
+}
+
+.coconote-pdf-text-layer {
+  position: absolute;
+  inset: 0;
+  color: transparent;
+  user-select: text;
+  pointer-events: auto;
+  // Contain the text-run z-index below in our own stacking context, so
+  // the runs sit above the endOfContent backstop WITHOUT leaking above
+  // the highlight overlay (which is a later sibling at z-index auto) —
+  // otherwise a run would intercept clicks meant for a highlight.
+  isolation: isolate;
+  // pdf.js positions each text run absolutely via inline left/top/transform;
+  // we just supply the base. z-index keeps runs above the endOfContent
+  // selection backstop below.
+  > :not(.coconote-pdf-end-of-content) {
+    position: absolute;
+    white-space: pre;
+    transform-origin: 0 0;
+    z-index: 1;
+  }
+  // Selection backstop ported from pdf.js TextLayerBuilder: a full-layer
+  // element parked just after the current selection anchor so dragging
+  // into the page's empty margin stops the selection at the visible text
+  // instead of greedily extending to the end of the page. See
+  // pdf_text_selection.ts.
+  .coconote-pdf-end-of-content {
+    display: block;
+    position: absolute;
+    inset: 100% 0 0;
+    z-index: 0;
+    cursor: default;
+    user-select: none;
+  }
+  &.selecting .coconote-pdf-end-of-content { top: 0; }
+  ::selection {
+    background: rgba(0, 122, 255, 0.3);
+  }
+}
+
+.coconote-pdf-highlight-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+// Paint-only: pointer-events stays none (inherited from the overlay) so
+// text UNDER a highlight remains selectable; right-click menu and the
+// comment hover hit-test geometrically in pdf_viewer.tsx.
+.coconote-pdf-highlight {
+  position: absolute;
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+  opacity: 0.65;
+}
+
+// Comment hover tip painted by pdf_viewer.tsx's geometric hit-test
+// (pdf.md: comments are "shown on hover").
+.coconote-pdf-comment-tip {
+  position: fixed;
+  z-index: var(--layer-tooltip, 1000);
+  max-width: 22rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.85rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  white-space: pre-wrap;
+}
+
+// Five-colour palette (matches notes_client.ts HIGHLIGHT_COLORS).
+.coconote-pdf-color-yellow { background: #fff176; }
+.coconote-pdf-color-green  { background: #aed581; }
+.coconote-pdf-color-blue   { background: #81d4fa; }
+.coconote-pdf-color-pink   { background: #f8bbd0; }
+.coconote-pdf-color-orange { background: #ffcc80; }
+
+.coconote-pdf-toolbar {
+  position: absolute;
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.18);
+  z-index: var(--layer-toolbar);
+  transform: translateY(-100%);
+}
+
+.coconote-pdf-color-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  &:hover { transform: scale(1.1); }
+}
+
+.coconote-pdf-context-menu {
+  @include shared.context-menu;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  padding: 0.3rem;
+  min-width: 180px;
+
+  // Direct children only — keeps the rule off the color swatches
+  // nested inside .coconote-pdf-context-colors, which need their
+  // per-color background to survive.
+  > button {
+    @include shared.context-menu-item;
+    padding: 0.4rem 0.6rem;
+    &:hover { background: var(--background-modifier-hover); }
+  }
+  .coconote-pdf-context-colors {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.4rem 0.6rem;
+  }
+  .coconote-pdf-context-remove {
+    color: var(--color-red);
+  }
+}
+
+// Custom comment modal — replaces the browser-native window.prompt so
+// "Add comment" looks like coconote, not Chrome's chrome.
+.coconote-pdf-comment-backdrop {
+  @include shared.modal-overlay($background: rgba(0, 0, 0, 0.35));
+}
+.coconote-pdf-comment-modal {
+  min-width: 360px;
+  max-width: 560px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 1.1rem 1.2rem 0.9rem;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1.05em;
+    font-weight: 600;
+  }
+  textarea {
+    font: inherit;
+    min-height: 5.5em;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 5px;
+    background: var(--background-primary);
+    color: inherit;
+    resize: vertical;
+    line-height: 1.4;
+  }
+  .coconote-pdf-anchor-input {
+    font: inherit;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 5px;
+    background: var(--background-primary);
+    color: inherit;
+  }
+  .coconote-pdf-anchor-error {
+    margin-top: -0.3rem;
+    color: var(--color-red);
+    font-size: 0.85em;
+  }
+  .coconote-pdf-comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+  button {
+    padding: 0.35rem 1.1rem;
+    border-radius: 5px;
+    border: 1px solid var(--background-modifier-border);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    &:hover { background: var(--background-modifier-hover); }
+  }
+  .coconote-pdf-comment-save {
+    background: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    &:hover { background: var(--interactive-accent-hover); }
+  }
+}
+
+// Hover-preview card for an anchored highlight (rendered by
+// codemirror/plugins/hover/hover_preview.ts, not by this viewer).
+.coconote-pdf-anchor-card {
+  font-family: var(--font-text, system-ui, sans-serif);
+  .coconote-pdf-anchor-name {
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+    opacity: 0.85;
+  }
+  blockquote {
+    margin: 0 0 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 3px solid var(--interactive-accent);
+    color: var(--text-muted);
+  }
+  .coconote-pdf-anchor-comment {
+    margin-top: 0.3rem;
+    padding: 0.3rem 0.4rem;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    font-size: 0.92em;
+  }
+}
+
+// Dark reading mode — follows the Settings "dark mode" toggle
+// (editor_ui.tsx sets data-theme on <html>). The themed surfaces above
+// flip on their own; here we invert the rendered PDF image so the page
+// itself goes dark, with hue-rotate keeping coloured figures roughly
+// true. The text layer + highlight overlay live outside the canvas, so
+// their colours are untouched by the filter.
+[data-theme="dark"] .coconote-pdf-viewer {
+  .coconote-pdf-page { background: #1b1b1b; }
+  .coconote-pdf-page canvas { filter: invert(1) hue-rotate(180deg); }
+  // Over the now-dark page, `multiply` would crush highlights to black;
+  // `screen` keeps them as visible coloured tints (mirrors zotero's
+  // light=multiply / dark=lighten compositing).
+  .coconote-pdf-highlight { mix-blend-mode: screen; }
+  .coconote-pdf-text-layer ::selection { background: rgba(120, 170, 255, 0.4); }
+}

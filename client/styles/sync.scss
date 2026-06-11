@@ -1,0 +1,195 @@
+@use "shared";
+
+// Push / Pull modals + Merge view. Triggered from the Content browser
+// right-click menu only — no floating sync chip in the editor.
+
+// ---- Generic modal overlay (reused by Push / Pull + Merge) ----
+
+.coconote-modal-overlay {
+  @include shared.modal-overlay($background: rgba(0, 0, 0, 0.4));
+  padding: 2rem;
+}
+
+.coconote-modal {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem;
+  max-width: min(900px, 90vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+
+  h2 { margin: 0 0 0.2rem; font-size: 1.1rem; }
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.85rem;
+    input, select {
+      padding: 0.3rem 0.5rem;
+      border: 1px solid var(--background-modifier-border);
+      border-radius: 4px;
+      background: var(--background-secondary);
+      color: var(--text-normal);
+      font-size: 0.95rem;
+    }
+  }
+  code {
+    font-family: var(--font-monospace);
+    font-size: 0.9em;
+    background: var(--editor-code-background-color, var(--background-secondary));
+    padding: 0.05em 0.3em;
+    border-radius: 3px;
+  }
+}
+
+.coconote-modal-error {
+  color: var(--color-red);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.coconote-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  button {
+    padding: 0.32rem 0.85rem;
+    border-radius: 5px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    cursor: pointer;
+    &:hover { background: var(--background-secondary); }
+    &:disabled { opacity: 0.55; cursor: progress; }
+  }
+  // Same primary-button accent as settings (.coconote-pages-add-actions).
+  .coconote-modal-primary {
+    background: var(--interactive-accent);
+    color: white;
+    border-color: transparent;
+    &:hover { background: var(--interactive-accent-hover); }
+  }
+}
+
+// ---- Merge view ----
+
+.coconote-merge-modal {
+  max-width: min(1300px, 95vw);
+  width: 100%;
+}
+
+.coconote-merge-head {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 0.4rem;
+  p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0.15rem 0 0;
+  }
+}
+
+.coconote-merge-chunks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.coconote-merge-ok {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  background: var(--background-secondary);
+  border-left: 3px solid var(--color-green);
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.coconote-merge-conflict {
+  border: 1px solid var(--color-red);
+  border-radius: 5px;
+  padding: 0.4rem 0.5rem;
+  background: color-mix(in srgb, var(--color-red) 5%, transparent);
+}
+
+.coconote-merge-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.coconote-merge-conflict .coconote-merge-cols:has(> :nth-child(2):last-child) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.coconote-merge-col {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  padding: 0.25rem 0.4rem;
+  &.picked {
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 1px var(--text-accent);
+  }
+  .coconote-merge-col-head {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+  }
+  pre {
+    margin: 0;
+    font-family: var(--font-monospace);
+    font-size: 0.82rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.coconote-merge-actions-row {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  button {
+    padding: 0.18rem 0.55rem;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    &:hover { background: var(--background-secondary-alt); }
+    &:disabled { opacity: 0.5; cursor: default; }
+  }
+}
+
+.coconote-merge-edit-panel {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 0.4rem;
+  summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+}
+
+.coconote-merge-textarea {
+  width: 100%;
+  margin-top: 0.4rem;
+  padding: 0.5rem;
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 200px;
+}

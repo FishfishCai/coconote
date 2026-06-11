@@ -1,0 +1,36 @@
+import { useEffect, useState } from "preact/hooks";
+
+export function SnippetsSection(props: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  // Buffer the textarea locally; commit on blur (spec: snippet edits
+  // only persist once the user leaves the field, not on every keystroke).
+  const [draft, setDraft] = useState(props.value);
+  useEffect(() => {
+    setDraft(props.value);
+  }, [props.value]);
+  return (
+    <section>
+      <h2>Snippets</h2>
+      <div className="coconote-setting-row coconote-setting-row-block">
+        <label htmlFor="coconote-snippets">JSON (LaTeX-suite shape)</label>
+        <textarea
+          id="coconote-snippets"
+          spellcheck={false}
+          value={draft}
+          onInput={(e) => setDraft(e.currentTarget.value)}
+          onBlur={(e) => {
+            // Read straight from the DOM target so a raw `ta.value=...;
+            // dispatchEvent('blur')` sequence (no input event) still
+            // commits.
+            const v = e.currentTarget.value;
+            if (v !== props.value) props.onChange(v);
+          }}
+          rows={10}
+          placeholder={`[\n  { "trigger": "//", "replacement": "\\\\frac{$1}{$2}$0", "options": "mA" }\n]`}
+        />
+      </div>
+    </section>
+  );
+}

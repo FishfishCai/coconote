@@ -1,0 +1,59 @@
+@use "shared";
+
+// Scoped to `#coconote-main .cm-editor` so it wins specificity ties with
+// editor.scss and stays out of modals / file tree.
+#coconote-main .cm-editor {
+  // Font + base sizing live in EditorView.theme() so CM's char-width
+  // measurement runs against the proportional font.
+  .cm-content {
+    padding: var(--size-4-5) var(--size-4-8);
+  }
+
+  // Headings via the shared prose look (no margins: CM's heightMap
+  // ignores margins, so margins would make `posAtCoords` drift by the
+  // margin px for every line below — use padding on `.cm-line` instead).
+  @include shared.prose-headings($line-classes: true);
+
+  .coconote-code {
+    @include shared.prose-code-inline;
+  }
+  .coconote-line-fenced-code,
+  .coconote-line-code {
+    background: var(--editor-code-block-background-color) !important;
+    @include shared.prose-code-block-text;
+  }
+
+  .coconote-line-blockquote {
+    @include shared.prose-blockquote;
+    background: transparent !important;
+    padding-left: var(--size-4-3);
+  }
+
+  .coconote-line-li { padding-block: 0.05em; }
+  .coconote-line-ul .coconote-meta,
+  .coconote-line-ol .coconote-meta { color: var(--text-faint); }
+
+  .coconote-wiki-link {
+    @include shared.prose-link;
+    transition: color 100ms ease;
+    &:hover {
+      @include shared.prose-link-hover;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+  }
+
+  table {
+    @include shared.prose-table;
+  }
+  th, td {
+    padding: var(--size-4-1) var(--size-4-3);
+    border: none;
+  }
+  thead th {
+    @include shared.prose-table-head-cell;
+  }
+
+  .cm-selectionBackground,
+  ::selection { background: var(--text-selection) !important; }
+}

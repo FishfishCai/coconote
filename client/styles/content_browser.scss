@@ -1,0 +1,304 @@
+@use "shared";
+
+.coconote-content-browser {
+  // Layout shell must mirror .coconote-settings byte-for-byte so the
+  // toggle button stays put and the first divider lines up
+  // ($shell-gutter is shared with settings.scss for exactly that).
+  flex: 2;
+  overflow-y: auto;
+  padding: 3rem shared.$shell-gutter 4rem;
+  box-sizing: border-box;
+  // Fixed not slider-scaled — Font-size/Content-width are prose knobs.
+  font-family: var(--font-interface);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text-normal);
+
+  // Single-row header: title · tabs · spacer · filter · setting. The
+  // title and tabs are flush-left; .coconote-cb-actions is pushed to
+  // the far right with margin-left:auto so the spacing breathes when
+  // the viewport is wide.
+  .coconote-cb-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.6rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--background-modifier-border);
+  }
+  .coconote-cb-title {
+    font-size: 1.8rem;
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  .coconote-cb-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  // Path / Tag / Graph segmented selector. Flush-left under the title.
+  .coconote-cb-view-tabs {
+    display: inline-flex;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 7px;
+    overflow: hidden;
+    font-size: 0.85em;
+  }
+  .coconote-cb-view-tab {
+    background: transparent;
+    color: var(--text-muted);
+    border: 0;
+    padding: 0.4rem 1.1rem;
+    cursor: pointer;
+    font: inherit;
+    text-transform: capitalize;
+    border-right: 1px solid var(--background-modifier-border);
+    transition: background 0.15s ease, color 0.15s ease;
+    &:last-child { border-right: 0; }
+    &:hover { background: var(--background-secondary-alt); color: var(--text-normal); }
+    &.active {
+      background: var(--background-secondary);
+      color: var(--text-accent);
+      font-weight: 600;
+    }
+  }
+
+  // Graph view: full-bleed SVG inside the cb body. Cancel the shell
+  // gutter (minus a small visual margin) so the canvas can use the
+  // whole pane.
+  .coconote-cb-body-graph {
+    margin: 0 calc(-1 * (#{shared.$shell-gutter} - 0.5rem));
+    height: calc(100vh - 12rem);
+  }
+  .coconote-cb-graph {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .coconote-cb-graph-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    user-select: none;
+    cursor: grab;
+    &:active { cursor: grabbing; }
+  }
+  .coconote-cb-graph-node text {
+    font-family: var(--font-interface);
+    pointer-events: none;
+  }
+  .coconote-cb-graph-controls {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.75rem;
+    z-index: var(--layer-panel);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.6rem 0.7rem;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    font-size: 0.8em;
+    color: var(--text-normal);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95em;
+      color: var(--text-muted);
+    }
+
+    input[type="range"] { flex: 1; }
+    select { font: inherit; }
+  }
+  .coconote-cb-filter,
+  .coconote-cb-settings {
+    box-sizing: border-box;
+    padding: 0.42rem 0.9rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.88em;
+    line-height: 1.4;
+    transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  }
+  .coconote-cb-filter {
+    min-width: 14rem;
+    color: var(--text-normal);
+    &::placeholder { color: var(--text-muted); }
+  }
+  .coconote-cb-filter:focus {
+    outline: none;
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 22%, transparent);
+  }
+  .coconote-cb-settings {
+    cursor: pointer;
+    color: var(--text-muted);
+    &:hover {
+      color: var(--text-normal);
+      background: var(--background-secondary-alt);
+      border-color: var(--background-modifier-border-hover);
+    }
+  }
+
+  .coconote-cb-folder { margin-bottom: 0.1rem; }
+  .coconote-cb-folder-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.35rem 0.5rem;
+    border-radius: 5px;
+    transition: background 0.1s ease;
+    &:hover { background: var(--background-secondary-alt); }
+  }
+  .coconote-cb-chevron {
+    width: 0.9em;
+    opacity: 0.55;
+    font-size: 0.85em;
+    transition: opacity 0.1s ease;
+  }
+  .coconote-cb-folder-head:hover .coconote-cb-chevron { opacity: 1; }
+  .coconote-cb-tag-label {
+    font-weight: 600;
+    letter-spacing: 0.005em;
+  }
+  .coconote-cb-tag-count {
+    margin-left: auto;
+    font-size: 0.78em;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    background: var(--background-secondary);
+  }
+  .coconote-cb-folder-body {
+    margin: 0.15rem 0 0.5rem 1.4rem;
+    padding-left: 0.7rem;
+    border-left: 1px solid var(--background-modifier-border);
+  }
+  .coconote-cb-page {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.28rem 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    font: inherit;
+    border-radius: 5px;
+    position: relative;
+    transition: background 0.1s ease, color 0.1s ease;
+    // min-width:0 lets flex children shrink so ellipsis kicks in.
+    min-width: 0;
+    &:hover {
+      background: var(--background-secondary-alt);
+      color: var(--text-accent);
+    }
+  }
+  .coconote-cb-page-name {
+    font-weight: 500;
+    flex-shrink: 0;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+  .coconote-cb-page-path {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    font-family: var(--font-monospace);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .coconote-cb-page-origin {
+    font-size: 0.72em;
+    margin-left: auto;
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    background: var(--background-secondary-alt);
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .coconote-cb-page-remote .coconote-cb-page-name {
+    font-style: italic;
+  }
+  .coconote-cb-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 2rem 0;
+    text-align: center;
+  }
+}
+
+.coconote-context-menu {
+  @include shared.context-menu;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  padding: 0.25rem;
+  min-width: 200px;
+  font-size: 0.9em;
+
+  button {
+    @include shared.context-menu-item;
+    padding: 0.45rem 0.7rem;
+    &:hover { background: var(--background-secondary); }
+    &.danger { color: var(--color-red); }
+  }
+}
+
+.coconote-cb-display-toggle {
+  display: inline-flex;
+  margin: 0 0 1rem;
+  font-size: 0.82em;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  overflow: hidden;
+
+  button {
+    flex: 0 0 auto;
+    background: transparent;
+    color: var(--text-muted);
+    border: 0;
+    border-right: 1px solid var(--background-modifier-border);
+    padding: 0.32rem 0.85rem;
+    cursor: pointer;
+    font: inherit;
+    transition: background 0.12s ease, color 0.12s ease;
+    &:last-child { border-right: 0; }
+    &:hover { color: var(--text-normal); background: var(--background-secondary-alt); }
+    &.on {
+      color: var(--text-normal);
+      background: var(--background-secondary);
+      font-weight: 500;
+    }
+  }
+}
+
+.coconote-cb-page-excluded {
+  color: var(--text-muted);
+  font-style: italic;
+  cursor: default;
+
+  &:hover { background: transparent; }
+}

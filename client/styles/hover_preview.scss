@@ -1,0 +1,76 @@
+@use "shared";
+
+// Positioned via inline styles from hover_preview.ts; visuals only here.
+.coconote-hover-preview {
+  position: fixed;
+  z-index: var(--layer-tooltip);
+  box-sizing: border-box;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  overflow-y: auto;
+  // Kill rubber-band bounce and stop momentum from chaining into the editor.
+  overscroll-behavior: none;
+  font-family: inherit;
+  font-size: var(--editor-font-size, 18px);
+  line-height: 1.55;
+  color: var(--text-normal);
+}
+
+// Same prose look as the editor — shared mixins keep the two in sync
+// (the preview renders HTML elements, not CM line classes).
+.coconote-hover-preview-content {
+  padding: 10px 16px;
+
+  @include shared.prose-headings($margin: 0.4em 0 0.3em);
+
+  p { margin: 0.4em 0; }
+
+  ul, ol {
+    margin-top: 0.4em;
+    margin-bottom: 0.4em;
+    padding-left: 1.4em;
+  }
+
+  > :first-child { margin-top: 0; }
+  > :last-child { margin-bottom: 0; }
+
+  // `tt` is what render emits for inline code.
+  tt, code {
+    @include shared.prose-code-inline($radius: 3px);
+  }
+
+  pre {
+    background: var(--editor-code-block-background-color);
+    padding: 0.5em 0.75em;
+    border-radius: 4px;
+    overflow-x: auto;
+    @include shared.prose-code-block-text;
+  }
+
+  blockquote {
+    @include shared.prose-blockquote;
+    margin: 0.5em 0;
+    padding-left: 0.8em;
+  }
+
+  a, a.wiki-link, .coconote-wiki-link {
+    @include shared.prose-link;
+  }
+  a:hover, a.wiki-link:hover, .coconote-wiki-link:hover {
+    @include shared.prose-link-hover;
+  }
+
+  table {
+    @include shared.prose-table;
+    margin: 0.5em 0;
+  }
+  th, td {
+    padding: 0.2em 0.6em;
+    border: none;
+  }
+  thead th {
+    @include shared.prose-table-head-cell;
+  }
+}

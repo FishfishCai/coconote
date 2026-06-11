@@ -1,0 +1,317 @@
+name: release
+
+# Trigger: push a `v*` tag (e.g. `v1.0.0`) — or `Run workflow` manually.
+# Produces 6 server binaries + 3 desktop installers and attaches them to
+# the GitHub release page. The version job gates everything: the tag must
+# match package.json, electron/package.json and server-rs/Cargo.toml.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Version gate. Asset names embed the version, so a v1.2.0 tag pushed while
+  # the manifests still say 1.0.0 would ship wrongly-named artifacts. Derive
+  # VERSION from the tag and fail fast unless package.json,
+  # electron/package.json and server-rs/Cargo.toml all agree with it.
+  # ---------------------------------------------------------------------------
+  version:
+    name: version gate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.gate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert tag and manifests agree
+        id: gate
+        shell: bash
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          ELECTRON_PKG=$(node -p "require('./electron/package.json').version")
+          CARGO=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' server-rs/Cargo.toml | head -n1)
+          echo "package.json=$PKG electron/package.json=$ELECTRON_PKG server-rs/Cargo.toml=$CARGO"
+          if [ "$PKG" != "$ELECTRON_PKG" ] || [ "$PKG" != "$CARGO" ]; then
+            echo "::error::Version mismatch: package.json=$PKG, electron/package.json=$ELECTRON_PKG, server-rs/Cargo.toml=$CARGO — align all three before releasing."
+            exit 1
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            if [ "$VERSION" != "$PKG" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME (version $VERSION) does not match the manifests ($PKG) — bump package.json / electron/package.json / server-rs/Cargo.toml, or retag."
+              exit 1
+            fi
+          else
+            VERSION="$PKG"  # workflow_dispatch: no tag to compare against.
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # 6 server binaries fanned out one-target-per-job for parallel build + cache.
+  # All Linux/Windows targets cross-compile on ubuntu-latest via cargo-zigbuild;
+  # the native macos-arm64 build runs on macos-latest, x86_64-darwin uses
+  # zigbuild on the same runner.
+  # ---------------------------------------------------------------------------
+  server:
+    name: server (${{ matrix.os_label }}-${{ matrix.arch_label }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - triple: aarch64-apple-darwin
+            runner: macos-latest
+            os_label: darwin
+            arch_label: aarch64
+            bin: coconote
+            use_zigbuild: false
+          - triple: x86_64-apple-darwin
+            runner: macos-latest
+            os_label: darwin
+            arch_label: x86_64
+            bin: coconote
+            use_zigbuild: true
+          - triple: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            os_label: linux
+            arch_label: aarch64
+            bin: coconote
+            use_zigbuild: true
+          - triple: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            os_label: linux
+            arch_label: x86_64
+            bin: coconote
+            use_zigbuild: true
+          - triple: x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+            os_label: linux-musl
+            arch_label: x86_64
+            bin: coconote
+            use_zigbuild: true
+          # windows-gnu (not msvc) on purpose: gnu is what zigbuild can
+          # cross-compile from this Linux runner for the standalone server
+          # zip; the desktop sidecar (app job) uses msvc natively on Windows.
+          - triple: x86_64-pc-windows-gnu
+            runner: ubuntu-latest
+            os_label: windows
+            arch_label: x86_64
+            bin: coconote.exe
+            use_zigbuild: true
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server-rs -> target
+          key: ${{ matrix.triple }}
+
+      - name: Install zigbuild (macOS)
+        if: matrix.use_zigbuild && runner.os == 'macOS'
+        run: |
+          brew install zig
+          cargo install --locked cargo-zigbuild
+      - name: Install zigbuild (Linux)
+        if: matrix.use_zigbuild && runner.os == 'Linux'
+        run: |
+          wget -q https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz
+          tar -xf zig-linux-x86_64-0.13.0.tar.xz
+          sudo mv zig-linux-x86_64-0.13.0 /opt/zig
+          sudo ln -sf /opt/zig/zig /usr/local/bin/zig
+          cargo install --locked cargo-zigbuild
+
+      - run: npm ci
+      - run: npm run build
+
+      # Same value + format the Makefile injects (Makefile:21-22), so CI
+      # binaries report the build moment in /.health exactly like
+      # make-built ones (option_env!("COCONOTE_BUILD_TIME") in server-rs).
+      - name: Set COCONOTE_BUILD_TIME
+        shell: bash
+        run: echo "COCONOTE_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Build server
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_zigbuild }}" = "true" ]; then
+            cargo zigbuild --manifest-path server-rs/Cargo.toml --release --target ${{ matrix.triple }}
+          else
+            cargo build --manifest-path server-rs/Cargo.toml --release --target ${{ matrix.triple }}
+          fi
+
+      - name: Stage zip
+        shell: bash
+        run: |
+          # Tag-derived, gated against the manifests by the version job.
+          VERSION="${{ needs.version.outputs.version }}"
+          OUT="coconote-server-v${VERSION}-${{ matrix.os_label }}-${{ matrix.arch_label }}.zip"
+          stage=$(mktemp -d)
+          cp "server-rs/target/${{ matrix.triple }}/release/${{ matrix.bin }}" "$stage/"
+          # No per-user yaml shipped: the server auto-creates one at the
+          # standard config dir on first launch (welcome.md §coconote.yaml).
+          cp introduction/welcome.md "$stage/README.md"
+          mkdir -p dist/server
+          (cd "$stage" && zip -q "$GITHUB_WORKSPACE/dist/server/$OUT" ${{ matrix.bin }} README.md)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.triple }}
+          path: dist/server/*.zip
+
+  # ---------------------------------------------------------------------------
+  # 3 desktop installers — electron-builder must run on each target OS for
+  # native bundling (dmg, deb/AppImage, NSIS exe). The Rust sidecar is built
+  # per-host and staged under electron/binaries/<platform-arch>/.
+  # ---------------------------------------------------------------------------
+  app:
+    name: app (${{ matrix.label }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        # electron_build_cmd passes --config explicitly (builder.config.json
+        # is not a filename electron-builder auto-detects) and pins the arch
+        # to the runner's, matching the staged sidecar dir.
+        include:
+          - os: macos-latest
+            label: macOS-dmg
+            rust_target: aarch64-apple-darwin
+            sidecar_name: coconote
+            electron_build_cmd: npm run build:mac -- --config builder.config.json --arm64
+          - os: ubuntu-latest
+            label: Linux-deb-appimage
+            rust_target: x86_64-unknown-linux-gnu
+            sidecar_name: coconote
+            electron_build_cmd: npm run build:linux -- --config builder.config.json --x64
+          - os: windows-latest
+            label: Windows-nsis
+            # msvc (not gnu) on purpose: it is the native toolchain on this
+            # Windows runner for the bundled sidecar; the standalone server
+            # zip is cross-built as windows-gnu from Linux (server job).
+            rust_target: x86_64-pc-windows-msvc
+            sidecar_name: coconote.exe
+            electron_build_cmd: npm run build:win -- --config builder.config.json --x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server-rs -> target
+
+      - run: npm ci
+      - run: npm run build
+
+      # Same value + format the Makefile injects (Makefile:21-22), so the
+      # bundled sidecar reports the build moment in /.health exactly like
+      # make-built ones (option_env!("COCONOTE_BUILD_TIME") in server-rs).
+      - name: Set COCONOTE_BUILD_TIME
+        shell: bash
+        run: echo "COCONOTE_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Build server (Electron sidecar)
+        shell: bash
+        run: |
+          cargo build --manifest-path server-rs/Cargo.toml --release --target ${{ matrix.rust_target }}
+          # Names must match electron-builder's ${platform}-${arch} macro
+          # (builder.config.json): process.platform / process.arch.
+          case "${{ matrix.os }}" in
+            macos-latest)   plat=darwin; arch=arm64 ;;
+            ubuntu-latest)  plat=linux;  arch=x64 ;;
+            windows-latest) plat=win32;  arch=x64 ;;
+          esac
+          dst="electron/binaries/${plat}-${arch}"
+          mkdir -p "$dst"
+          cp "server-rs/target/${{ matrix.rust_target }}/release/${{ matrix.sidecar_name }}" "$dst/"
+          # macOS / Linux: keep the exec bit (cargo's was already +x but
+          # cp/extract layers in CI sometimes drop it).
+          chmod +x "$dst/${{ matrix.sidecar_name }}" || true
+
+      - name: Install Electron deps
+        working-directory: electron
+        run: npm ci || npm install
+
+      - name: Build Electron bundle
+        working-directory: electron
+        shell: bash
+        env:
+          # No Developer ID cert: don't let electron-builder grab a stray
+          # keychain identity. macOS still gets a clean ad-hoc re-sign via
+          # `mac.identity: null` in builder.config.json — required so the
+          # bundle's signature actually covers our injected sidecar +
+          # trimmed locales (a SKIPPED sign leaves Electron's original
+          # signature mismatching the modified bundle → "damaged").
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: ${{ matrix.electron_build_cmd }}
+
+      - name: Collect installers
+        shell: bash
+        run: |
+          # Tag-derived, gated against the manifests by the version job.
+          VERSION="${{ needs.version.outputs.version }}"
+          mkdir -p dist/app
+          case "${{ matrix.os }}" in
+            macos-latest)   host_os=darwin;  host_arch=aarch64 ;;
+            ubuntu-latest)  host_os=linux;   host_arch=x86_64  ;;
+            windows-latest) host_os=windows; host_arch=x86_64  ;;
+          esac
+          # electron-builder puts installers under electron/dist/
+          # (sometimes nested under a per-target subdir). Use find so
+          # this works on every runner OS. Skip *-unpacked/: on Windows
+          # win-unpacked/coconote.exe (the bare app, not the installer)
+          # would otherwise clobber the NSIS exe at the same dst name.
+          find electron/dist -maxdepth 2 -type f \
+            ! -path "*-unpacked/*" \
+            \( -name "*.dmg" -o -name "*.deb" -o -name "*.AppImage" \
+               -o -name "*.exe" -o -name "*.msi" \) \
+            -print0 | while IFS= read -r -d '' f; do
+              base=$(basename "$f")
+              ext="${base##*.}"
+              cp "$f" "dist/app/coconote-v${VERSION}-${host_os}-${host_arch}.${ext}"
+            done
+          ls -la dist/app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.label }}
+          path: dist/app/*
+
+  release:
+    name: Publish release
+    needs: [server, app]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: gathered
+      - name: Flatten
+        run: |
+          mkdir -p release-assets
+          find gathered -type f \( \
+            -name "*.zip" -o -name "*.dmg" -o \
+            -name "*.deb" -o -name "*.AppImage" -o \
+            -name "*.exe" -o -name "*.msi" \) -exec cp {} release-assets/ \;
+          ls -la release-assets
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true

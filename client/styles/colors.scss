@@ -1,0 +1,258 @@
+#coconote-root {
+  font-family: var(--ui-font);
+  background-color: var(--root-background-color);
+  color: var(--root-color);
+}
+
+.cm-cursor,
+.cm-dropCursor {
+  border-left: 1.2px solid var(--editor-caret-color) !important;
+}
+
+.coconote-button,
+.coconote-button-primary {
+  --color: var(--button-color);
+  --background-color: var(--button-background-color);
+  --hover-background-color: var(--button-hover-background-color);
+  --border-color: var(--button-border-color);
+
+  &.coconote-button-primary {
+    --color: var(--primary-button-color);
+    --background-color: var(--primary-button-background-color);
+    --hover-background-color: var(--primary-button-hover-background-color);
+    --border-color: var(--primary-button-border-color);
+  }
+
+  background-color: var(--background-color);
+  color: var(--color);
+
+  box-shadow: 0 0 0.2em rgba(0, 0, 0, 0.05);
+
+  border: 1px solid var(--border-color);
+  border-radius: 0.5em;
+  padding: 0.2em 0.5em;
+  font-size: 0.9em;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: var(--hover-background-color);
+  }
+
+  &:focus {
+    outline: 2px solid var(--color);
+    outline-offset: -3px;
+  }
+}
+
+/* Modal boxes */
+.coconote-modal-box {
+  color: var(--modal-color);
+  background-color: var(--modal-background-color);
+  border: var(--modal-border-color) 1px solid;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 20px 20px;
+
+  .cm-scroller {
+    font-family: var(--ui-font);
+  }
+}
+
+/* Editor */
+
+#coconote-editor {
+  // .cm-content font-family lives in editor_state.ts EditorView.theme()
+  // — CM measures char width there, moving it here drifts selections.
+  .cm-selectionBackground {
+    background-color: var(--editor-selection-background-color);
+  }
+
+  .cm-panels-bottom {
+    color: var(--editor-panels-bottom-color);
+    background-color: var(--editor-panels-bottom-background-color);
+    border-top: var(--editor-panels-bottom-border-color) 1px solid;
+
+    .cm-search {
+      .cm-textfield {
+        background-color: var(--editor-panels-bottom-input-background-color);
+      }
+      .cm-button {
+        background-image: var(--editor-panels-bottom-button-background-image);
+        &:active {
+          background-image: var(
+            --editor-panels-bottom-button-active-background-image
+          );
+        }
+      }
+    }
+  }
+
+  .cm-editor .cm-tooltip-autocomplete {
+    background-color: var(--root-background-color);
+    color: var(--modal-color);
+
+    li .cm-completionDetail {
+      color: var(--editor-completion-detail-color);
+    }
+
+    li[aria-selected] .cm-completionDetail,
+    li:hover .cm-completionDetail {
+      color: var(--editor-completion-detail-selected-color);
+    }
+
+    ul:hover li[aria-selected] {
+      background: transparent;
+      color: var(--modal-color);
+    }
+
+    ul li:hover,
+    ul li[aria-selected]:hover {
+      background: var(--interactive-accent);
+      color: var(--text-on-accent);
+    }
+  }
+
+  .cm-list-bullet::after {
+    color: var(--editor-list-bullet-color);
+  }
+
+  // Only h1–h4 line classes exist (registry.ts; markdown.md spec).
+  .coconote-line-h1,
+  .coconote-line-h2,
+  .coconote-line-h3,
+  .coconote-line-h4 {
+    color: var(--editor-heading-color);
+  }
+
+  .coconote-line-h1 .coconote-meta,
+  .coconote-line-h2 .coconote-meta,
+  .coconote-line-h3 .coconote-meta,
+  .coconote-line-h4 .coconote-meta {
+    color: var(--editor-heading-meta-color);
+  }
+}
+
+.coconote-named-anchor {
+  color: var(--editor-link-color);
+}
+
+.coconote-named-anchor-mark {
+  color: var(--editor-link-color);
+}
+
+.coconote-naked-url {
+  color: var(--editor-naked-url-color);
+}
+
+.coconote-li-cursor .coconote-meta {
+  color: var(--editor-line-meta-color);
+}
+
+thead tr {
+  background-color: var(--editor-table-head-background-color);
+  color: var(--editor-table-head-color);
+}
+
+tbody tr:nth-of-type(even) {
+  background-color: var(--editor-table-even-background-color);
+}
+
+// Blockquote / code-line / inline-code surfaces are styled once in
+// prose.scss (higher specificity; the only CM editor lives under
+// #coconote-main, so those rules always apply).
+.coconote-line-fenced-code .coconote-code {
+  color: var(--editor-code-color);
+}
+
+.coconote-highlight,
+mark {
+  background-color: var(--editor-highlight-background-color);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 0.15em;
+}
+
+// markdown.md: highlight cannot combine with bold/italic/strike. The
+// lezer tree still nests them, so suppress the mark background when the
+// same span also carries one of the three inline marks (the hover
+// renderer enforces the same ban tree-side).
+.coconote-strong.coconote-highlight,
+.coconote-emphasis.coconote-highlight,
+.coconote-strikethrough.coconote-highlight {
+  background-color: transparent;
+  padding: 0;
+}
+
+.coconote-line-fenced-code .coconote-comment {
+  color: var(--editor-code-comment-color);
+}
+
+.coconote-variableName {
+  color: var(--editor-code-variable-color);
+}
+
+.coconote-typeName {
+  color: var(--editor-code-typename-color);
+}
+
+.coconote-string,
+.coconote-string2 {
+  color: var(--editor-code-string-color);
+}
+
+.coconote-number {
+  color: var(--editor-code-number-color);
+}
+
+.coconote-operator {
+  color: var(--editor-code-operator-color);
+}
+
+.coconote-meta {
+  color: var(--editor-meta-color);
+}
+
+.coconote-deleted {
+  color: var(--editor-code-deleted-color, #dc2626);
+  background-color: var(--editor-code-deleted-bg, rgba(254, 202, 202, 0.25));
+}
+
+.coconote-inserted {
+  color: var(--editor-code-inserted-color, #16a34a);
+  background-color: var(--editor-code-inserted-bg, rgba(187, 247, 208, 0.25));
+}
+
+.coconote-emphasis {
+  font-style: italic;
+}
+
+.coconote-strong {
+  font-weight: 900;
+}
+
+a {
+  color: var(--editor-link-color);
+}
+
+.coconote-atom {
+  color: var(--editor-code-atom-color);
+}
+
+.coconote-wiki-link {
+  color: var(--editor-wiki-link-page-color);
+  background-color: var(--editor-wiki-link-page-background-color);
+}
+
+a.coconote-wiki-link-missing,
+.coconote-wiki-link-missing > .coconote-wiki-link,
+a.coconote-wiki-link-ambiguous,
+.coconote-wiki-link-ambiguous > .coconote-wiki-link {
+  color: var(--editor-wiki-link-missing-color) !important;
+  background-color: var(--editor-wiki-link-missing-bg, rgba(233, 49, 71, 0.12)) !important;
+  text-decoration: underline dashed var(--editor-wiki-link-missing-color);
+  text-underline-offset: 2px;
+}
+
+a.coconote-wiki-link-invalid,
+.coconote-wiki-link-invalid > .coconote-wiki-link {
+  color: var(--editor-wiki-link-page-invalid-color);
+}
+
