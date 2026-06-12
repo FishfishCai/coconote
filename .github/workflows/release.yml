@@ -319,6 +319,9 @@ jobs:
           mkdir -p dist/extras
           stage=$(mktemp -d) && mkdir "$stage/introduction"
           cp introduction/*.md "$stage/introduction/"
+          # markdown.md embeds an image, so its assets folder must travel
+          # with it (the manual renders broken without it).
+          cp -r introduction/.markdown.assets "$stage/introduction/"
           (cd "$stage" && zip -qr "$GITHUB_WORKSPACE/dist/extras/coconote-introduction-v${VERSION}.zip" introduction)
           stage2=$(mktemp -d) && mkdir "$stage2/coconote-mcp"
           # dist ships two files: the bundle plus the pdfjs worker it

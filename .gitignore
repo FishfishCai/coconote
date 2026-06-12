@@ -39,3 +39,12 @@ electron/node_modules/
 
 # Distribution artifacts
 dist/
+
+# Feature-test fixtures: the tests live under .claude/ (gitignored) and
+# mount introduction/ as the vault. These fixtures stay on disk for local
+# test runs but are not part of the published manual.
+introduction/test/
+introduction/test1.pdf
+introduction/test2.pdf
+introduction/.test1.json
+introduction/.test2.json
