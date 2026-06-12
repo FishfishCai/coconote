@@ -24,6 +24,8 @@ The bindings below are the defaults. Some can be overridden in setting.
 - `Cmd / Ctrl + Shift + H`: open the version history panel (see [[history]]).
 - `Cmd / Ctrl + Shift + P`: pin the current version (prevents retention pruning, see [[history]]).
 - `Cmd / Ctrl + Shift + M`: open the PDF metadata panel (only active in the PDF viewer, see [[pdf]]).
+- `Cmd / Ctrl + Shift + E`: export the open page as PDF (md editor or PDF viewer, see [[content]]).
+- `Cmd / Ctrl + Shift + X`: export the open markdown page as a self-contained HTML file (see [[content]]).
 - `Cmd / Ctrl + Shift + C`: open the Content page.
 - `Cmd / Ctrl + Shift + B`: return to the previous page.
 - `Cmd / Ctrl + Shift + F`: go forward to the next page (inverse of Shift + B).

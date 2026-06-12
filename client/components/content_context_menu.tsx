@@ -1,8 +1,10 @@
 // Right-click menu for a content-browser Path-view file row (Tag view
 // is read-only). content.md Right-click menu: .md or .pdf -> Rename /
-// Remove / Delete, plus Push (local) or Pull (remote). Rename rewrites
-// every [[wikilink]] to the old name. Dispatch-only: lib/page_ops.ts.
+// Remove / Delete, plus Push (local) or Pull (remote), plus Export as
+// PDF / HTML (HTML for md only). Rename rewrites every [[wikilink]] to
+// the old name. Dispatch-only: lib/page_ops.ts and lib/export.ts.
 
+import { exportHtml, exportPdfOfMd, exportPdfOfPdf } from "../lib/export.ts";
 import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
 import { ContextMenuShell } from "./context_menu_shell.tsx";
@@ -108,6 +110,36 @@ export function ContentContextMenu(
     onClose();
   };
 
+  // Exports download to the local machine, never into the vault, so
+  // they apply to remote rows too.
+  const onExportPdf = async () => {
+    try {
+      if (isMd) await exportPdfOfMd(client, pageName);
+      else await exportPdfOfPdf(client, pageName);
+    } catch (e) {
+      console.error(`Export failed: ${e}`);
+    }
+    onClose();
+  };
+
+  const onExportHtml = async () => {
+    try {
+      await exportHtml(client, pageName);
+    } catch (e) {
+      console.error(`Export failed: ${e}`);
+    }
+    onClose();
+  };
+
+  const exportButtons = (
+    <>
+      <button type="button" onClick={onExportPdf}>Export as PDF</button>
+      {isMd && (
+        <button type="button" onClick={onExportHtml}>Export as HTML</button>
+      )}
+    </>
+  );
+
   // file.md / content.md: excluded rows (visible only in "show all
   // supported files" mode) expose a single action - Include in Coconote.
   if (isExcluded) {
@@ -125,13 +157,17 @@ export function ContentContextMenu(
     <ContextMenuShell x={x} y={y} onClose={onClose}>
       {isRemote
         ? (
-          <button type="button" onClick={onSync}>Pull</button>
+          <>
+            <button type="button" onClick={onSync}>Pull</button>
+            {exportButtons}
+          </>
         )
         : (
           <>
             <button type="button" onClick={onRename}>Rename</button>
             <button type="button" onClick={onRemove}>Remove</button>
             <button type="button" onClick={onSync}>Push</button>
+            {exportButtons}
             <button type="button" className="danger" onClick={onDelete}>
               Delete
             </button>

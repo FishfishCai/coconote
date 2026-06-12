@@ -40,6 +40,8 @@ The menu below applies only to files **already included in Coconote** (see above
 **`.md` and `.pdf`:**
 - **Rename**: prompts for a new path and filename. Any `[[wikilink]]` pointing at the old name is rewritten to point at the new one.
 - **Remove**: file stays on disk, but its `coconote` flips to `false` (in the md frontmatter, or the pdf sidecar) and it disappears from the index.
+- **Export as PDF**: downloads a PDF of the page to the local machine, never written into the vault. Works for url-mounted files too. A pdf's export bakes its highlights into the pages (see [[pdf]]).
+- **Export as HTML** (md only): downloads a single self-contained `.html` (styles, fonts, images, and math all inlined) that works fully offline.
 - **Delete**: permanently deletes the file and its assets folder after confirmation.
 
 ### push / pull

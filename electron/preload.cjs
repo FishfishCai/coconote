@@ -13,7 +13,12 @@ contextBridge.exposeInMainWorld("coconoteShell", {
   invoke(channel, args) {
     // Channel allowlist keeps the surface small in case the renderer is
     // ever exposed to untrusted content.
-    if (channel !== "coconote_config_path" && channel !== "coconote_apply_config_path") {
+    const allowed = [
+      "coconote_config_path",
+      "coconote_apply_config_path",
+      "coconote_export_pdf",
+    ];
+    if (!allowed.includes(channel)) {
       return Promise.reject(new Error(`channel not allowed: ${channel}`));
     }
     return ipcRenderer.invoke(channel, args);

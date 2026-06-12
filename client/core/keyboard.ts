@@ -7,6 +7,7 @@ import { runScopeHandlers } from "@codemirror/view";
 import type { ClientContext as Client } from "./context.ts";
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { activeSidecarState } from "../pdf/notes_client.ts";
+import { exportHtml, exportPdfOfMd, exportPdfOfPdf } from "../lib/export.ts";
 import { matchShortcut } from "../lib/shortcuts.ts";
 import { reconfigureMode } from "../codemirror/registry.ts";
 
@@ -69,6 +70,32 @@ export function installGlobalKeyboard(client: Client, hooks: KeyboardHooks) {
       if (client.ui.viewState.pdfViewer) {
         ev.preventDefault();
         hooks.openPdfMetadata();
+      }
+      return;
+    }
+    // Export acts on the open page: the PDF viewer's file or the md
+    // editor's page. Inactive on the Content / Setting views.
+    const onPage = !client.ui.viewState.showContentBrowser &&
+      !client.ui.viewState.showSettings;
+    if (matchShortcut(ev, "exportPdf")) {
+      const pv = client.ui.viewState.pdfViewer;
+      if (onPage && pv) {
+        ev.preventDefault();
+        void exportPdfOfPdf(client, pv.path)
+          .catch((e) => console.error(`Export failed: ${e}`));
+      } else if (onPage && client.ui.viewState.current) {
+        ev.preventDefault();
+        void exportPdfOfMd(client, client.currentName())
+          .catch((e) => console.error(`Export failed: ${e}`));
+      }
+      return;
+    }
+    if (matchShortcut(ev, "exportHtml")) {
+      // Markdown editor only - a PDF has no HTML form.
+      if (onPage && !client.ui.viewState.pdfViewer && client.ui.viewState.current) {
+        ev.preventDefault();
+        void exportHtml(client, client.currentName())
+          .catch((e) => console.error(`Export failed: ${e}`));
       }
       return;
     }

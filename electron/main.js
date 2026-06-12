@@ -7,6 +7,7 @@ import { app, BrowserWindow, dialog, ipcMain, session, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
+import { unlink, writeFile } from "node:fs/promises";
 
 import {
   PORT,
@@ -62,6 +63,35 @@ ipcMain.handle("coconote_apply_config_path", async (_event, args) => {
   await waitForExit(3000);
   app.relaunch();
   app.exit(0);
+});
+
+// Export as PDF (client/lib/export.ts): render the self-contained HTML
+// the client assembled in a hidden window and return the printToPDF
+// bytes. A temp file (not a data: URL) keeps loadFile's file: origin so
+// document.fonts settles normally.
+ipcMain.handle("coconote_export_pdf", async (_event, args) => {
+  const html = String(args?.html ?? "");
+  if (!html) throw new Error("coconote_export_pdf: html is empty");
+  const tmpFile = join(
+    app.getPath("temp"),
+    `coconote-export-${Date.now()}-${process.pid}.html`,
+  );
+  await writeFile(tmpFile, html, "utf-8");
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: { sandbox: true },
+  });
+  try {
+    await win.loadFile(tmpFile);
+    await win.webContents.executeJavaScript(
+      "document.fonts.ready.then(() => true)",
+      true,
+    );
+    return await win.webContents.printToPDF({ printBackground: true });
+  } finally {
+    win.destroy();
+    await unlink(tmpFile).catch(() => {});
+  }
 });
 
 // Open a URL in the OS browser, but ONLY http/https/mailto: the renderer is

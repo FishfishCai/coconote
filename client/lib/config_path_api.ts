@@ -12,13 +12,14 @@ type Shell = {
   invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 };
 
-function shell(): Shell | null {
+/** The Electron preload bridge, or null in a plain browser. */
+export function electronShell(): Shell | null {
   const w = globalThis as typeof globalThis & { coconoteShell?: Shell };
   return w.coconoteShell?.isElectron ? w.coconoteShell : null;
 }
 
 export async function getConfigPath(): Promise<string> {
-  const s = shell();
+  const s = electronShell();
   if (s) {
     const v = await s.invoke("coconote_config_path");
     return typeof v === "string" ? v : "";
@@ -36,7 +37,7 @@ export async function getConfigPath(): Promise<string> {
  * fetch is normal, not an error - callers treat both outcomes as success.
  */
 export async function applyConfigPath(dir: string): Promise<void> {
-  const s = shell();
+  const s = electronShell();
   if (s) {
     await s.invoke("coconote_apply_config_path", { path: dir });
     return;

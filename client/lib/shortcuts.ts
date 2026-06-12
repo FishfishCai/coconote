@@ -9,6 +9,8 @@ export const SHORTCUT_NAMES = [
   "historyOpen",
   "pinVersion",
   "pdfMetadataPanel",
+  "exportPdf",
+  "exportHtml",
   "backPrev",
   "forwardNext",
   "backToContent",
@@ -21,6 +23,8 @@ export const SHORTCUT_LABELS: Record<ShortcutName, string> = {
   historyOpen: "Open version history panel",
   pinVersion: "Pin current version",
   pdfMetadataPanel: "Open PDF metadata panel",
+  exportPdf: "Export as PDF",
+  exportHtml: "Export as HTML",
   backPrev: "Back to previous page",
   forwardNext: "Forward to next page",
   backToContent: "Open Content",
@@ -32,6 +36,8 @@ export const DEFAULT_SHORTCUTS: Record<ShortcutName, string> = {
   historyOpen: "Mod+Shift+H",
   pinVersion: "Mod+Shift+P",
   pdfMetadataPanel: "Mod+Shift+M",
+  exportPdf: "Mod+Shift+E",
+  exportHtml: "Mod+Shift+X",
   backToContent: "Mod+Shift+C",
   backPrev: "Mod+Shift+B",
   forwardNext: "Mod+Shift+F",
@@ -86,7 +92,7 @@ function readUserShortcuts(): Partial<Record<ShortcutName, string>> {
     : {};
 }
 
-// matchShortcut runs per keydown (up to 8 lookups), and readUserPrefs
+// matchShortcut runs per keydown (one lookup per action), and readUserPrefs
 // is localStorage + JSON.parse: cache the parsed Combo table and
 // rebuild only when writeUserPrefs bumped the version.
 let comboCache: Record<ShortcutName, Combo> | null = null;

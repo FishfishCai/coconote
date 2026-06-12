@@ -1,12 +1,5 @@
 import { type EditorView, type PluginValue, ViewPlugin } from "@codemirror/view";
-import {
-  findNodeOfType,
-  type ParseTree,
-  renderToText,
-  traverseTree,
-} from "coconote/lib/tree";
 import { parseToRef, sliceByRef } from "coconote/lib/ref";
-import { parseTransclusion } from "coconote/lib/transclusion";
 import type { ClientContext as Client } from "../../../core/context.ts";
 import { resolveWikiLink } from "../../../lib/wikilink.ts";
 import { resolvePdfWikiLinkPath } from "../../../markdown/wiki_link_resolver.ts";
@@ -14,7 +7,7 @@ import { stripFrontmatter } from "../../../markdown/frontmatter.ts";
 import { parseMarkdown } from "../../../markdown/parser/parser.ts";
 import { htmlEscapeAttr } from "../../../markdown/render/html_render.ts";
 import { renderMarkdownToHtml } from "../../../markdown/render/markdown_render.ts";
-import { resolveTransclusion } from "../../../markdown/transclusion_resolver.ts";
+import { resolveImageRefs } from "../../../markdown/transclusion_resolver.ts";
 import { buildTranslateUrls } from "../../util/widget_util.ts";
 
 const HOVER_DELAY_MS = 500;
@@ -236,7 +229,12 @@ export function hoverPreviewPlugin(client: Client) {
         // markdown_render's Image case skips translateUrls, so bare
         // asset paths must be rewritten against the TARGET page's root
         // before rendering (else `/.file/pic.png` 404s).
-        resolveImageRefs(tree, pagePath, client);
+        resolveImageRefs(
+          tree,
+          pagePath,
+          client.allKnownFiles,
+          client.ui.viewState.allPages,
+        );
         const html = renderMarkdownToHtml(tree, {
           shortWikiLinks: client.config.get("shortWikiLinks", true),
           // Cross-page: anchor URL translation to the TARGET page so
@@ -293,34 +291,4 @@ async function renderPdfAnchorPreview(
   } catch {
     return null;
   }
-}
-
-// `![[` prefix guards against `![alt with [[link]]](url)` whose inner
-// wikilink parseTransclusion would otherwise match and corrupt.
-function resolveImageRefs(
-  tree: ParseTree,
-  targetPath: string,
-  client: Client,
-) {
-  traverseTree(tree, (n) => {
-    if (n.type !== "Image") return false;
-    const text = renderToText(n);
-    if (!text.startsWith("![[")) return true;
-    const t = parseTransclusion(text);
-    if (!t) return true;
-    const resolved = resolveTransclusion(
-      t,
-      targetPath,
-      client.allKnownFiles,
-      client.ui.viewState.allPages,
-    );
-    if (resolved.url === t.url) return true;
-    const wikiPage = findNodeOfType(n, "WikiLinkPage");
-    if (wikiPage && wikiPage.from !== undefined && wikiPage.to !== undefined) {
-      wikiPage.children = [
-        { from: wikiPage.from, to: wikiPage.to, text: resolved.url },
-      ];
-    }
-    return true;
-  });
 }

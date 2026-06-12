@@ -1,7 +1,14 @@
 import { isLocalURL } from "coconote/lib/resolve";
 import {
+  findNodeOfType,
+  type ParseTree,
+  renderToText,
+  traverseTree,
+} from "coconote/lib/tree";
+import {
   joinAnchorRange,
   parseAnchorRange,
+  parseTransclusion,
   type Transclusion,
 } from "coconote/lib/transclusion";
 import type { PageMeta } from "coconote/type/page";
@@ -51,6 +58,34 @@ export function resolveTransclusion(
     ...transclusion,
     url: joinAnchorRange(bare, range.start, range.end),
   };
+}
+
+// Resolve every `![[...]]` image ref in `tree` against `targetPath` by
+// rewriting the WikiLinkPage text in place. The `![[` prefix guards
+// against `![alt with [[link]]](url)` whose inner wikilink
+// parseTransclusion would otherwise match and corrupt.
+export function resolveImageRefs(
+  tree: ParseTree,
+  targetPath: string,
+  allKnownFiles: ReadonlySet<string>,
+  allPages: readonly PageMeta[],
+) {
+  traverseTree(tree, (n) => {
+    if (n.type !== "Image") return false;
+    const text = renderToText(n);
+    if (!text.startsWith("![[")) return true;
+    const t = parseTransclusion(text);
+    if (!t) return true;
+    const resolved = resolveTransclusion(t, targetPath, allKnownFiles, allPages);
+    if (resolved.url === t.url) return true;
+    const wikiPage = findNodeOfType(n, "WikiLinkPage");
+    if (wikiPage && wikiPage.from !== undefined && wikiPage.to !== undefined) {
+      wikiPage.children = [
+        { from: wikiPage.from, to: wikiPage.to, text: resolved.url },
+      ];
+    }
+    return true;
+  });
 }
 
 // markdown.md makes `![[...]]` an *image* syntax. Restrict the embed
