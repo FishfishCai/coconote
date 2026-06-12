@@ -6,7 +6,7 @@
 import { type AsyncZippable, zip } from "fflate";
 import type { ClientContext as Client } from "../core/context.ts";
 import { authedFetch } from "./authed_fetch.ts";
-import { downloadBlob, readVaultFile } from "./export.ts";
+import { readVaultFile, saveBlobAs } from "./export.ts";
 import { buildSiteFiles, type SiteProgress } from "./site_core.ts";
 
 // Already-compressed payloads gain nothing from another deflate pass.
@@ -44,7 +44,7 @@ export async function exportSite(
     onProgress,
   );
   const bytes = await zipFiles(files);
-  downloadBlob(
+  await saveBlobAs(
     "coconote-site.zip",
     new Blob([bytes as BlobPart], { type: "application/zip" }),
   );

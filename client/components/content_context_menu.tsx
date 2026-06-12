@@ -1,12 +1,12 @@
 // Right-click menu for a content-browser Path-view file row (Tag view
 // is read-only). content.md Right-click menu: a row not in Coconote
 // offers only Include. An included row gets the grouped template:
-// Rename / Remove, then Push (local) or Pull (remote) + Export (md
-// downloads HTML, pdf downloads a baked PDF), then Delete alone.
-// Rename rewrites every [[wikilink]] to the old name. Dispatch-only:
-// lib/page_ops.ts and lib/export.ts.
+// Rename / Remove, then Push (local) or Pull (remote) + Download (the
+// raw file as-is) + Export (md downloads HTML, pdf downloads a baked
+// PDF), then Delete alone. Rename rewrites every [[wikilink]] to the
+// old name. Dispatch-only: lib/page_ops.ts and lib/export.ts.
 
-import { exportHtml, exportPdfOfPdf } from "../lib/export.ts";
+import { downloadRaw, exportHtml, exportPdfOfPdf } from "../lib/export.ts";
 import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
 import { errMessage } from "../lib/constants.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
@@ -117,8 +117,19 @@ export function ContentContextMenu(
     onClose();
   };
 
-  // Exports download to the local machine, never into the vault, so
-  // they apply to remote rows too. md exports HTML, pdf exports PDF.
+  // Download and Export save to the local machine, never into the
+  // vault, so they apply to remote rows too. Download hands over the
+  // raw bytes (md source / original pdf), Export renders (md becomes
+  // HTML, pdf gets highlights baked in).
+  const onDownload = async () => {
+    try {
+      await downloadRaw(client, fullPath);
+    } catch (e) {
+      await fail("Download", e);
+    }
+    onClose();
+  };
+
   const onExport = async () => {
     try {
       if (isMd) await exportHtml(client, pageName);
@@ -128,6 +139,12 @@ export function ContentContextMenu(
     }
     onClose();
   };
+
+  const downloadButton = (
+    <button type="button" onClick={onDownload}>
+      Download
+    </button>
+  );
 
   const exportButton = (
     <button type="button" onClick={onExport}>
@@ -153,6 +170,7 @@ export function ContentContextMenu(
         ? (
           <>
             <button type="button" onClick={onSync}>Pull</button>
+            {downloadButton}
             {exportButton}
           </>
         )
@@ -162,6 +180,7 @@ export function ContentContextMenu(
             <button type="button" onClick={onRemove}>Remove</button>
             <MenuSeparator />
             <button type="button" onClick={onSync}>Push</button>
+            {downloadButton}
             {exportButton}
             <MenuSeparator />
             <button type="button" className="danger" onClick={onDelete}>

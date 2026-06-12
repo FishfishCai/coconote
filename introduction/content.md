@@ -51,10 +51,13 @@ Rename, Remove, and Delete appear only on sub-folders, never on a configured roo
 - **Rename**: prompts for a new path and filename inside the same root (the leading root name is fixed). Any `[[wikilink]]` pointing at the old name is rewritten to point at the new one.
 - **Remove**: the file stays on disk, but its `coconote` flips to `false` and it disappears from the index.
 - **Push**: pushes the file to a remote (see [[history]]).
+- **Download**: saves the raw file as-is to a location you pick: the md source for an md row, the original pdf (no baked highlights) for a pdf row.
 - **Export**: downloads to the local machine, never written into the vault. md downloads a single self-contained `.html` (styles, fonts, images, and math all inlined) that works fully offline (print it from a browser to get a PDF). pdf downloads a copy with the highlights baked into the pages (see [[pdf]]).
 - **Delete**: permanently deletes the file and its assets folder after confirmation.
 
-Url-mounted remote rows are read-only and get **Pull** in place of Push (see [[history]]): a remote file offers only Pull plus Export, a remote folder only Pull.
+Download and Export save via the browser's save dialog when available, otherwise as a plain download.
+
+Url-mounted remote rows are read-only and get **Pull** in place of Push (see [[history]]): a remote file offers Pull, Download, and Export, a remote folder only Pull.
 
 ## Tag view
 
