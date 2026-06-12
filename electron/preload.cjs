@@ -16,7 +16,6 @@ contextBridge.exposeInMainWorld("coconoteShell", {
     const allowed = [
       "coconote_config_path",
       "coconote_apply_config_path",
-      "coconote_export_pdf",
     ];
     if (!allowed.includes(channel)) {
       return Promise.reject(new Error(`channel not allowed: ${channel}`));

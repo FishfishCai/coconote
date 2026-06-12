@@ -1,12 +1,12 @@
 // Right-click menu for a content-browser Path-view file row (Tag view
 // is read-only). content.md Right-click menu: a row not in Coconote
 // offers only Include. An included row gets the grouped template:
-// Rename / Remove, then Push (local) or Pull (remote) + Export PDF /
-// Export HTML (HTML for md only), then Delete alone. Rename rewrites
-// every [[wikilink]] to the old name. Dispatch-only: lib/page_ops.ts
-// and lib/export.ts.
+// Rename / Remove, then Push (local) or Pull (remote) + Export (md
+// downloads HTML, pdf downloads a baked PDF), then Delete alone.
+// Rename rewrites every [[wikilink]] to the old name. Dispatch-only:
+// lib/page_ops.ts and lib/export.ts.
 
-import { exportHtml, exportPdfOfMd, exportPdfOfPdf } from "../lib/export.ts";
+import { exportHtml, exportPdfOfPdf } from "../lib/export.ts";
 import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
 import { errMessage } from "../lib/constants.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
@@ -118,10 +118,10 @@ export function ContentContextMenu(
   };
 
   // Exports download to the local machine, never into the vault, so
-  // they apply to remote rows too.
-  const onExportPdf = async () => {
+  // they apply to remote rows too. md exports HTML, pdf exports PDF.
+  const onExport = async () => {
     try {
-      if (isMd) await exportPdfOfMd(client, pageName);
+      if (isMd) await exportHtml(client, pageName);
       else await exportPdfOfPdf(client, pageName);
     } catch (e) {
       await fail("Export", e);
@@ -129,22 +129,10 @@ export function ContentContextMenu(
     onClose();
   };
 
-  const onExportHtml = async () => {
-    try {
-      await exportHtml(client, pageName);
-    } catch (e) {
-      await fail("Export", e);
-    }
-    onClose();
-  };
-
-  const exportButtons = (
-    <>
-      <button type="button" onClick={onExportPdf}>Export PDF</button>
-      {isMd && (
-        <button type="button" onClick={onExportHtml}>Export HTML</button>
-      )}
-    </>
+  const exportButton = (
+    <button type="button" onClick={onExport}>
+      Export
+    </button>
   );
 
   // file.md / content.md: excluded rows (visible only in the All
@@ -165,7 +153,7 @@ export function ContentContextMenu(
         ? (
           <>
             <button type="button" onClick={onSync}>Pull</button>
-            {exportButtons}
+            {exportButton}
           </>
         )
         : (
@@ -174,7 +162,7 @@ export function ContentContextMenu(
             <button type="button" onClick={onRemove}>Remove</button>
             <MenuSeparator />
             <button type="button" onClick={onSync}>Push</button>
-            {exportButtons}
+            {exportButton}
             <MenuSeparator />
             <button type="button" className="danger" onClick={onDelete}>
               Delete

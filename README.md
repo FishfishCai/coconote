@@ -20,7 +20,7 @@ What makes it stand out:
 - **One workflow for both.** Real-time collaboration and version history work for markdown files and PDFs alike, not just for notes.
 - **Wikilinks and graph view.** Cross-link any document to any other with `[[...]]`, follow hover previews, and see how your vault connects in a graph view.
 - **Rich markdown.** Inline math (KaTeX), callout blocks for theorem, definition, and proof, plus snippet expansion for fast typing.
-- **Export.** A note exports as a PDF or a self-contained offline HTML file, and a PDF exports with its highlights baked into the pages.
+- **Export.** One Export action per page: a note exports as a self-contained offline HTML file, and a PDF exports as a copy with its highlights baked into the pages.
 - **Self-hosted, files you own.** Run the native desktop app on macOS, Windows, or Linux, or run a headless server and reach your vault from any browser on your network. Your notes stay as plain markdown and PDF files on disk.
 
 ## Download

@@ -1,5 +1,6 @@
-// Export PDF / Export HTML (content.md Right-click menu,
-// setting.md Shortcut). Every byte is assembled client-side from the
+// The Export action (content.md Right-click menu, setting.md Shortcut):
+// md pages export as self-contained HTML, PDFs export with highlights
+// baked in. Every byte is assembled client-side from the
 // existing GET endpoints and handed to the browser as a download -
 // nothing is ever written into the vault, and the same path works for
 // local and remote (url-mounted) files. The pure assembly lives in
@@ -13,7 +14,6 @@ import { parseMarkdown } from "../markdown/parser/parser.ts";
 import { renderMarkdownToHtml } from "../markdown/render/markdown_render.ts";
 import { resolveImageRefs } from "../markdown/transclusion_resolver.ts";
 import { authedFetch } from "./authed_fetch.ts";
-import { electronShell } from "./config_path_api.ts";
 import {
   bakeHighlights,
   exportDocumentHtml,
@@ -140,7 +140,7 @@ async function inlinedStylesheet(): Promise<string> {
 
 /** One fully self-contained HTML document for the markdown page `name`:
  *  CSS, fonts, and images inlined, math statically rendered, light theme. */
-export async function buildSelfContainedHtml(
+async function buildSelfContainedHtml(
   client: Client,
   name: string,
 ): Promise<string> {
@@ -160,46 +160,6 @@ export async function exportHtml(client: Client, name: string): Promise<void> {
   downloadBlob(
     `${basename(name)}.html`,
     new Blob([html], { type: "text/html" }),
-  );
-}
-
-// --- PDF export of a markdown page ----------------------------------
-
-/** Print the self-contained HTML through a hidden iframe (plain
- *  browser): the user saves via the system print dialog. */
-async function printHtmlViaIframe(html: string): Promise<void> {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.left = "-10000px";
-  iframe.style.width = "794px";
-  iframe.style.height = "1123px";
-  iframe.srcdoc = html;
-  const loaded = new Promise((resolve) => {
-    iframe.onload = resolve;
-  });
-  document.body.appendChild(iframe);
-  await loaded;
-  const win = iframe.contentWindow!;
-  await win.document.fonts.ready;
-  // Some browsers return from print() before the dialog closes - keep
-  // the iframe alive until afterprint, with a fallback sweep.
-  const cleanup = () => iframe.remove();
-  win.addEventListener("afterprint", cleanup, { once: true });
-  setTimeout(cleanup, 60_000);
-  win.print();
-}
-
-/** Export the markdown page `name` as a PDF. Electron renders it in the
- *  main process (printToPDF) and the bytes download directly, a plain
- *  browser goes through the hidden-iframe print dialog. */
-export async function exportPdfOfMd(client: Client, name: string): Promise<void> {
-  const html = await buildSelfContainedHtml(client, name);
-  const shell = electronShell();
-  if (!shell) return printHtmlViaIframe(html);
-  const bytes = await shell.invoke("coconote_export_pdf", { html });
-  downloadBlob(
-    `${basename(name)}.pdf`,
-    new Blob([bytes as BlobPart], { type: "application/pdf" }),
   );
 }
 
