@@ -12,7 +12,9 @@ import { dirname, isAbsolute } from "node:path";
 import mime from "mime";
 import {
   bakeHighlights,
+  decodeEntities,
   exportDocumentHtml,
+  injectHeadingIds,
   inlineWoff2,
   renderExportBody,
   slugify,
@@ -78,23 +80,6 @@ if (!g.document) g.document = { createElement: createShimElement };
 
 // --- page rendering ----------------------------------------------------
 
-/** Decode the entities our own renderer emits (htmlEscape output plus
- *  numeric forms), for reading back attribute values and text content. */
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-}
-
-function textContent(innerHtml: string): string {
-  return decodeEntities(innerHtml.replace(/<[^>]*>/g, ""));
-}
-
 type PageContext = { allPages: PageMeta[]; allKnownFiles: Set<string> };
 
 /** The wikilink / image resolution context the client keeps live
@@ -143,11 +128,7 @@ function renderBodyHtml(ctx: PageContext, path: string, body: string): string {
  *  become non-clickable spans that keep the wiki-link look. The input
  *  is our own renderer's output, so targeted string transforms are safe. */
 async function postProcessHtml(bodyHtml: string): Promise<string> {
-  let html = bodyHtml.replace(
-    /<h([1-4])>([\s\S]*?)<\/h\1>/g,
-    (_full, level, inner) =>
-      `<h${level} id="${htmlEscapeAttr(slugify(textContent(inner)))}">${inner}</h${level}>`,
-  );
+  let html = injectHeadingIds(bodyHtml);
 
   html = html.replace(
     /<a href="[^"]*" class="wiki-link" data-ref="([^"]*)">([\s\S]*?)<\/a>/g,
@@ -161,20 +142,38 @@ async function postProcessHtml(bodyHtml: string): Promise<string> {
     },
   );
 
-  const parts: string[] = [];
-  let last = 0;
+  // Vault image refs, fetched in parallel (one fetch per distinct path).
+  const imgs: Array<{ srcStart: number; srcLen: number; path: string }> = [];
   for (const m of html.matchAll(/<IMG ([^>]*)><\/IMG>/g)) {
     const srcMatch = /src="([^"]*)"/.exec(m[1]);
     const fileMatch = srcMatch && /^\/?\.file\/(.+)$/.exec(decodeEntities(srcMatch[1]));
     if (!fileMatch) continue;
-    const path = decodeURIComponent(fileMatch[1]);
-    const got = await api.readBytesOrNull(path).catch(() => null);
-    if (!got) continue;
-    const type = mime.getType(path) ?? "application/octet-stream";
-    const dataUri = `data:${type};base64,${Buffer.from(got.bytes).toString("base64")}`;
-    const srcStart = m.index + "<IMG ".length + srcMatch.index;
-    parts.push(html.slice(last, srcStart), `src="${dataUri}"`);
-    last = srcStart + srcMatch[0].length;
+    imgs.push({
+      srcStart: m.index + "<IMG ".length + srcMatch.index,
+      srcLen: srcMatch[0].length,
+      path: decodeURIComponent(fileMatch[1]),
+    });
+  }
+  const dataUris = new Map(
+    await Promise.all(
+      [...new Set(imgs.map((i) => i.path))].map(async (path) => {
+        const got = await api.readBytesOrNull(path).catch(() => null);
+        if (!got) return [path, null] as const;
+        const type = mime.getType(path) ?? "application/octet-stream";
+        return [
+          path,
+          `data:${type};base64,${Buffer.from(got.bytes).toString("base64")}`,
+        ] as const;
+      }),
+    ),
+  );
+  const parts: string[] = [];
+  let last = 0;
+  for (const img of imgs) {
+    const dataUri = dataUris.get(img.path);
+    if (!dataUri) continue;
+    parts.push(html.slice(last, img.srcStart), `src="${dataUri}"`);
+    last = img.srcStart + img.srcLen;
   }
   parts.push(html.slice(last));
   return parts.join("");
@@ -198,9 +197,11 @@ async function inlinedStylesheet(): Promise<string> {
  *  `path`: CSS, fonts, and images inlined, math statically rendered,
  *  light theme (client/lib/export.ts buildSelfContainedHtml). */
 export async function buildHtmlExport(path: string): Promise<string> {
-  const { text } = await api.readFile(path);
+  const [{ text }, ctx] = await Promise.all([
+    api.readFile(path),
+    loadPageContext(),
+  ]);
   const body = stripFrontmatter(text).body;
-  const ctx = await loadPageContext();
   const pageName = path.replace(/\.md$/i, "");
   const entry = ctx.allPages.find((p) => p.name === pageName);
   const title = entry?.title || api.basename(pageName);
@@ -213,8 +214,10 @@ export async function buildHtmlExport(path: string): Promise<string> {
 
 /** The vault PDF at `path` with its sidecar highlights baked in. */
 export async function buildPdfExport(path: string): Promise<Uint8Array> {
-  const { bytes } = await api.readBytes(path);
-  const sidecar = await api.readFileOrNull(api.pdfSidecarPath(path));
+  const [{ bytes }, sidecar] = await Promise.all([
+    api.readBytes(path),
+    api.readFileOrNull(api.pdfSidecarPath(path)),
+  ]);
   return await bakeHighlights(bytes, sidecar?.text ?? null);
 }
 

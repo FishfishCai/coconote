@@ -17,12 +17,19 @@ import type { Anchor, Highlight } from "../pdf/notes_client.ts";
 import { resolveTemplate } from "./callout.ts";
 import {
   bakeHighlights,
+  decodeEntities,
+  injectHeadingIds,
   inlineWoff2,
   renderExportBody,
   slugify,
   splitCallouts,
 } from "./export_core.ts";
-import { basename, nameToFsPath, pdfSidecarPath } from "./path_url.ts";
+import {
+  basename,
+  encodePathSegments,
+  nameToFsPath,
+  pdfSidecarPath,
+} from "./path_url.ts";
 import { parseToRef, type Ref } from "./ref.ts";
 import { isLocalURL, resolveMarkdownLink } from "./resolve.ts";
 import { resolveWikiLink } from "./wikilink.ts";
@@ -177,39 +184,12 @@ export function relativeHref(fromFile: string, toFile: string): string {
   let i = 0;
   while (i < from.length && i < to.length - 1 && from[i] === to[i]) i++;
   return (
-    "../".repeat(from.length - i) +
-    to.slice(i).map(encodeURIComponent).join("/")
+    "../".repeat(from.length - i) + encodePathSegments(to.slice(i).join("/"))
   );
 }
 
-// --- HTML post-processing (string twins of mcp/src/export.ts) ------------
-
-/** Decode the entities our own renderer emits (htmlEscape output plus
- *  numeric forms), for reading back attribute values and text content. */
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-}
-
-function textContent(innerHtml: string): string {
-  return decodeEntities(innerHtml.replace(/<[^>]*>/g, ""));
-}
-
-/** Give every h1-h4 the slugified id `[[#heading]]` fragments point at
- *  (same ids as the single-page export). */
-function injectHeadingIds(html: string): string {
-  return html.replace(
-    /<h([1-4])>([\s\S]*?)<\/h\1>/g,
-    (_full, level, inner) =>
-      `<h${level} id="${htmlEscapeAttr(slugify(textContent(inner)))}">${inner}</h${level}>`,
-  );
-}
+// --- HTML post-processing (string transforms over our own renderer
+// output, shared building blocks in export_core.ts) -----------------------
 
 /** Give callout sections the ids `[[:N]]` / `[[:label]]` fragments
  *  point at. The sections come from renderExportBody over the same
@@ -448,11 +428,12 @@ export async function buildSiteFiles(
     string,
     { json: string; anchors: Anchor[]; highlights: Highlight[] }
   >();
-  for (const p of pages) {
-    const path = nameToFsPath(p.name);
-    if (!path.toLowerCase().endsWith(".pdf")) continue;
+  const pdfPaths = pages
+    .map((p) => nameToFsPath(p.name))
+    .filter((path) => path.toLowerCase().endsWith(".pdf"));
+  await Promise.all(pdfPaths.map(async (path) => {
     const raw = await io.readFile(pdfSidecarPath(path));
-    if (!raw) continue;
+    if (!raw) return;
     const json = utf8.decode(raw);
     try {
       const parsed = JSON.parse(json) as {
@@ -467,7 +448,7 @@ export async function buildSiteFiles(
     } catch {
       // Malformed sidecar: export the PDF without highlights.
     }
-  }
+  }));
 
   const exported: PageMeta[] = [];
   let done = 0;
@@ -498,11 +479,11 @@ export async function buildSiteFiles(
       // Copy referenced images at their vault locations so the
       // relative references keep working. A dead asset just stays a
       // broken image, it doesn't skip the page.
-      for (const asset of assets) {
-        if (files.has(asset)) continue;
+      await Promise.all([...assets].map(async (asset) => {
+        if (files.has(asset)) return;
         const data = await io.readFile(asset);
         if (data) files.set(asset, data);
-      }
+      }));
     }
     exported.push(p);
     onProgress?.(++done, pages.length);

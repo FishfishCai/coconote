@@ -106,18 +106,47 @@ export function slugify(s: string): string {
   return s.trim().replace(/\s+/g, "-");
 }
 
+/** Decode the entities our own renderer emits (htmlEscape output plus
+ *  numeric forms), for reading back attribute values and text content
+ *  in string transforms over our own generated HTML. */
+export function decodeEntities(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&nbsp;/g, "\u00a0")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
+function textContent(innerHtml: string): string {
+  return decodeEntities(innerHtml.replace(/<[^>]*>/g, ""));
+}
+
+/** Give every h1-h4 in our own rendered HTML the slugified id that
+ *  `[[#heading]]` fragments point at. */
+export function injectHeadingIds(html: string): string {
+  return html.replace(
+    /<h([1-4])>([\s\S]*?)<\/h\1>/g,
+    (_full, level, inner) =>
+      `<h${level} id="${htmlEscapeAttr(slugify(textContent(inner)))}">${inner}</h${level}>`,
+  );
+}
+
 /** Inline every `url(...woff2)` in `css` via `loadFont` (data URI or
- *  null to keep the original reference). */
+ *  null to keep the original reference). Fonts load in parallel. */
 export async function inlineWoff2(
   css: string,
   loadFont: (ref: string) => Promise<string | null>,
 ): Promise<string> {
   const urlRe = /url\(["']?([^)"']+\.woff2)["']?\)/g;
+  const refs = [...new Set([...css.matchAll(urlRe)].map((m) => m[1]))];
   const fonts = new Map<string, string>();
-  for (const ref of new Set([...css.matchAll(urlRe)].map((m) => m[1]))) {
+  await Promise.all(refs.map(async (ref) => {
     const data = await loadFont(ref);
     if (data) fonts.set(ref, data);
-  }
+  }));
   return css.replace(urlRe, (full, ref) => {
     const data = fonts.get(ref);
     return data ? `url(${data})` : full;

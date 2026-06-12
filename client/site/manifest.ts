@@ -5,6 +5,8 @@
 // subdirectory: page hrefs are derived from the vault path by
 // extension swap and never fetched at runtime.
 
+import { basename, encodePathSegments } from "../lib/path_url.ts";
+
 export type SitePage = {
   /** Vault logical path, e.g. `notes/algebra.md` or `papers/p.pdf`. */
   path: string;
@@ -36,9 +38,9 @@ export function pageHref(p: SitePage): string {
   const raw = p.kind === "md"
     ? p.path.replace(/\.md$/i, "") + ".html"
     : p.path;
-  return raw.split("/").map(encodeURIComponent).join("/");
+  return encodePathSegments(raw);
 }
 
 export function pageBasename(p: SitePage): string {
-  return p.path.split("/").pop() ?? p.path;
+  return basename(p.path);
 }

@@ -147,15 +147,15 @@ async function postProcessDom(client: Client, bodyHtml: string): Promise<string>
     a.replaceWith(span);
   }
 
-  for (const img of root.querySelectorAll("img")) {
+  await Promise.all([...root.querySelectorAll("img")].map(async (img) => {
     const m = /^\/?\.file\/(.+)$/.exec(img.getAttribute("src") ?? "");
-    if (!m) continue;
+    if (!m) return;
     const path = decodeURIComponent(m[1]);
     const data = await readVaultFile(client, path);
-    if (!data) continue;
+    if (!data) return;
     const type = mime.getType(path) ?? "application/octet-stream";
     img.src = await blobToDataUri(new Blob([data as BlobPart], { type }));
-  }
+  }));
 
   return tpl.innerHTML;
 }
@@ -207,9 +207,11 @@ export async function exportPdfOfPdf(
   client: Client,
   pdfName: string,
 ): Promise<void> {
-  const pdfData = await readVaultFile(client, pdfName);
+  const [pdfData, sidecarData] = await Promise.all([
+    readVaultFile(client, pdfName),
+    readVaultFile(client, pdfSidecarPath(pdfName)),
+  ]);
   if (!pdfData) throw new Error(`read ${pdfName} failed`);
-  const sidecarData = await readVaultFile(client, pdfSidecarPath(pdfName));
   const bytes = await bakeHighlights(
     pdfData,
     sidecarData ? new TextDecoder().decode(sidecarData) : null,
