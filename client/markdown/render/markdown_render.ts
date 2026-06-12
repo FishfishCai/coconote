@@ -9,7 +9,8 @@ import {
   encodeRef,
   parseToRef,
 } from "coconote/lib/ref";
-import { Fragment, renderHtml, type Tag } from "./html_render.ts";
+import katex from "katex";
+import { Fragment, Raw, renderHtml, type Tag } from "./html_render.ts";
 import { createMediaElement } from "./inline.ts";
 import { parseTransclusion } from "coconote/lib/transclusion";
 import { errMessage } from "coconote/constants";
@@ -242,6 +243,25 @@ function render(t: ParseTree, options: MarkdownRenderOptions = {}): Tag | null {
         name: "a",
         attrs: { href, class: "wiki-link", "data-ref": link },
         body: linkText,
+      };
+    }
+    case "Math": {
+      // One node type covers both forms - the delimiter length ($$ vs $)
+      // tells display from inline (parser.ts MathConfig).
+      const text = renderToText(t);
+      const displayMode = text.startsWith("$$");
+      const d = displayMode ? 2 : 1;
+      const html = katex.renderToString(text.slice(d, -d).trim(), {
+        displayMode,
+        throwOnError: false,
+        output: "html",
+      });
+      return {
+        name: displayMode ? "div" : "span",
+        attrs: {
+          class: displayMode ? "coconote-tex-display" : "coconote-tex-inline",
+        },
+        body: [{ name: Raw, body: html }],
       };
     }
     case "Escape":

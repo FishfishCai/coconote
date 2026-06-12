@@ -1,4 +1,7 @@
 export const Fragment = "FRAGMENT";
+// Body emitted verbatim, no escaping - only for trusted generated HTML
+// (KaTeX output), never user text.
+export const Raw = "RAW";
 
 export type Tag =
   | {
@@ -43,6 +46,9 @@ export function renderHtml(t: Tag | null): string {
   }
   if (typeof t === "string") {
     return htmlEscape(t);
+  }
+  if (t.name === Raw) {
+    return typeof t.body === "string" ? t.body : t.body.map(renderHtml).join("");
   }
   const attrs = t.attrs
     ? ` ${Object.entries(t.attrs)
