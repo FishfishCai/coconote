@@ -4,14 +4,19 @@
   "private": true,
   "type": "module",
   "description": "MCP stdio server that lets AI agents read and edit a Coconote vault",
+  "bin": {
+    "coconote-mcp": "dist/index.js"
+  },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --loader:.md=text --external:bufferutil --external:utf-8-validate \"--banner:js=import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=dist/index.js && esbuild node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs --bundle --platform=node --target=node18 --format=esm --outfile=dist/pdf.worker.mjs",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --format=esm --loader:.md=text --external:bufferutil --external:utf-8-validate \"--banner:js=#!/usr/bin/env node\nimport { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\" --outfile=dist/index.js && esbuild node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs --bundle --platform=node --target=node18 --format=esm --outfile=dist/pdf.worker.mjs",
     "check": "tsc --noEmit"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "fast-diff": "^1.3.0",
     "lib0": "^0.2.117",
+    "mime": "^4.1.0",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "ws": "^8.18.0",
     "y-protocols": "^1.0.7",

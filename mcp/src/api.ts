@@ -156,7 +156,7 @@ export class Vault {
       const msg = e instanceof Error ? e.message : String(e);
       throw new Error(
         `cannot reach ${this.label} at ${this.url()} (${msg}). ` +
-          `Check that the server is running and the URL is correct.`,
+          `Check that the Coconote app or server is running and the URL is correct.`,
       );
     }
   }
@@ -164,7 +164,10 @@ export class Vault {
   private async fail(what: string, res: Response, path?: string): Promise<never> {
     const body = (await res.text().catch(() => "")).slice(0, 300);
     let hint = "";
-    if (res.status === 403) hint = " (auth failed: provide the server's auth token)";
+    if (res.status === 403) {
+      hint = " (auth failed: provide the auth token from the server's coconote.yaml," +
+        " via COCONOTE_TOKEN or the tool's token argument)";
+    }
     if (res.status === 409) hint = " (the file changed concurrently: re-read and retry)";
     if (res.status === 404 && path) hint = await this.suggestSuffix(path);
     throw new Error(`${what}: HTTP ${res.status}${body ? ` ${body}` : ""}${hint}`);
@@ -176,6 +179,11 @@ export class Vault {
       .then((entries) => similarPaths(path, entries))
       .catch(() => [] as string[]);
     return similar.length > 0 ? ` Similar known paths: ${similar.join(", ")}` : "";
+  }
+
+  /** Authed GET of a server-absolute path (e.g. /.client/main.css). */
+  async fetchPath(path: string): Promise<Response> {
+    return await this.request(`${this.url()}${path}`);
   }
 
   /** `GET /.health` as a liveness/identity probe. */
@@ -316,6 +324,7 @@ export const readFileOrNull = (path: string) => local.readFileOrNull(path);
 export const readBytes = (path: string) => local.readBytes(path);
 export const readBytesOrNull = (path: string) => local.readBytesOrNull(path);
 export const exists = (path: string) => local.exists(path);
+export const fetchPath = (path: string) => local.fetchPath(path);
 export const writeFile = (path: string, body: string | Uint8Array, opts: WriteOpts = {}) =>
   local.writeFile(path, body, opts);
 export const deleteFile = (path: string) => local.deleteFile(path);

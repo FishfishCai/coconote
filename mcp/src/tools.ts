@@ -1,4 +1,4 @@
-// The 21 tools. Handlers stay thin over api.ts / collab.ts, semantics
+// The tools. Handlers stay thin over api.ts / collab.ts, semantics
 // are ported from client/lib (page_ops, include, frontmatter_edit,
 // refactor_links, sync_push, sync_pull).
 
@@ -10,9 +10,10 @@ import { isAbsolute } from "node:path";
 import * as api from "./api";
 import { withRoom } from "./collab";
 import { applySplices, computeSplices, type Splice } from "./diff";
+import { buildHtmlExport, buildPdfExport, writeDest } from "./export";
 import * as fm from "./frontmatter";
 import { findQuote, loadPdfPages } from "./pdf";
-import { renamePage } from "./rename";
+import { movePageFile, refactorLinks, renamePage } from "./rename";
 import { pushPage } from "./sync/push";
 import { pullPage } from "./sync/pull";
 import markdownFull from "../guide/markdown.full.md";
@@ -199,12 +200,17 @@ export function registerTools(server: McpServer): void {
     {
       description:
         "Case-insensitive substring search over page paths, titles, tags, and headings " +
-        "(the same fields the app's filter matches). Returns the matching listing rows.",
-      inputSchema: { query: z.string().min(1).describe("Substring to match") },
+        "(the same fields the app's filter matches). Returns the matching listing rows. " +
+        "With all: true the search also covers .md/.pdf files not in the Coconote index " +
+        "(matches marked included: false).",
+      inputSchema: {
+        query: z.string().min(1).describe("Substring to match"),
+        all: z.boolean().optional().describe("Also search excluded .md/.pdf files (the app's All view)"),
+      },
     },
-    async ({ query }) => {
+    async ({ query, all }) => {
       const q = query.toLowerCase();
-      const hits = (await filePages()).filter(
+      const hits = (await filePages(all)).filter(
         (p) =>
           p.path.toLowerCase().includes(q) ||
           p.title.toLowerCase().includes(q) ||
@@ -607,6 +613,71 @@ export function registerTools(server: McpServer): void {
   );
 
   server.registerTool(
+    "rename_folder",
+    {
+      description:
+        "Rename / move a folder inside its root: moves every included page under old_path to " +
+        "new_path (assets folders and pdf sidecars follow), then repairs every broken " +
+        "[[wikilink]] in one vault-wide pass. Files not in Coconote stay in the old folder, " +
+        "like the app's folder Rename. Returns {pagesMoved, linksRewritten}.",
+      inputSchema: {
+        old_path: z.string().describe("Vault folder path, root-prefixed, e.g. main/notes"),
+        new_path: z.string().describe("New folder path, same root, e.g. main/archive"),
+      },
+    },
+    async ({ old_path, new_path }) => {
+      const from = old_path.replace(/\/+$/, "");
+      const to = new_path.replace(/\/+$/, "");
+      const [oldRoot] = from.split("/");
+      const [newRoot] = to.split("/");
+      if (oldRoot !== newRoot) {
+        throw new Error(
+          `cannot move ${from} from root "${oldRoot}" to "${newRoot}": a rename keeps the ` +
+            `folder inside its root (roots are fixed, managed via the server config / Setting).`,
+        );
+      }
+      if (to === from || to.startsWith(`${from}/`)) {
+        throw new Error(`cannot move ${from} to ${to}: the target is the folder itself or inside it.`);
+      }
+      const prefix = `${from}/`;
+      const under = (await api.listEntries(true)).filter(
+        (e) => e.type === "file" && e.path.startsWith(prefix),
+      );
+      const pages = under.filter((e) => (isMd(e.path) || isPdf(e.path)) && e.coconote !== false);
+      if (pages.length === 0) {
+        throw new Error(
+          `${from} has no included pages to move` +
+            (under.length > 0 ? ` (${under.length} file(s) under it are not in Coconote)` : "") +
+            ".",
+        );
+      }
+      const pairs = pages.map((e) => [e.path, to + "/" + e.path.slice(prefix.length)] as const);
+      const collisions = (
+        await Promise.all(pairs.map(async ([, t]) => ((await api.exists(t)) ? t : null)))
+      ).filter((t): t is string => t !== null);
+      if (collisions.length > 0) {
+        throw new Error(
+          `target(s) already exist, refusing to overwrite: ${collisions.slice(0, 10).join(", ")}` +
+            `${collisions.length > 10 ? ` and ${collisions.length - 10} more` : ""}. Nothing was moved.`,
+        );
+      }
+      for (const [oldP, newP] of pairs) await movePageFile(oldP, newP);
+      const linksRewritten = await refactorLinks(pairs).catch(() => 0);
+      const leftBehind = under.length - pages.length;
+      if (leftBehind === 0) await api.deleteFile(from).catch(() => {});
+      return json({
+        from,
+        to,
+        pagesMoved: pairs.length,
+        linksRewritten,
+        ...(leftBehind > 0
+          ? { note: `${leftBehind} file(s) not in Coconote stay under ${from}/.` }
+          : {}),
+      });
+    },
+  );
+
+  server.registerTool(
     "read_pdf_text",
     {
       description:
@@ -698,6 +769,55 @@ export function registerTools(server: McpServer): void {
   );
 
   server.registerTool(
+    "remove_pdf_highlight",
+    {
+      description:
+        "Remove a highlight from a vault PDF's sidecar by id, over live collab. Anchors and " +
+        "comments attached to the highlight are removed with it, like the app's right-click " +
+        "Remove highlight.",
+      inputSchema: {
+        path: z.string().describe("Vault path of the .pdf"),
+        highlight_id: z.string().min(1).describe("Highlight id, from add_pdf_highlight or the sidecar"),
+      },
+    },
+    async ({ path, highlight_id }) => {
+      if (!isPdf(path)) throw new Error(`remove_pdf_highlight works on .pdf files, got ${path}`);
+      const scPath = api.pdfSidecarPath(path);
+      if (!(await api.exists(scPath))) {
+        throw new Error(`${path} has no sidecar at ${scPath}, so it has no highlights.`);
+      }
+      let anchorsRemoved = 0;
+      let commentsRemoved = 0;
+      await withRoom(scPath, ({ doc: ydoc, ytext }) => {
+        const current = ytext.toString();
+        const sc = fm.parseSidecar(current);
+        const hlId = (h: unknown) => (h as { id?: string }).id ?? "";
+        const refId = (x: unknown) => (x as { highlightId?: string }).highlightId ?? "";
+        if (!sc.highlights.some((h) => hlId(h) === highlight_id)) {
+          const ids = sc.highlights.map(hlId).filter(Boolean);
+          const shown = ids.slice(0, 20);
+          throw new Error(
+            `${path} has no highlight with id "${highlight_id}". ` +
+              (shown.length > 0
+                ? `Existing id(s)${ids.length > shown.length ? ` (first ${shown.length} of ${ids.length})` : ""}: ${shown.join(", ")}`
+                : "The sidecar has no highlights."),
+          );
+        }
+        // Cascade like the app (client/pdf/pdf_viewer.tsx removeHighlight):
+        // drop the highlight plus its anchors and comments.
+        sc.highlights = sc.highlights.filter((h) => hlId(h) !== highlight_id);
+        anchorsRemoved = sc.anchors.filter((a) => refId(a) === highlight_id).length;
+        commentsRemoved = sc.comments.filter((c) => refId(c) === highlight_id).length;
+        sc.anchors = sc.anchors.filter((a) => refId(a) !== highlight_id);
+        sc.comments = sc.comments.filter((c) => refId(c) !== highlight_id);
+        const splices = computeSplices(current, fm.sidecarJson(sc));
+        ydoc.transact(() => applySplices(ytext, splices));
+      });
+      return json({ removed: highlight_id, anchorsRemoved, commentsRemoved });
+    },
+  );
+
+  server.registerTool(
     "push_page",
     {
       description:
@@ -751,6 +871,59 @@ export function registerTools(server: McpServer): void {
         overwrite,
         mergedContent: merged_content,
       })),
+  );
+
+  const DEST_DESC =
+    "Absolute destination file path on the machine running the MCP server " +
+    "(missing parent directories are created)";
+
+  server.registerTool(
+    "export_pdf",
+    {
+      description:
+        "Export a vault .pdf with its sidecar highlights baked into the pages " +
+        "(semi-transparent rects, the app's Export PDF). Writes the result to dest on the MCP " +
+        "host machine, creating the parent directory when missing, and returns {dest, bytes}. " +
+        "For .md pages use export_html (markdown to PDF needs a browser print engine).",
+      inputSchema: {
+        path: z.string().describe("Vault path of the .pdf"),
+        dest: z.string().describe(DEST_DESC),
+      },
+    },
+    async ({ path, dest }) => {
+      if (isMd(path)) {
+        throw new Error(
+          `${path} is a markdown page: rendering markdown to PDF needs a browser print ` +
+            `engine, which this server does not have. Use export_html and print the ` +
+            `resulting file to PDF yourself.`,
+        );
+      }
+      if (!isPdf(path)) throw new Error(`export_pdf exports .pdf pages, got ${path}`);
+      const bytes = await buildPdfExport(path);
+      return json({ dest, bytes: await writeDest(dest, bytes) });
+    },
+  );
+
+  server.registerTool(
+    "export_html",
+    {
+      description:
+        "Export a markdown page as one self-contained offline HTML file (the app's Export " +
+        "HTML): app CSS, fonts, and vault images inlined, math statically rendered, " +
+        "cross-page wikilinks degraded to plain spans, same-page links to #fragments, light " +
+        "theme. Writes the result to dest on the MCP host machine, creating the parent " +
+        "directory when missing, and returns {dest, bytes}.",
+      inputSchema: {
+        path: z.string().describe(PATH_DESC),
+        dest: z.string().describe(DEST_DESC),
+      },
+    },
+    async ({ path, dest }) => {
+      if (isPdf(path)) throw new Error(`${path} is a PDF: use export_pdf for .pdf pages.`);
+      if (!isMd(path)) throw new Error(`export_html exports .md pages, got ${path}`);
+      const html = await buildHtmlExport(path);
+      return json({ dest, bytes: await writeDest(dest, html) });
+    },
   );
 
   const GUIDES: Record<string, string> = {

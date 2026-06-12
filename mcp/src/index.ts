@@ -1,8 +1,11 @@
 // coconote MCP stdio server entry point. Config is read lazily, so this
-// module loads fine with COCONOTE_URL / COCONOTE_TOKEN unset.
+// module loads fine with COCONOTE_URL / COCONOTE_TOKEN unset. A startup
+// probe then fails fast (exit 1, message on stderr) when the configured
+// server is unreachable or rejects the token.
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { localVault } from "./api";
 import { registerTools } from "./tools";
 import markdownShort from "../guide/markdown.short.md";
 import wikilinkShort from "../guide/wikilink.short.md";
@@ -32,6 +35,24 @@ const server = new McpServer(
 );
 
 registerTools(server);
+
+// stdout carries only the JSON-RPC stream. Bundled deps (pdfjs prints
+// its warnings through console.log) must not corrupt it, so route the
+// stdout console methods to stderr before serving.
+console.log = console.error;
+console.info = console.error;
+
+// Fail fast on a bad URL or token before serving: /.health checks
+// reachability and identity (it is unauthenticated on the server), the
+// vault listing then exercises auth.
+try {
+  await localVault.health();
+  await localVault.listEntries();
+} catch (e) {
+  const msg = e instanceof Error ? e.message : String(e);
+  process.stderr.write(`coconote-mcp: startup probe failed: ${msg}\n`);
+  process.exit(1);
+}
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
