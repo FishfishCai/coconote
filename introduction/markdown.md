@@ -67,6 +67,22 @@ Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four space
        2. third
            3. fourth
 
+## Table
+
+A table uses GFM pipe syntax: a header row, a delimiter row of dashes, then body rows. Colons in the delimiter row set column alignment: `:---` left, `:---:` center, `---:` right. Render mode shows the table, and the source reappears when the cursor enters it.
+
+```markdown
+| Name | Score |
+| :--- | ---: |
+| Ada  | 100  |
+| Bob  | 42   |
+```
+
+| Name | Score |
+| :--- | ---: |
+| Ada  | 100  |
+| Bob  | 42   |
+
 ## Quote Block
 
 A quote block uses `>`, and stacking `>` markers nests it deeper. The rendered block shows the nesting without the raw markers. Click a quote block to reveal its `>` markers.

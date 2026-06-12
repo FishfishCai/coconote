@@ -5,6 +5,7 @@ import {
   type Line,
   type MarkdownConfig,
   Strikethrough,
+  Table,
 } from "@lezer/markdown";
 import { markdown } from "@codemirror/lang-markdown";
 import { foldNodeProp, StreamLanguage } from "@codemirror/language";
@@ -307,6 +308,7 @@ const baseMarkdownExtensions: MarkdownConfig[] = [
   NakedURL,
   FencedDiv,
   Strikethrough,
+  Table,
   {
     props: [
       foldNodeProp.add({

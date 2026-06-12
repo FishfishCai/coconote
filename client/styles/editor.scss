@@ -207,6 +207,15 @@
     font-weight: bold;
   }
 
+  // Table widget wrapper. flow-root keeps the table's box inside the
+  // widget for CM's heightMap, overflow-x scrolls wide tables. The
+  // <table> itself uses the shared prose rules in prose.scss.
+  .coconote-table {
+    display: flow-root;
+    overflow-x: auto;
+    padding: 0.2em 0;
+  }
+
   .coconote-naked-url {
     cursor: pointer;
   }

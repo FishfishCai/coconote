@@ -42,6 +42,25 @@ function cleanTags(values: (Tag | null)[], cleanWhitespace = false): Tag[] {
   return result;
 }
 
+// Per-column alignment from a GFM delimiter row (`:---` left, `:---:`
+// center, `---:` right, plain dashes none).
+function tableAlignments(delimiterRow: string): (string | null)[] {
+  return delimiterRow
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((col) => {
+      const c = col.trim();
+      const left = c.startsWith(":");
+      const right = c.endsWith(":");
+      if (left && right) return "center";
+      if (right) return "right";
+      if (left) return "left";
+      return null;
+    });
+}
+
 function render(t: ParseTree, options: MarkdownRenderOptions = {}): Tag | null {
   if (t.type?.endsWith("Mark") || t.type?.endsWith("Delimiter")) return null;
   const mapRender = (children: ParseTree[]) =>
@@ -125,6 +144,34 @@ function render(t: ParseTree, options: MarkdownRenderOptions = {}): Tag | null {
       return { name: "strong", body: cleanTags(mapRender(t.children!)) };
     case "HorizontalRule":
       return { name: "hr", body: "" };
+    case "Table": {
+      // The direct TableDelimiter child is the alignment row. The `|`
+      // marks are also TableDelimiter but sit inside header/row nodes,
+      // where the TableCell filter below drops them.
+      const kids = t.children!;
+      const delimiter = kids.find((c) => c.type === "TableDelimiter");
+      const aligns = delimiter ? tableAlignments(renderToText(delimiter)) : [];
+      const row = (r: ParseTree, cellTag: "th" | "td"): Tag => ({
+        name: "tr",
+        body: r.children!
+          .filter((c) => c.type === "TableCell")
+          .map((cell, i): Tag => ({
+            name: cellTag,
+            attrs: aligns[i]
+              ? { style: `text-align:${aligns[i]}` }
+              : undefined,
+            body: cleanTags(mapRender(cell.children!)),
+          })),
+      });
+      const header = kids.find((c) => c.type === "TableHeader");
+      const rows = kids.filter((c) => c.type === "TableRow");
+      const parts: Tag[] = [];
+      if (header) parts.push({ name: "thead", body: [row(header, "th")] });
+      if (rows.length > 0) {
+        parts.push({ name: "tbody", body: rows.map((r) => row(r, "td")) });
+      }
+      return { name: "table", body: parts };
+    }
     case "Link": {
       // Link body = children between the outer `[` and `]` LinkMarks.
       // LinkTitle / URL live outside that range.

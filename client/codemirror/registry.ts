@@ -12,6 +12,7 @@ import { frontmatterPlugin } from "./plugins/markdown/frontmatter.ts";
 import { hideMarksPlugin } from "./plugins/markdown/hide_marks.ts";
 import { horizontalRulePlugin } from "./plugins/markdown/horizontal_rule.ts";
 import { listBulletPlugin } from "./plugins/markdown/list.ts";
+import { tablePlugin } from "./plugins/markdown/table.ts";
 import { cleanEscapePlugin } from "./plugins/markdown/escapes.ts";
 import { inlineContentPlugin } from "./plugins/embedded/inline_content.ts";
 import { calloutPlugin } from "./plugins/embedded/callout/plugin.ts";
@@ -48,6 +49,7 @@ const RENDER_MODE_EXTENSIONS: Array<(c: Client) => Extension[]> = [
   () => [hideMarksPlugin()],
   () => [horizontalRulePlugin()],
   () => [listBulletPlugin()],
+  (c) => [tablePlugin(c)],
   () => [cleanEscapePlugin()],
 ];
 
