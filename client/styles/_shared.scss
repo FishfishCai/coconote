@@ -6,6 +6,23 @@
 // at least 1.5rem, otherwise whatever centres a 56rem column.
 $shell-gutter: max(1.5rem, calc((100% - 56rem) / 2));
 
+// Boxed control in the mirrored shell headers: the Content page's
+// filter input + setting button and the Setting page's content button.
+// One geometry so the Setting/Content toggle renders at the same size
+// on both pages. Cursor, color overrides, hover, and transitions stay
+// with each caller.
+@mixin shell-header-control {
+  box-sizing: border-box;
+  padding: 0.42rem 0.9rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.88em;
+  line-height: 1.4;
+}
+
 // ---- Context menu -----------------------------------------------------------
 // Scaffolding shared by the Content-browser and PDF context menus.
 // Callers add sizing (padding / min-width / shadow) and item hover.

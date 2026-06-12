@@ -154,15 +154,7 @@
   }
   .coconote-cb-filter,
   .coconote-cb-settings {
-    box-sizing: border-box;
-    padding: 0.42rem 0.9rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 7px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    font-size: 0.88em;
-    line-height: 1.4;
+    @include shared.shell-header-control;
     transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
   }
   .coconote-cb-filter {
