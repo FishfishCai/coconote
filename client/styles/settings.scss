@@ -26,7 +26,9 @@
     font-size: 1.8rem;
     font-weight: 600;
     letter-spacing: -0.01em;
-    line-height: 1.25;
+    // Match .coconote-cb-title so the title baseline lines up when
+    // toggling between the Content and Setting pages.
+    line-height: 1.1;
   }
 
   h2 {
@@ -40,12 +42,14 @@
   section { margin-bottom: 1.8rem; }
 
   .coconote-settings-head {
+    // Geometry mirrors .coconote-cb-header so the title and the first
+    // divider sit at the same position on both pages.
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 0.8rem;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
+    margin-bottom: 1.6rem;
+    padding-bottom: 0.9rem;
     border-bottom: 1px solid var(--background-modifier-border);
   }
   .coconote-settings-content-btn {
