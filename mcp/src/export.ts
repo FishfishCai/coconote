@@ -1,4 +1,4 @@
-// export_pdf / export_html internals: Node-side twins of
+// export_page internals: Node-side twins of
 // client/lib/export.ts. The render pipeline (parser, markdown / html
 // render, callout splitting, image ref resolution) and the export
 // assembly (client/lib/export_core.ts) are the client's own modules,

@@ -878,40 +878,15 @@ export function registerTools(server: McpServer): void {
     "(missing parent directories are created)";
 
   server.registerTool(
-    "export_pdf",
+    "export_page",
     {
       description:
-        "Export a vault .pdf with its sidecar highlights baked into the pages " +
-        "(semi-transparent rects, the app's Export PDF). Writes the result to dest on the MCP " +
-        "host machine, creating the parent directory when missing, and returns {dest, bytes}. " +
-        "For .md pages use export_html (markdown to PDF needs a browser print engine).",
-      inputSchema: {
-        path: z.string().describe("Vault path of the .pdf"),
-        dest: z.string().describe(DEST_DESC),
-      },
-    },
-    async ({ path, dest }) => {
-      if (isMd(path)) {
-        throw new Error(
-          `${path} is a markdown page: rendering markdown to PDF needs a browser print ` +
-            `engine, which this server does not have. Use export_html and print the ` +
-            `resulting file to PDF yourself.`,
-        );
-      }
-      if (!isPdf(path)) throw new Error(`export_pdf exports .pdf pages, got ${path}`);
-      const bytes = await buildPdfExport(path);
-      return json({ dest, bytes: await writeDest(dest, bytes) });
-    },
-  );
-
-  server.registerTool(
-    "export_html",
-    {
-      description:
-        "Export a markdown page as one self-contained offline HTML file (the app's Export " +
-        "HTML): app CSS, fonts, and vault images inlined, math statically rendered, " +
-        "cross-page wikilinks degraded to plain spans, same-page links to #fragments, light " +
-        "theme. Writes the result to dest on the MCP host machine, creating the parent " +
+        "Export a page (the app's Export action). A .md page becomes one self-contained " +
+        "offline HTML file (app CSS, fonts, and vault images inlined, math statically " +
+        "rendered, cross-page wikilinks degraded to plain spans, light theme - print it from " +
+        "a browser to get a PDF), dest must end in .html. A .pdf page becomes a copy with its " +
+        "sidecar highlights baked into the pages (semi-transparent rects), dest must end in " +
+        ".pdf. Writes the result to dest on the MCP host machine, creating the parent " +
         "directory when missing, and returns {dest, bytes}.",
       inputSchema: {
         path: z.string().describe(PATH_DESC),
@@ -919,10 +894,18 @@ export function registerTools(server: McpServer): void {
       },
     },
     async ({ path, dest }) => {
-      if (isPdf(path)) throw new Error(`${path} is a PDF: use export_pdf for .pdf pages.`);
-      if (!isMd(path)) throw new Error(`export_html exports .md pages, got ${path}`);
-      const html = await buildHtmlExport(path);
-      return json({ dest, bytes: await writeDest(dest, html) });
+      if (!isMd(path) && !isPdf(path)) {
+        throw new Error(`export_page exports .md and .pdf pages, got ${path}`);
+      }
+      const wantExt = isMd(path) ? ".html" : ".pdf";
+      if (!dest.toLowerCase().endsWith(wantExt)) {
+        throw new Error(
+          `a ${isMd(path) ? ".md page exports as self-contained HTML" : ".pdf page exports as a baked PDF"}, ` +
+            `so dest must end in ${wantExt}, got: ${dest}`,
+        );
+      }
+      const data = isMd(path) ? await buildHtmlExport(path) : await buildPdfExport(path);
+      return json({ dest, bytes: await writeDest(dest, data) });
     },
   );
 
