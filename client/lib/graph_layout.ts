@@ -1,14 +1,16 @@
 // Pure force-directed layout for the Graph view (content.md Graph
 // view): node seeding, prereq/wikilink edge construction, and the
-// per-frame integrator. No DOM / Preact here - cb_graph_view.tsx owns
-// rendering and interaction.
+// per-frame integrator. No DOM / Preact here - the shared SVG renderer
+// (components/force_graph.tsx) owns rendering and interaction.
 
 import type { PageMeta } from "coconote/type/page";
 import { resolveWikiLink } from "./wikilink.ts";
 
-export type Node = {
+// Generic over the node payload so the exported static site's viewer
+// (client/site/) can run the same simulation over manifest entries.
+export type Node<P = PageMeta> = {
   id: string;
-  page: PageMeta;
+  page: P;
   x: number;
   y: number;
   vx: number;
@@ -28,7 +30,7 @@ export type SimParams = {
 // Stable starting positions so re-renders don't reshuffle the layout.
 // Hash the page name into an angle so the same set of pages always
 // fans out the same way before the simulation runs.
-function seedPosition(
+export function seedPosition(
   name: string,
   i: number,
   n: number,
@@ -80,10 +82,10 @@ export function buildGraph(
 // One simulation step. Mutates `nodes` in place and returns the max
 // per-node displacement applied this tick so the caller can park the
 // animation loop once the layout has settled.
-export function step(
-  nodes: Node[],
+export function step<P>(
+  nodes: Node<P>[],
   edges: Edge[],
-  byId: Map<string, Node>,
+  byId: Map<string, Node<P>>,
   params: SimParams,
 ): number {
   const REPULSE = params.repulse;

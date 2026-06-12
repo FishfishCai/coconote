@@ -5,7 +5,14 @@
 
 import type { PageMeta } from "coconote/type/page";
 
-export function pageMatchesQuery(p: PageMeta, q: string): boolean {
+// Structural subset so the exported static site's viewer can reuse the
+// predicate over manifest entries (client/site/) without a full PageMeta.
+export type PageMatchFields = Pick<
+  PageMeta,
+  "name" | "title" | "tags" | "headings"
+>;
+
+export function pageMatchesQuery(p: PageMatchFields, q: string): boolean {
   if (!q) return true;
   if (p.name.toLowerCase().includes(q)) return true;
   if ((p.title ?? "").toLowerCase().includes(q)) return true;

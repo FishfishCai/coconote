@@ -1,0 +1,325 @@
+// Stylesheet of the exported static site (content.md Export site),
+// compiled by build/build_client.ts to .client/site.css next to
+// main.css. Leaner than main.scss: the design tokens (theme), the
+// app's prose/callout look for the rendered article pages, and the
+// view-shell chrome (topbar, folder tree, tag groups, graph). Font
+// urls are byte-identical to base.scss / the slimmed KaTeX css, so the
+// generator can lay fonts out exactly like the build output does
+// (CodeNewRoman-*.woff2 next to this css, KaTeX under fonts/).
+
+@use "theme";
+@use "shared";
+
+/* Code New Roman without the Nerd Font icon glyphs (adds ~10 MB). */
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("CodeNewRoman-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("CodeNewRoman-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("CodeNewRoman-Italic.woff2") format("woff2");
+  font-weight: normal;
+  font-style: italic;
+}
+@font-face {
+  font-family: "CodeNewRoman Mono";
+  src: url("CodeNewRoman-Mono-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman Mono";
+  src: url("CodeNewRoman-Mono-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman Mono";
+  src: url("CodeNewRoman-Mono-Italic.woff2") format("woff2");
+  font-weight: normal;
+  font-style: italic;
+}
+
+// Unlike the app shell (base.scss), exported pages are normal
+// scrollable documents.
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+body {
+  font-family: var(--font-interface);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+// ---- Topbar (generator-owned markup) ----------------------------------------
+// Slim bar with the view links, mirroring the app's segmented tabs.
+// Both spellings of the hook are styled so the generator can use
+// either.
+.topbar,
+.coconote-site-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem shared.$shell-gutter;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 0.9em;
+  user-select: none;
+
+  a {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 0.3rem 0.9rem;
+    border-radius: 6px;
+    transition: background 0.12s ease, color 0.12s ease;
+    &:hover {
+      background: var(--background-secondary-alt);
+      color: var(--text-normal);
+    }
+    &.active,
+    &[aria-current="page"] {
+      background: var(--background-primary);
+      color: var(--text-accent);
+      font-weight: 600;
+    }
+  }
+}
+
+// ---- Rendered article pages --------------------------------------------------
+// Same prose look as the app's read view / hover preview (shared
+// mixins keep them in sync), centered to the editor measure.
+.coconote-export-article {
+  max-width: var(--editor-width);
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+  font-family: var(--font-text);
+  font-size: var(--editor-font-size);
+  line-height: 1.55;
+  color: var(--text-normal);
+
+  @include shared.prose-headings($margin: 0.7em 0 0.35em);
+
+  img { max-width: 100%; }
+
+  ul, ol { padding-left: 1.4em; }
+
+  tt, code {
+    @include shared.prose-code-inline;
+  }
+  pre {
+    background: var(--editor-code-block-background-color);
+    padding: 0.5em 0.75em;
+    border-radius: 4px;
+    overflow-x: auto;
+    @include shared.prose-code-block-text;
+    tt, code {
+      background: transparent;
+      padding: 0;
+    }
+  }
+
+  blockquote {
+    @include shared.prose-blockquote;
+    margin: 0.5em 0;
+    padding-left: 0.8em;
+  }
+
+  a, a.wiki-link, span.wiki-link {
+    @include shared.prose-link;
+  }
+  a:hover {
+    @include shared.prose-link-hover;
+  }
+
+  table {
+    @include shared.prose-table;
+    margin: 0.5em 0;
+  }
+  th, td {
+    padding: 0.2em 0.6em;
+    border: none;
+  }
+  thead th {
+    @include shared.prose-table-head-cell;
+  }
+
+  // Callout sections as emitted by the export renderer
+  // (lib/export_core.ts renderExportBody).
+  .coconote-export-callout {
+    border: 1px solid var(--background-modifier-border-hover);
+    border-radius: 6px;
+    padding: 0.4em 1.4rem;
+    margin: 0.8em 0;
+    font-family: "STIXTwoText", "Latin Modern Roman", Cambria, Georgia,
+      "Times New Roman", serif;
+
+    .coconote-callout-head { font-weight: 700; }
+    .coconote-callout-italic { font-style: italic; }
+    .coconote-callout-narrower { max-width: 90%; }
+    &.coconote-callout-proof {
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      .coconote-callout-body { padding-left: 2em; }
+    }
+  }
+  .coconote-callout-suffix {
+    font-style: normal;
+    // CodeNewRoman lacks ∎ (U+220E).
+    font-family: "STIXTwoMath", "Cambria Math", "Latin Modern Math",
+      "DejaVu Sans", "Segoe UI Symbol", system-ui, serif;
+    font-size: 1.1em;
+    font-weight: 600;
+  }
+  .coconote-callout-proof-suffix {
+    float: right;
+    margin-left: 0.5em;
+  }
+}
+
+// ---- View shells (#site-root, rendered by assets/site.js) --------------------
+// Folder tree / tag groups / graph reuse the Content browser's class
+// names and look (content_browser.scss), minus the app-only chrome.
+#site-root {
+  display: block;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+  box-sizing: border-box;
+  // Chrome surface: rows / labels don't select on double-click.
+  user-select: none;
+
+  .coconote-site-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--background-modifier-border);
+  }
+  .coconote-cb-filter {
+    @include shared.shell-header-control;
+    min-width: 14rem;
+    color: var(--text-normal);
+    // Re-enable under the shell-wide none: the typed query is text.
+    user-select: text;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+    &::placeholder { color: var(--text-muted); }
+    &:focus {
+      outline: none;
+      border-color: var(--text-accent);
+      box-shadow: 0 0 0 2px
+        color-mix(in srgb, var(--text-accent) 22%, transparent);
+    }
+  }
+
+  .coconote-cb-folder { margin-bottom: 0.1rem; }
+  .coconote-cb-folder-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.35rem 0.5rem;
+    border-radius: 5px;
+    transition: background 0.1s ease;
+    &:hover { background: var(--background-secondary-alt); }
+  }
+  .coconote-cb-chevron {
+    width: 0.9em;
+    opacity: 0.55;
+    font-size: 0.85em;
+    transition: opacity 0.1s ease;
+  }
+  .coconote-cb-folder-head:hover .coconote-cb-chevron { opacity: 1; }
+  .coconote-cb-tag-label {
+    font-weight: 600;
+    letter-spacing: 0.005em;
+  }
+  .coconote-cb-tag-count {
+    margin-left: auto;
+    font-size: 0.78em;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    padding: 0.05rem 0.55rem;
+    border-radius: 999px;
+    background: var(--background-secondary);
+  }
+  .coconote-cb-folder-body {
+    margin: 0.15rem 0 0.5rem 1.4rem;
+    padding-left: 0.7rem;
+    border-left: 1px solid var(--background-modifier-border);
+  }
+  .coconote-cb-page {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.28rem 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background 0.1s ease, color 0.1s ease;
+    min-width: 0;
+    &:hover {
+      background: var(--background-secondary-alt);
+      color: var(--text-accent);
+    }
+  }
+  .coconote-cb-page-name {
+    font-weight: 500;
+    flex-shrink: 0;
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+  .coconote-cb-page-path {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    font-family: var(--font-monospace);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .coconote-cb-empty {
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 2rem 0;
+    text-align: center;
+  }
+
+  // Graph: same canvas look as the app's Graph view.
+  .coconote-site-body-graph { height: calc(100vh - 11rem); }
+  .coconote-site-graph,
+  .coconote-cb-graph {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .coconote-cb-graph-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    &:active { cursor: grabbing; }
+  }
+  .coconote-cb-graph-node text {
+    font-family: var(--font-interface);
+    pointer-events: none;
+  }
+}

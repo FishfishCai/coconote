@@ -71,6 +71,22 @@ export async function buildClient(): Promise<void> {
     splitting: true,
   });
 
+  // Exported-site viewer (content.md Export site): a self-contained
+  // IIFE so the generated site can load it with a plain <script> from
+  // file:// (ESM modules are blocked by CORS there).
+  await esbuild.build({
+    outdir: "embed/client",
+    absWorkingDir: process.cwd(),
+    bundle: true,
+    treeShaking: true,
+    sourcemap: false,
+    minify: true,
+    format: "iife",
+    jsx: "automatic",
+    jsxImportSource: "preact",
+    entryPoints: [{ in: "client/site/viewer.ts", out: ".client/site" }],
+  });
+
   await copyAssets("embed/client/.client");
 
   console.log("Built!");
@@ -109,11 +125,13 @@ async function copyAssets(dist: string) {
     });
   }
 
-  const scssContent = await readFile("client/styles/main.scss", "utf-8");
-  const result = sass.compileString(scssContent, {
-    loadPaths: ["client/styles"],
-    style: "compressed",
-  });
+  const compileScss = async (file: string) => {
+    const scssContent = await readFile(file, "utf-8");
+    return sass.compileString(scssContent, {
+      loadPaths: ["client/styles"],
+      style: "compressed",
+    }).css;
+  };
   // Ship only woff2 KaTeX fonts to avoid 404s for ttf/woff src() entries.
   const katexCss = await readFile(
     "node_modules/katex/dist/katex.min.css",
@@ -134,7 +152,14 @@ async function copyAssets(dist: string) {
   );
   await writeFile(
     `${dist}/main.css`,
-    result.css + "\n" + slimmedKatexCss,
+    (await compileScss("client/styles/main.scss")) + "\n" + slimmedKatexCss,
+    "utf-8",
+  );
+  // Exported-site sheet, same font/KaTeX layout as main.css so the
+  // site generator can copy fonts straight from this directory.
+  await writeFile(
+    `${dist}/site.css`,
+    (await compileScss("client/styles/site.scss")) + "\n" + slimmedKatexCss,
     "utf-8",
   );
 
