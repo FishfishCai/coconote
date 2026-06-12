@@ -36,13 +36,13 @@ build:
 	@test -d node_modules || $(NPM) install
 	$(NPM) run build
 	$(CARGO) build --manifest-path server-rs/Cargo.toml
-	@ln -sf server-rs/target/debug/coconote coconote
+	@[ "$$(readlink coconote)" = server-rs/target/debug/coconote ] || ln -sf server-rs/target/debug/coconote coconote
 
 release:
 	@test -d node_modules || $(NPM) install
 	$(NPM) run build
 	$(CARGO) build --manifest-path server-rs/Cargo.toml --release
-	@ln -sf server-rs/target/release/coconote coconote
+	@[ "$$(readlink coconote)" = server-rs/target/release/coconote ] || ln -sf server-rs/target/release/coconote coconote
 
 # Stage the sidecar where electron-builder's `extraResources` expects it
 # (binaries/<platform>-<arch>/coconote), then build for the host OS *and
