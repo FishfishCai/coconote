@@ -1,5 +1,6 @@
 import { Confirm, Prompt } from "./basic_modals.tsx";
 import { CollabStatusDot } from "./collab_status_dot.tsx";
+import { ModeDot } from "./mode_dot.tsx";
 import { ContentBrowser, loadView } from "./content_browser.tsx";
 import { HistoryPanel } from "./history_panel.tsx";
 import { Settings } from "./settings.tsx";
@@ -292,6 +293,11 @@ export class MainUI {
           {/* 32px draggable strip for Electron's hidden-inset title bar
               (-webkit-app-region: drag in the CSS). Inert in a browser. */}
           <div className="coconote-window-drag" />
+          <ModeDot
+            mode={uiOptions.editorMode}
+            isMarkdownEditor={!showSettings && !showContentBrowser &&
+              !pdfViewer && !!current}
+          />
           <CollabStatusDot client={this.client} />
           <div id="coconote-main">
             <div

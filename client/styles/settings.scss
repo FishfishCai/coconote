@@ -17,6 +17,9 @@
   line-height: 1.55;
   color: var(--text-normal);
   background: var(--background-primary);
+  // Chrome labels don't select on double-click / drag, typed values do.
+  user-select: none;
+  input, textarea { user-select: text; }
 
   h1 {
     margin: 0;

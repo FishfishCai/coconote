@@ -19,6 +19,8 @@ $shell-gutter: max(1.5rem, calc((100% - 56rem) / 2));
   display: flex;
   flex-direction: column;
   gap: 2px;
+  // Menu items are commands, not text - never select their labels.
+  user-select: none;
 }
 
 @mixin context-menu-item {

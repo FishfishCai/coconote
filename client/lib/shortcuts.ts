@@ -9,9 +9,9 @@ export const SHORTCUT_NAMES = [
   "historyOpen",
   "pinVersion",
   "pdfMetadataPanel",
-  "backToContent",
   "backPrev",
   "forwardNext",
+  "backToContent",
   "openSettings",
 ] as const;
 export type ShortcutName = (typeof SHORTCUT_NAMES)[number];
@@ -21,10 +21,10 @@ export const SHORTCUT_LABELS: Record<ShortcutName, string> = {
   historyOpen: "Open version history panel",
   pinVersion: "Pin current version",
   pdfMetadataPanel: "Open PDF metadata panel",
-  backToContent: "Back to Content page",
   backPrev: "Back to previous page",
   forwardNext: "Forward to next page",
-  openSettings: "Open Settings",
+  backToContent: "Open Content",
+  openSettings: "Open Setting",
 };
 
 export const DEFAULT_SHORTCUTS: Record<ShortcutName, string> = {

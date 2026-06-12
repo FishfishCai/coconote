@@ -21,8 +21,9 @@ import { toPath } from "../lib/ref.ts";
 import { pageMatchesQuery as pageMatches } from "../lib/page_match.ts";
 import { stringSetCodec, useLocalStorageState } from "../lib/dom_hooks.ts";
 
-const DISPLAY_MODE_KEY = "coconote.contentBrowserDisplayMode";
-type DisplayMode = "included" | "all";
+// Owned by ContentBrowser: the toggle lives in its header and the
+// chosen mode arrives here as a prop.
+export type DisplayMode = "included" | "all";
 
 const OPEN_KEY = "coconote.contentBrowserOpenPaths";
 
@@ -149,17 +150,14 @@ type Props = {
   client: Client;
   allPages: PageMeta[];
   filter: string;
+  displayMode: DisplayMode;
 };
 
-export function CbPathView({ client, allPages, filter }: Props) {
+export function CbPathView({ client, allPages, filter, displayMode }: Props) {
   const [openPaths, setOpenPaths] = useLocalStorageState<Set<string>>(
     OPEN_KEY,
     () => new Set(),
     stringSetCodec,
-  );
-  const [displayMode, setDisplayMode] = useLocalStorageState<DisplayMode>(
-    DISPLAY_MODE_KEY,
-    () => "included",
   );
   const [excludedNames, setExcludedNames] = useState<Set<string>>(new Set());
   const [ctxMenu, setCtxMenu] = useState<
@@ -322,22 +320,6 @@ export function CbPathView({ client, allPages, filter }: Props) {
 
   return (
     <>
-      <div className="coconote-cb-display-toggle">
-        <button
-          type="button"
-          className={displayMode === "included" ? "on" : ""}
-          onClick={() => setDisplayMode("included")}
-        >
-          Coconote files only
-        </button>
-        <button
-          type="button"
-          className={displayMode === "all" ? "on" : ""}
-          onClick={() => setDisplayMode("all")}
-        >
-          All supported files
-        </button>
-      </div>
       {tree.children.size === 0
         ? <p className="coconote-cb-empty">No pages found.</p>
         : (

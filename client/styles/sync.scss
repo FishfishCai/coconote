@@ -37,6 +37,8 @@
   justify-content: flex-end;
   gap: 0.5rem;
   margin-top: 0.4rem;
+  // Button row (ModalActions): labels are chrome, not selectable text.
+  user-select: none;
   button {
     @include shared.button-outlined(
       $padding: 0.32rem 0.85rem,

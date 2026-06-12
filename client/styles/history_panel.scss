@@ -12,6 +12,9 @@
   border-right: 1px solid var(--background-modifier-border);
   display: flex;
   flex-direction: column;
+  // Version rows are chrome. The preview pane stays selectable - it
+  // shows file text.
+  user-select: none;
 
   .coconote-history-row {
     display: flex;

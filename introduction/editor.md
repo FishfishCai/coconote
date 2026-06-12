@@ -8,6 +8,8 @@ title: editor
 
 The editor has three modes (toggled via shortcut): **render** (default), **source**, and **read**. Under render, math, callout (a labeled block, see [[markdown]]), and image are shown as widgets. Moving the cursor into a widget shows its source text, and moving out re-folds it.
 
+Two dots sit at the top right: the collab status dot (see Collaboration below) and a mode dot showing the active editor mode - green for render, orange for source, blue for read, grey when the current view is not a markdown editor (Content, Setting, PDF).
+
 ## Shortcuts
 
 The bindings below are the defaults. Some can be overridden in setting.
@@ -22,10 +24,10 @@ The bindings below are the defaults. Some can be overridden in setting.
 - `Cmd / Ctrl + Shift + H`: open the version history panel (see [[history]]).
 - `Cmd / Ctrl + Shift + P`: pin the current version (prevents retention pruning, see [[history]]).
 - `Cmd / Ctrl + Shift + M`: open the PDF metadata panel (only active in the PDF viewer, see [[pdf]]).
-- `Cmd / Ctrl + Shift + C`: go back to the Content page.
+- `Cmd / Ctrl + Shift + C`: open the Content page.
 - `Cmd / Ctrl + Shift + B`: return to the previous page.
 - `Cmd / Ctrl + Shift + F`: go forward to the next page (inverse of Shift + B).
-- `Cmd / Ctrl + Shift + S`: open Settings.
+- `Cmd / Ctrl + Shift + S`: open Setting.
 - `Cmd / Ctrl + Click` a link: open in a new tab (browser) / new window (desktop app).
 - `Cmd / Ctrl + C / X / V`: copy / cut / paste. When pasting an image from the clipboard, Coconote automatically saves it to the current file's `.<filename>.assets/` folder and inserts a wikilink at the cursor.
 - `Cmd / Ctrl + Left/Right`: jump to line start / end.

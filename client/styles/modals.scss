@@ -42,6 +42,8 @@
   padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--background-modifier-border);
   font-weight: 600;
+  // Chrome, not content - the body below stays selectable.
+  user-select: none;
 }
 .coconote-modal-title {
   overflow: hidden;

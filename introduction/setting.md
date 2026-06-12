@@ -44,10 +44,10 @@ Rebindable actions:
 - **Open version history panel**: default `Cmd / Ctrl + Shift + H`.
 - **Pin current version** (keeps a version from being auto-deleted by retention, see [[history]]): default `Cmd / Ctrl + Shift + P`.
 - **Open PDF metadata panel** (only active in the PDF viewer, see [[pdf]]): default `Cmd / Ctrl + Shift + M`.
-- **Back to Content page**: default `Cmd / Ctrl + Shift + C`.
 - **Back to previous page**: default `Cmd / Ctrl + Shift + B`.
 - **Forward to next page**: default `Cmd / Ctrl + Shift + F`.
-- **Open Settings**: default `Cmd / Ctrl + Shift + S`.
+- **Open Content** (the Content page): default `Cmd / Ctrl + Shift + C`.
+- **Open Setting**: default `Cmd / Ctrl + Shift + S`.
 
 ## Local
 

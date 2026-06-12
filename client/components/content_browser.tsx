@@ -1,15 +1,18 @@
 // Content browser shell - owns the view selector (Path / Tag / Graph),
-// the shared filter input, and the Settings button. Each view lives in
-// cb_<name>_view.tsx and is switched in-place.
+// the Path view's display-mode toggle, the shared filter input, and the
+// Settings button. Each view lives in cb_<name>_view.tsx and is
+// switched in-place.
 
 import { useEffect, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
 import { CbTagView } from "./cb_tag_view.tsx";
-import { CbPathView } from "./cb_path_view.tsx";
+import { CbPathView, type DisplayMode } from "./cb_path_view.tsx";
 import { CbGraphView } from "./cb_graph_view.tsx";
+import { useLocalStorageState } from "../lib/dom_hooks.ts";
 
 type ViewMode = "path" | "tag" | "graph";
 const VIEW_KEY = "coconote.contentBrowserView";
+const DISPLAY_MODE_KEY = "coconote.contentBrowserDisplayMode";
 
 export function loadView(): ViewMode {
   // The URL is authoritative when the user landed on /.content/<view>.
@@ -37,6 +40,10 @@ type Props = { client: Client; view: ViewMode; initialFilter: string };
 
 export function ContentBrowser({ client, view, initialFilter }: Props) {
   const [filter, setFilter] = useState(initialFilter);
+  const [displayMode, setDisplayMode] = useLocalStorageState<DisplayMode>(
+    DISPLAY_MODE_KEY,
+    () => "included",
+  );
 
   // Tag chips set initialFilter. Sync prop -> state so a second chip
   // click works while the browser is already mounted.
@@ -66,6 +73,24 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
             </button>
           ))}
         </div>
+        {view === "path" && (
+          <div className="coconote-cb-display-toggle">
+            <button
+              type="button"
+              className={displayMode === "included" ? "on" : ""}
+              onClick={() => setDisplayMode("included")}
+            >
+              Coconote files only
+            </button>
+            <button
+              type="button"
+              className={displayMode === "all" ? "on" : ""}
+              onClick={() => setDisplayMode("all")}
+            >
+              All supported files
+            </button>
+          </div>
+        )}
         <div className="coconote-cb-actions">
           <input
             type="text"
@@ -86,7 +111,12 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
       </header>
       <div className={"coconote-cb-body coconote-cb-body-" + view}>
         {view === "path" && (
-          <CbPathView client={client} allPages={allPages} filter={filter} />
+          <CbPathView
+            client={client}
+            allPages={allPages}
+            filter={filter}
+            displayMode={displayMode}
+          />
         )}
         {view === "tag" && (
           <CbTagView client={client} allPages={allPages} filter={filter} />

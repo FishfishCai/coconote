@@ -13,10 +13,12 @@
   font-size: 16px;
   line-height: 1.55;
   color: var(--text-normal);
+  // Chrome surface: rows / tabs / labels don't select on double-click.
+  user-select: none;
 
-  // Single-row header: title / tabs / spacer / filter / setting.
-  // .coconote-cb-actions is pushed to the far right so the spacing
-  // breathes when the viewport is wide.
+  // Single-row header: title / tabs / display toggle (Path view only) /
+  // spacer / filter / setting. .coconote-cb-actions is pushed to the far
+  // right so the spacing breathes when the viewport is wide.
   .coconote-cb-header {
     display: flex;
     align-items: center;
@@ -67,6 +69,35 @@
     }
   }
 
+  // Path view's display-mode toggle, inline in the header between the
+  // view tabs and the actions (the header gap supplies the spacing).
+  .coconote-cb-display-toggle {
+    display: inline-flex;
+    font-size: 0.82em;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 7px;
+    overflow: hidden;
+
+    button {
+      flex: 0 0 auto;
+      background: transparent;
+      color: var(--text-muted);
+      border: 0;
+      border-right: 1px solid var(--background-modifier-border);
+      padding: 0.32rem 0.85rem;
+      cursor: pointer;
+      font: inherit;
+      transition: background 0.12s ease, color 0.12s ease;
+      &:last-child { border-right: 0; }
+      &:hover { color: var(--text-normal); background: var(--background-secondary-alt); }
+      &.on {
+        color: var(--text-normal);
+        background: var(--background-secondary);
+        font-weight: 500;
+      }
+    }
+  }
+
   // Graph view: full-bleed SVG inside the cb body. Cancel the shell
   // gutter (minus a small visual margin) so the canvas can use the
   // whole pane.
@@ -87,7 +118,7 @@
     width: 100%;
     height: 100%;
     display: block;
-    user-select: none;
+    // user-select: none comes from the .coconote-content-browser root.
     cursor: grab;
     &:active { cursor: grabbing; }
   }
@@ -137,6 +168,8 @@
   .coconote-cb-filter {
     min-width: 14rem;
     color: var(--text-normal);
+    // Re-enable under the chrome-wide none: the typed query is text.
+    user-select: text;
     &::placeholder { color: var(--text-muted); }
   }
   .coconote-cb-filter:focus {
@@ -262,34 +295,6 @@
     padding: 0.45rem 0.7rem;
     &:hover { background: var(--background-secondary); }
     &.danger { color: var(--color-red); }
-  }
-}
-
-.coconote-cb-display-toggle {
-  display: inline-flex;
-  margin: 0 0 1rem;
-  font-size: 0.82em;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 7px;
-  overflow: hidden;
-
-  button {
-    flex: 0 0 auto;
-    background: transparent;
-    color: var(--text-muted);
-    border: 0;
-    border-right: 1px solid var(--background-modifier-border);
-    padding: 0.32rem 0.85rem;
-    cursor: pointer;
-    font: inherit;
-    transition: background 0.12s ease, color 0.12s ease;
-    &:last-child { border-right: 0; }
-    &:hover { color: var(--text-normal); background: var(--background-secondary-alt); }
-    &.on {
-      color: var(--text-normal);
-      background: var(--background-secondary);
-      font-weight: 500;
-    }
   }
 }
 

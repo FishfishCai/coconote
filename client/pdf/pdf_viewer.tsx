@@ -285,25 +285,25 @@ export function PdfViewer({ client, path, initialAnchor }: Props) {
     );
   };
 
-  // Highlight action menu on right-click (pdf.md PDF reader). boot.ts's
-  // global handler only preventDefaults the native menu (no
-  // stopPropagation), so this delegated listener still fires. Mounted
-  // once - notesRef supplies the latest highlights. A right-click off
-  // any highlight closes an open menu.
+  // Highlight action menu on left click (pdf.md PDF reader). Mounted
+  // once - notesRef supplies the latest highlights. A click that ends a
+  // text-selection drag is ignored (that gesture belongs to the colour
+  // toolbar), and a click off any highlight closes an open menu.
   useEffect(() => {
     const c = containerRef.current;
     if (!c) return;
-    const onContextMenu = (e: MouseEvent) => {
+    const onClick = (e: MouseEvent) => {
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) return;
       const hl = highlightAtPoint(e.clientX, e.clientY);
       if (!hl) {
         setContextMenu(null);
         return;
       }
-      e.preventDefault();
       setContextMenu({ x: e.clientX, y: e.clientY, highlight: hl });
     };
-    c.addEventListener("contextmenu", onContextMenu);
-    return () => c.removeEventListener("contextmenu", onContextMenu);
+    c.addEventListener("click", onClick);
+    return () => c.removeEventListener("click", onClick);
   }, []);
 
   // pdf.md: a highlight's comment is "shown on hover". The native title
