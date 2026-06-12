@@ -69,7 +69,7 @@ Periodic pruning of history records:
 
 ## Orphan page_ids
 
-At server startup, the history DB drops every `page_id` that no on-disk file claims, then garbage-collects the blobs left unreferenced. This runs only at boot, the same trigger model as the sidecar / assets sweep in [[file]].
+At server startup, the history DB drops every `page_id` that no on-disk file claims, then garbage-collects the blobs left unreferenced. This runs only at boot.
 
 ## Version history panel
 
@@ -88,7 +88,7 @@ Push and pull share one branching logic, differing only in direction. Below, "so
 After the target is chosen, the operation branches by how the target side already holds the page:
 
 - **A target file exists with the same page_id**:
-    - The target file equals the content of the source's latest `push` / `pull` row: **fast-forward**, source content overwrites target. (That row is the last agreed-on common version, so if the target has not diverged from it, the source's newer content can be written directly.)
+    - The target file equals the content of the local latest `push` / `pull` row (the merge base, see Merge): **fast-forward**, source content overwrites target. (That row is the last agreed-on common version, so if the target has not diverged from it, the source's newer content can be written directly.)
     - Otherwise: **merge** (see below).
 - **No same page_id, but the same relative path holds a same-named file**: a "confirm overwrite" dialog pops up, prompting per file, with an "apply the same choice to the rest" option.
 - **No same page_id, no path collision**: direct transfer (upload for push, download for pull).

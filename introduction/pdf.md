@@ -12,7 +12,7 @@ The PDF reader supports the following:
 - Zoom (`Cmd / Ctrl + +/-`), using the host window's zoom.
 - Select text, then click a colour to save it as a highlight.
 - Clicking a highlight opens a menu:
-    - **anchor / rename anchor**: names the highlight (or renames it). A named highlight becomes a jump target written `[[paper.pdf%<name>]]`, where `%` separates the file from the anchor name (see [[wikilink]]).
+    - **anchor / rename anchor**: names the highlight (or renames it). A named highlight becomes a jump target written `[[paper.pdf%<name>]]` (see [[wikilink]]).
     - **add / edit comment**: adds or edits a comment, shown on hover.
     - **change colour**: changes the highlight colour (yellow, green, blue, pink, or orange).
     - **remove**: deletes the highlight along with its anchor and comment.

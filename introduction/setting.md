@@ -6,7 +6,7 @@ title: setting
 
 # Setting
 
-Open the settings panel at the in-app route `/.setting` (type it as a path in the address bar). Every choice is persisted to `localStorage`.
+Visit the in-app route `/.setting` to open the settings panel. Every choice is persisted to `localStorage`.
 
 ## Appearance
 
@@ -21,28 +21,28 @@ Open the settings panel at the in-app route `/.setting` (type it as a path in th
     - **Hover background**: `--background-secondary-alt`. Button hover, modal hint hover, settings group hover.
 - Font
     - **Prose font**: body and most markdown.
-    - **UI font**: chrome surfaces (status chip, content browser, settings).
+    - **UI font**: status chip, content browser, settings.
     - **Monospace font**: code block, inline code, math fallback.
 
 Each accepts a full CSS `font-family` value, e.g. `Inter, system-ui, sans-serif`. Leave empty to fall back to the theme default.
 
 ## Snippet
 
-A snippet is a user-defined editing or rendering rule (see [[editor]]). This panel is an embedded JSON editor for those rules and saves when it loses focus. The edited JSON is compiled into rules that take effect the next time you open a page.
+Embedded JSON editor for snippets (user-defined editing and rendering rules, full syntax in [[editor]]). Saves on blur. Compiled rules take effect the next time you open a page.
 
 ## Shortcut
 
-Bind custom keybindings. The panel lists every configurable action and its current binding. Each action can have several key combinations (e.g. `Cmd+K`, `Ctrl+Shift+P`). Changes take effect immediately.
+Bind custom keybindings. The panel lists every configurable action with its current binding. Each action has exactly one combination: click the binding and press the new keys to record it (`Escape` cancels), or reset it to the default. Changes take effect immediately.
 
-Conflict handling: if a combination is already used by another action, the UI flags the clash and you must unbind the original before saving.
+Conflict handling: if a combination is already used by another action, the UI highlights both rows and blocks saving until one of them is rebound.
 
 Saved to `localStorage["coconote.userPrefs"].shortcuts`. Only Coconote's custom navigation and mode actions are rebindable. Markdown-editing keys (`Tab` / `Enter` / `Backspace`) and system-level shortcuts (undo / redo / copy-paste / find / cursor motion, etc.) use the defaults and cannot be rebound.
 
 Rebindable actions:
 
-- **Mode switch** (cycle the editor through render, source, and read views): default `Cmd / Ctrl + M`.
+- **Cycle render / source / read** (the editor mode switch): default `Cmd / Ctrl + M`.
 - **Open version history panel**: default `Cmd / Ctrl + Shift + H`.
-- **Pin current version** (keeps a version from being auto-deleted by retention, see [[history]]): default `Cmd / Ctrl + Shift + P`.
+- **Pin current version** (prevents retention pruning, see [[history]]): default `Cmd / Ctrl + Shift + P`.
 - **Open PDF metadata panel** (only active in the PDF viewer, see [[pdf]]): default `Cmd / Ctrl + Shift + M`.
 - **Export PDF** (the open page, in the md editor or the PDF viewer, see [[content]]): default `Cmd / Ctrl + Shift + E`.
 - **Export HTML** (the open page, md editor only): default `Cmd / Ctrl + Shift + X`.
@@ -53,7 +53,7 @@ Rebindable actions:
 
 ## Local
 
-Lists the local roots configured in `coconote.yaml`'s `root:` (a root is a top-level source folder, defined in [[welcome]]). The header has `+` to add a root, each row has `−` to remove. Validation rules and the yaml schema are also in [[welcome]]. Every add and remove rewrites `coconote.yaml` atomically and reloads the file index in place, with no restart.
+Lists the local roots configured in `coconote.yaml`'s `root:`. The header has `+` to add a root, each row has `−` to remove. Validation rules and the yaml schema are in [[welcome]]. Every add and remove rewrites `coconote.yaml` atomically and reloads the file index in place, with no restart.
 
 - Add `+`: a modal asks for the root's **name** and **absolute path**.
 - Remove `−`: confirm, and the entry is dropped.

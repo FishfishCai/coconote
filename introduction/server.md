@@ -10,7 +10,7 @@ Every Coconote interaction is plain HTTP or WebSocket.
 
 ## Concepts
 
-- vault / space / root: the file tree the server exposes (`rootPath` in `/.health`). The three names refer to the same thing.
+- vault / space: interchangeable names for the file tree the server exposes, assembled from one or more named roots (the `rootPath` map in `/.health`).
 - page id / frontmatter: pages are markdown files with a YAML header (frontmatter). A page carries `id:` in that header, and history is keyed by this id rather than by path. See [[file]].
 - manifest: what one history snapshot stores for a page (its content plus metadata). See [[history]].
 - cross-server push / pull: Coconote can sync between two servers. The remote caller drives these writes (see `save_type` on PUT below).
@@ -22,16 +22,16 @@ Every Coconote interaction is plain HTTP or WebSocket.
 These endpoints can be called directly from a script (no native binding or IPC needed). All endpoints require `auth` token authentication (see [[welcome]]), except: loopback (`127.0.0.1`) bypasses it, and the health probe `/.health` is always reachable.
 
 - `GET /.health`: returns `{app, version, pid, startedAt, rootPath}`. The desktop shell uses this to probe an existing server. Clients use it to verify a remote url is actually a coconote server.
-- `GET /.file`: lists every entry in the current vault. Returns an array. Each item is `{type: "file"|"dir", path, ...}`. File items also carry `page_id` (empty if none), `title`, `tag`, size, and mtime, but no body or hash. Dir items carry only `type` and `path`.
-- `GET /.file?prefix=<path-prefix>`: lists every file path that starts with the prefix, as a flat array of strings. Unlike the plain listing, dot-prefixed folders (assets folders, sidecars) are included.
+- `GET /.file`: lists every entry in the current vault. Returns an array. Each item is `{type: "file"|"dir", path, ...}`. File items also carry `page_id`, `title`, and `tag` (each omitted when empty), plus `size` and `mtime`, but no body or hash. Dir items carry no page fields (`size` and `mtime` are 0 for them).
+- `GET /.file?prefix=<dir-path>`: lists every file under that directory, as a flat array of path strings. Unlike the plain listing, dot-prefixed entries (assets folders, sidecars) are included.
 - `GET /.file/<path>`: reads a file. Body + `X-*` metadata headers.
 - `HEAD /.file/<path>`: same as GET but returns headers only (cheap, use when only metadata is needed).
 - `PUT /.file/<path>`: writes a file. Query: `save_type=edit|push|pull` tags the history type for this write (defaults to `edit`, with push / pull set by the cross-server caller). `type=dir` creates an empty directory (no body).
 - `DELETE /.file/<path>`: physically deletes the file or an empty directory.
 - `GET /.history/<page_id>`: without query, lists snapshots `[{ts, save_type}, ...]`. With `?ts=<ms>`, returns that snapshot's main file text (the md body, or the PDF sidecar) for the version history panel preview.
 - `DELETE /.history/<page_id>?ts=<ms>`: deletes a single version row (any `save_type` can be deleted).
-- `POST /.history/<page_id>/restore?ts=<ms>`: atomically writes that snapshot back to the current path and appends a `save_type = edit` row.
-- `POST /.history/<page_id>/pin`: clones the latest version row as a pinned marker (same manifest, new ts, `save_type = pin`). A pin is a labeled checkpoint for easy retrieval. It is not delete-protected (any row, pin included, can be deleted via the DELETE route above).
+- `POST /.history/<page_id>/restore?ts=<ms>`: writes that snapshot back to the current path and appends a `save_type = edit` row.
+- `POST /.history/<page_id>/pin`: clones the latest version row as a labeled checkpoint (same manifest, new ts, `save_type = pin`). Pins are not delete-protected.
 - `WS /.collab/<path>?token=<token>`: real-time collab over Yjs (sync + awareness). Binary frames only. See the WebSocket protocol section below.
 - `GET /.config`: returns the active config, including `configDir`, the directory currently holding `coconote.yaml`.
 - `PATCH /.config` with `{configDir}`: repoints `configDir` to a new location and triggers a self-restart so it takes effect (see [[setting]], Config file section).

@@ -40,7 +40,7 @@ The file lives in the standard per-user config directory: `~/.config/coconote/` 
 
 A vault (your whole set of notes) is built from roots of two kinds, which coexist:
 
-- **Local root**: one entry under `root:`, a `name -> absolute path` pair whose name you choose. The path must be absolute, and the server refuses to mount these system locations: `/`, `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `/dev`, `/System`, `/Library`. Symlinks are resolved before this check.
+- **Local root**: one entry under `root:`, a `name -> absolute path` pair whose name you choose. The path must be absolute, and the server refuses to mount `/` or these system trees, including anything under them: `/etc`, `/var`, `/usr`, `/bin`, `/sbin`, `/boot`, `/proc`, `/sys`, `/dev`, `/System`, `/Library`. Symlinks are resolved before this check.
 - **Remote root**: one URL under `url:`, pointing at another coconote server you want to read from or sync with. Connecting mounts **all** of that server's roots (its own `root:` mapping) into your vault at once. You don't choose their names, which come from the remote yaml.
 
 Every file then has a logical path of the shape:

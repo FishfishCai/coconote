@@ -43,7 +43,7 @@ Backslash escapes a marker so it renders literally:
 
 ## Lists
 
-Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four spaces. Each level uses the next marker in a cycle: unordered runs `• ◦ ▪ ‣`, ordered runs `1. a. i. A.`. Ordered items are numbered by position, so the exact digits you type are ignored (this is why the rendered numbers below differ from the source).
+Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four spaces. Each level uses the next marker in a cycle: unordered runs `• ◦ ▪ ‣`, ordered runs `1. a. i. A.`. An ordered item keeps the number you type, restyled to its level's marker.
 
 ```markdown
 - one
@@ -52,9 +52,9 @@ Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four space
             - four
 
 1. first
-   2. second
-       3. third
-           4. fourth
+    1. second
+        1. third
+            1. fourth
 ```
 
 - one
@@ -63,9 +63,9 @@ Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four space
             - four
 
 1. first
-   1. second
-       2. third
-           3. fourth
+    1. second
+        1. third
+            1. fourth
 
 ## Table
 
@@ -85,7 +85,7 @@ A table uses GFM pipe syntax: a header row, a delimiter row of dashes, then body
 
 ## Quote Block
 
-A quote block uses `>`, and stacking `>` markers nests it deeper. The rendered block shows the nesting without the raw markers. Click a quote block to reveal its `>` markers.
+A quote block uses `>`. Only the first `>` on each line acts as the quote marker, any further `>` on the line renders as plain text. Click a quote block to reveal all of its `>` markers.
 
 ```markdown
 > outer
@@ -169,7 +169,7 @@ $$
 
 ## Callout
 
-A callout opens with `::: keyword`, optionally followed by `:label`, and closes with `:::` (or a run of more than four colons). The optional `:label` shows in the callout's title as `(label)`. There are twelve kinds: `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six (`definition` through `example`) share one counter that numbers them in order of appearance. `theorem`, `proposition`, `lemma`, `corollary`, and `proof` render their body in italic, the rest upright. `proof` ends with `∎`.
+A callout opens with `::: keyword`, optionally followed by `:label`, and closes with a line of three or more colons. The optional `:label` shows in the callout's title as `(label)`. There are twelve kinds: `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six (`definition` through `example`) share one counter that numbers them in order of appearance. `theorem`, `proposition`, `lemma`, `corollary`, and `proof` render their body in italic, the rest upright. `proof` ends with `∎`.
 
 One example per behavior (the other keywords look like one of these):
 

@@ -6,7 +6,7 @@ title: editor
 
 # Editor
 
-The editor has three modes (toggled via shortcut): **render** (default), **source**, and **read**. Under render, math, callout (a labeled block, see [[markdown]]), and image are shown as widgets. Moving the cursor into a widget shows its source text, and moving out re-folds it.
+The editor has three modes (toggled via shortcut): **render** (default), **source**, and **read**. Under render, math, table, callout (a labeled block, see [[markdown]]), and image are shown as widgets. Moving the cursor into a widget shows its source text, and moving out re-folds it.
 
 Two dots sit at the top right: the collab status dot (see Collaboration below) and a mode dot showing the active editor mode - green for render, orange for source, blue for read, grey when the current view is not a markdown editor (Content, Setting, PDF).
 
@@ -26,7 +26,7 @@ The bindings below are the defaults. Some can be overridden in setting.
 - `Cmd / Ctrl + Shift + M`: open the PDF metadata panel (only active in the PDF viewer, see [[pdf]]).
 - `Cmd / Ctrl + Shift + E`: export the open page as PDF (md editor or PDF viewer, see [[content]]).
 - `Cmd / Ctrl + Shift + X`: export the open markdown page as a self-contained HTML file (see [[content]]).
-- `Cmd / Ctrl + Shift + C`: open the Content page.
+- `Cmd / Ctrl + Shift + C`: open Content.
 - `Cmd / Ctrl + Shift + B`: return to the previous page.
 - `Cmd / Ctrl + Shift + F`: go forward to the next page (inverse of Shift + B).
 - `Cmd / Ctrl + Shift + S`: open Setting.
@@ -110,7 +110,7 @@ Hide delay is 100 ms (covers cursor drift). Moving onto the popup cancels the ti
 
 ## Collaboration
 
-Live edits are held in a shared in-memory document and are periodically saved (checkpointed) to the markdown file on disk. The in-memory document is powered by Yjs, a CRDT library that merges concurrent edits from multiple peers automatically. The terms "Yjs" and "CRDT" below refer to this mechanism.
+Live edits are held in a shared in-memory document and are periodically saved (checkpointed) to the markdown file on disk. The in-memory document is powered by Yjs, a CRDT library that merges concurrent edits from multiple peers automatically.
 
 Two browser windows / tabs (same machine or different) opened on **the same page on the same server** stay in sync (Yjs CRDT, ~50 ms LAN latency). Cursors render as coloured vertical bars (random colour, deliberately showing no identity or name).
 

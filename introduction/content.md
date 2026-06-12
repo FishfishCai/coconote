@@ -24,35 +24,34 @@ Path view arranges files as a folder tree, drilling down by each page's logical 
 
 The Content header shows a toggle while Path view is active: "**Included**" / "**All**".
 
-- **Included** (default): only files marked `coconote: true` are shown (in a md frontmatter, or in a pdf's sidecar, see [[file]]).
+- **Included** (default): only files marked `coconote: true` are shown (md frontmatter or pdf sidecar, see [[file]]).
 - **All**: additionally lists every supported file not in Coconote, local roots only (url-mounted roots expose no excluded-file data). Non-included files appear greyed out: clicking does not open them, and their only right-click menu item is **Include**.
 
 ### Right-click menu
 
-Every row is either not in Coconote (single item: **Include**) or in Coconote (the grouped menu below, groups divided by separator lines). A failed action reports "<action> failed: <reason>" in a modal instead of failing silently.
+Every row is either not in Coconote (single item: **Include**) or in Coconote (the grouped menu below, groups divided by separator lines). Delete, when present, sits alone in the last group. A failed action reports "<action> failed: <reason>" in a modal instead of failing silently.
 
-**Folder:** a creation group, then the file actions broadcast over the included pages under the folder.
+**Folder:**
 
 - **New Markdown**: prompts for a name and creates `<name>.md` in that folder. If a same-named file already exists but is excluded (`coconote: false`, see [[file]]), it is included instead of overwritten and a notice says so.
 - **New Folder**: creates a new folder under the folder.
 - **Include (N)**: shown only when N > 0 supported files under the folder are not yet included (local roots only). Includes all N after confirmation. A folder whose subtree holds no included pages (possible only in All view) offers only this item.
-- **Rename / Remove / Delete**: apply the file actions to every included page under the folder at once. Rename keeps the folder inside its root (the leading root name is fixed) and warns when excluded files will stay in the old folder. Delete's confirmation states how many Coconote pages it deletes and that files not in Coconote stay on disk. These appear only on sub-folders, not on a configured root folder (a root is renamed or dropped only via Setting, see [[setting]]).
+- **Rename / Remove**: apply the file actions to every included page under the folder at once. Rename keeps the folder inside its root and warns when excluded files will stay in the old folder.
+- **Push**: pushes every included page under the folder (see [[history]]).
+- **Delete**: deletes every included page under the folder. The confirmation states how many Coconote pages that is and that files not in Coconote stay on disk.
+
+Rename, Remove, and Delete appear only on sub-folders, never on a configured root (a root is renamed or dropped only via Setting, see [[setting]]).
 
 **`.md` and `.pdf`:**
-- **Rename**: prompts for a new path and filename. Any `[[wikilink]]` pointing at the old name is rewritten to point at the new one.
-- **Remove**: file stays on disk, but its `coconote` flips to `false` (in the md frontmatter, or the pdf sidecar) and it disappears from the index.
-- **Export PDF**: downloads a PDF of the page to the local machine, never written into the vault. Works for url-mounted files too. A pdf's export bakes its highlights into the pages (see [[pdf]]).
+
+- **Rename**: prompts for a new path and filename inside the same root (the leading root name is fixed). Any `[[wikilink]]` pointing at the old name is rewritten to point at the new one.
+- **Remove**: the file stays on disk, but its `coconote` flips to `false` and it disappears from the index.
+- **Push**: pushes the file to a remote (see [[history]]).
+- **Export PDF**: downloads a PDF of the page to the local machine, never written into the vault. A pdf's export bakes its highlights into the pages (see [[pdf]]).
 - **Export HTML** (md only): downloads a single self-contained `.html` (styles, fonts, images, and math all inlined) that works fully offline.
-- **Delete**: permanently deletes the file and its assets folder after confirmation. Delete always sits alone in the menu's last group.
+- **Delete**: permanently deletes the file and its assets folder after confirmation.
 
-### push / pull
-
-In addition to the file-management menu above:
-
-- local files / folders get an extra **Push** item.
-- url-mounted remote files / folders get a **Pull** item instead. Remote rows are otherwise read-only: a remote file offers only Pull plus the exports, a remote folder only Pull.
-
-Details in [[history]].
+Url-mounted remote rows are read-only and get **Pull** in place of Push (see [[history]]): a remote file offers only Pull plus the exports, a remote folder only Pull.
 
 ## Tag view
 

@@ -23,7 +23,7 @@ Append a position marker after `name`. Four markers:
 
 - `#heading`: jumps to a markdown heading. Levels 1 through 4 (`#` to `####`) are targetable.
 - `@anchor`: jumps to a named anchor placed in the body. Create an anchor by writing `@name` in the body. The name uses letters, digits, underscore, hyphen, colon, and slash, the first character must be a letter or underscore, and it contains no spaces. So `[[note@anchor]]` targets the `@anchor` written in `note`.
-- `:label`: jumps to a callout block. A callout is opened with `::: keyword:label` (where `keyword` is the callout type, see [[markdown]]). For example a block opened with `::: note:intro` is targeted by `[[note:intro]]`. A numeric form `:3` jumps to the 3rd numbered callout on the page (numbering is defined in [[markdown]]).
+- `:label`: jumps to a callout block opened with `::: keyword:label` (where `keyword` is the callout type, see [[markdown]]). Only the label is matched, so `[[note:intro]]` targets the callout labeled `intro` in `note`, whatever its keyword. A numeric form `:3` jumps to the 3rd numbered callout on the page (numbering is defined in [[markdown]]).
 - `%name`: jumps to a PDF highlight named `name`. Only valid for `.pdf` links. For example `[[paper.pdf%name]]` (highlight naming rules in [[pdf]]).
 
 Omit `name` and write only the position marker (e.g. `[[#heading]]`, `[[@anchor]]`) to target the **current file**. If the marker doesn't match anything, the link lands at the top of the file.
