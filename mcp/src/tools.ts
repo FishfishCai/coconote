@@ -11,6 +11,7 @@ import * as api from "./api";
 import { withRoom } from "./collab";
 import { applySplices, computeSplices, type Splice } from "./diff";
 import { buildHtmlExport, buildPdfExport, writeDest } from "./export";
+import { exportSite } from "./site";
 import * as fm from "./frontmatter";
 import { findQuote, loadPdfPages } from "./pdf";
 import { movePageFile, refactorLinks, renamePage } from "./rename";
@@ -906,6 +907,54 @@ export function registerTools(server: McpServer): void {
       }
       const data = isMd(path) ? await buildHtmlExport(path) : await buildPdfExport(path);
       return json({ dest, bytes: await writeDest(dest, data) });
+    },
+  );
+
+  server.registerTool(
+    "export_site",
+    {
+      description:
+        "Export the whole vault as a static website (the app's Export Site action): Path / Tag " +
+        "/ Graph view shells, every included page (.md as HTML with relative wikilinks, .pdf " +
+        "with highlights baked), referenced images, and the shared viewer assets. Writes the " +
+        "site into the dest directory on the MCP host machine, ready for any static host. One " +
+        "call regenerates the full site. Returns {dest, files, bytes, skipped}.",
+      inputSchema: {
+        dest: z.string().describe(
+          "Absolute destination directory on the machine running the MCP server " +
+            "(created when missing, must be empty)",
+        ),
+      },
+    },
+    async ({ dest }) => json(await exportSite(dest)),
+  );
+
+  server.registerTool(
+    "download_page",
+    {
+      description:
+        "Download a .md or .pdf vault file's original bytes to dest on the MCP host machine " +
+        "(the app's Download action: the raw file as-is, no export baking). dest must keep " +
+        "the source extension, its parent directory is created when missing. Returns " +
+        "{dest, bytes}.",
+      inputSchema: {
+        path: z.string().describe(PATH_DESC),
+        dest: z.string().describe(DEST_DESC),
+      },
+    },
+    async ({ path, dest }) => {
+      if (!isMd(path) && !isPdf(path)) {
+        throw new Error(`download_page downloads .md and .pdf pages, got ${path}`);
+      }
+      const wantExt = isMd(path) ? ".md" : ".pdf";
+      if (!dest.toLowerCase().endsWith(wantExt)) {
+        throw new Error(
+          `download_page copies the original file bytes, so dest must end in ` +
+            `${wantExt}, got: ${dest}`,
+        );
+      }
+      const { bytes } = await api.readBytes(path);
+      return json({ dest, bytes: await writeDest(dest, bytes) });
     },
   );
 

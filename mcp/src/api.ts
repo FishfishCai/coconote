@@ -59,6 +59,7 @@ export type Entry = {
   page_id?: string;
   title?: string;
   tag?: string[];
+  prereq?: string[];
   headings?: string[];
   wikilinks?: string[];
   size: number;
