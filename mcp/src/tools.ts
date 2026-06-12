@@ -47,11 +47,13 @@ function mapEntry(e: api.Entry) {
     wikilinks: e.wikilinks ?? [],
     size: e.size,
     mtime: e.mtime,
+    // Marked only on the excluded rows of an all listing.
+    ...(e.coconote === false ? { included: false } : {}),
   };
 }
 
-async function filePages() {
-  return (await api.listEntries()).filter((e) => e.type === "file").map(mapEntry);
+async function filePages(all = false) {
+  return (await api.listEntries(all)).filter((e) => e.type === "file").map(mapEntry);
 }
 
 /** History is keyed by page id: md frontmatter `id:`, pdf/json sidecar
@@ -174,13 +176,16 @@ export function registerTools(server: McpServer): void {
     {
       description:
         "List every file in the vault with path, title, tags, headings, wikilinks, size, and " +
-        "mtime (ms epoch). Optional prefix narrows to one folder subtree.",
+        "mtime (ms epoch). Optional prefix narrows to one folder subtree. With all: true the " +
+        "listing also covers .md/.pdf files not in the Coconote index (rows marked " +
+        "included: false), the candidates for set_included.",
       inputSchema: {
         prefix: z.string().optional().describe("Folder prefix filter, e.g. main/notes"),
+        all: z.boolean().optional().describe("Also list excluded .md/.pdf files (the app's All view)"),
       },
     },
-    async ({ prefix }) => {
-      let rows = await filePages();
+    async ({ prefix, all }) => {
+      let rows = await filePages(all);
       if (prefix) {
         const p = prefix.endsWith("/") ? prefix : `${prefix}/`;
         rows = rows.filter((r) => r.path.startsWith(p));
@@ -393,7 +398,7 @@ export function registerTools(server: McpServer): void {
         const what = await setPdfIncluded(path, included);
         return text(`Sidecar ${api.pdfSidecarPath(path)} ${what} with coconote: ${included}.`);
       }
-      throw new Error(`Unsupported file type: ${path} (only .md and .pdf pages have an include flag)`);
+      throw new Error(`${path} has no include flag: only .md and .pdf pages do.`);
     },
   );
 
@@ -401,8 +406,9 @@ export function registerTools(server: McpServer): void {
     "delete_page",
     {
       description:
-        "Physically delete a file. For .md also deletes its .<stem>.assets/ folder, for .pdf also " +
-        "deletes its sidecar (companion cleanup is best-effort). Not undoable via history.",
+        "Physically delete a file, or an empty folder. For .md also deletes its .<stem>.assets/ " +
+        "folder, for .pdf also deletes its sidecar (companion cleanup is best-effort). Not " +
+        "undoable via history.",
       inputSchema: { path: z.string().describe(PATH_DESC) },
     },
     async ({ path }) => {
@@ -540,7 +546,9 @@ export function registerTools(server: McpServer): void {
   server.registerTool(
     "pin_version",
     {
-      description: "Pin the latest version of a page as a labeled checkpoint in its history.",
+      description:
+        "Pin the latest version of a page: appends a pin row that retention pruning never " +
+        "removes (it can still be deleted explicitly with delete_version).",
       inputSchema: { path: z.string().describe(PATH_DESC) },
     },
     async ({ path }) => {
@@ -726,7 +734,7 @@ export function registerTools(server: McpServer): void {
         "outcome: on pathCollision re-call with overwrite: true, on conflict merge the returned " +
         "texts yourself and re-call with merged_content.",
       inputSchema: {
-        remote_url: z.string().describe("Base URL of the remote server"),
+        remote_url: z.string().describe("Base URL of the remote server, e.g. http://host:40704"),
         remote_path: z.string().describe("Path on the remote, root-prefixed, e.g. work/notes/foo.md"),
         target_root: z.string().describe("Local root name where a NEW file lands"),
         remote_token: z.string().optional().describe("Remote server auth token (required off-loopback)"),

@@ -63,6 +63,8 @@ export type Entry = {
   wikilinks?: string[];
   size: number;
   mtime: number;
+  /** Serialized only as false, on the excluded rows of an all listing. */
+  coconote?: boolean;
 };
 
 export type HistoryRow = { ts: number; save_type: string };
@@ -186,8 +188,10 @@ export class Vault {
     }
   }
 
-  async listEntries(): Promise<Entry[]> {
-    const res = await this.request(`${this.url()}/.file`);
+  /** Vault listing. `all` adds the supported files not in the Coconote
+   *  index (the app's All view), their rows carrying coconote: false. */
+  async listEntries(all = false): Promise<Entry[]> {
+    const res = await this.request(`${this.url()}/.file${all ? "?all=1" : ""}`);
     if (!res.ok) await this.fail("list vault", res);
     return (await res.json()) as Entry[];
   }
@@ -305,7 +309,7 @@ export function remoteVault(url: string, token: string | undefined, label: strin
 export const localVault = new Vault(baseUrl, token);
 const local = localVault; // short alias for the delegate lines below
 
-export const listEntries = () => local.listEntries();
+export const listEntries = (all?: boolean) => local.listEntries(all);
 export const listUnderPrefix = (prefix: string) => local.listUnderPrefix(prefix);
 export const readFile = (path: string) => local.readFile(path);
 export const readFileOrNull = (path: string) => local.readFileOrNull(path);

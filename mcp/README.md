@@ -52,7 +52,7 @@ network.
 
 | Tool | Arguments | Does |
 | --- | --- | --- |
-| `list_pages` | `prefix?` | Vault listing mapped to `{path, title, tags, headings, wikilinks, size, mtime}`, dir rows dropped. `prefix` narrows to one folder subtree. |
+| `list_pages` | `prefix?`, `all?` | Vault listing mapped to `{path, title, tags, headings, wikilinks, size, mtime}`, dir rows dropped. `prefix` narrows to one folder subtree. `all: true` adds the supported files not in the Coconote index (the app's All view), their rows marked `included: false`. |
 | `search_pages` | `query` | Case-insensitive filter over path / title / tags / headings (the same fields the app filter uses). |
 | `read_page` | `path` | `{content, id, lastModified}` of a page (id from frontmatter / sidecar metadata, mtime from `X-Last-Modified`). Errors on `.pdf` and points at `read_pdf_text`. |
 | `edit_page` | `path`, `edits[{old_str, new_str}]` | Targeted replacements over live collab. Every `old_str` must match exactly once (progressively), otherwise nothing is applied. |
@@ -60,7 +60,7 @@ network.
 | `create_page` | `path`, `content?` | New markdown page with `coconote: true` and no id. Flips the key on an existing excluded file, errors when already included. |
 | `create_folder` | `path` | `PUT ?type=dir`. |
 | `set_included` | `path`, `included` | md: flips frontmatter `coconote`. pdf: flips or creates the sidecar (fresh include sidecars get a generated id, like the app). |
-| `delete_page` | `path` | Physical delete plus best-effort companion cleanup (md assets folder, pdf sidecar). |
+| `delete_page` | `path` | Physical delete of a file or an empty folder, plus best-effort companion cleanup (md assets folder, pdf sidecar). |
 | `import_file` | `source`, `dest_path`, `include?` | Copy a local file or URL into the vault (50MB cap). `include` (default true): md gets `coconote: true` ensured, `.pdf` gets its include sidecar. `false`: raw bytes only. |
 | `add_image` | `page_path`, `source`, `name?` | Upload an image (25MB cap) into the page's `.<stem>.assets/` folder with name dedupe, returns the `![[name]]` snippet. |
 | `page_history` | `path`, `ts?` | Version list for the page's id, or one snapshot's text with `ts`. |
