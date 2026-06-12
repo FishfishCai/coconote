@@ -30,6 +30,23 @@
   pass unless the user explicitly asks to simplify them. Tests elsewhere
   in the repo are in scope.
 
+## Change workflow
+
+Every change batch goes through these steps, in this order:
+
+1. Implement. Code follows the introduction/ spec, and behavior changes
+   update the spec in the same batch (keep spec wording terse).
+2. Simplify pass over the touched area (rules above).
+3. Feature verification: update .claude/feature/FEATURES.md and its tests
+   for the new or changed behavior, then run the affected suites (the
+   full suite before a release) and fix until green.
+4. Periphery check: .gitignore coverage, the three version manifests,
+   .github/workflows, README.
+5. Staged commits (one concern per commit), push.
+6. Release only: fast-forward main, tag vX.Y.Z matching the manifests,
+   push the tag, then watch the GitHub release workflow until every
+   asset is attached. Debug failures immediately.
+
 ## Written content characters
 
 - Applies to natural-language prose you produce: documentation, the
