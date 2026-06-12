@@ -16,7 +16,7 @@ The file index has three views, each occupying its own URL:
 
 **Filter**: one filter input, shared across all three views (the text persists when you switch view). Plain text matching, no special syntax. The match scope covers folder names, file names, tags (each segment of a hierarchical tag like `a/b`, see [[file]]), titles, and headings inside files. Matching files plus the file trees they belong to are shown.
 
-### Export Site
+## Export Site
 
 The **Export Site** header button (between the filter and the setting button, label "Exporting..." while running) downloads `coconote-site.zip`: every included page as a read-only static website with the same Path / Tag / Graph views. md pages become HTML with relative links, pdfs carry their highlights baked in (see [[pdf]]). The site omits Setting, the Included/All toggle, context menus, and all editing. Unzip onto any static host (or open `index.html` from disk) and it works as-is. Pages whose bytes can't be fetched (for example a dead remote) are skipped and reported in a notice.
 
@@ -51,11 +51,11 @@ Rename, Remove, and Delete appear only on sub-folders, never on a configured roo
 - **Rename**: prompts for a new path and filename inside the same root (the leading root name is fixed). Any `[[wikilink]]` pointing at the old name is rewritten to point at the new one.
 - **Remove**: the file stays on disk, but its `coconote` flips to `false` and it disappears from the index.
 - **Push**: pushes the file to a remote (see [[history]]).
-- **Download**: saves the raw file as-is to a location you pick: the md source for an md row, the original pdf (no baked highlights) for a pdf row.
+- **Download**: saves the raw file as-is: the md source for an md row, the original pdf (no baked highlights) for a pdf row.
 - **Export**: downloads to the local machine, never written into the vault. md downloads a single self-contained `.html` (styles, fonts, images, and math all inlined) that works fully offline (print it from a browser to get a PDF). pdf downloads a copy with the highlights baked into the pages (see [[pdf]]).
 - **Delete**: permanently deletes the file and its assets folder after confirmation.
 
-Download and Export save via the browser's save dialog when available, otherwise as a plain download.
+Download, Export, and Export Site save via the OS save dialog when the browser has one, otherwise as a plain download. Cancelling the dialog saves nothing.
 
 Url-mounted remote rows are read-only and get **Pull** in place of Push (see [[history]]): a remote file offers Pull, Download, and Export, a remote folder only Pull.
 

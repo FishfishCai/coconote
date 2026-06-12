@@ -36,7 +36,7 @@ Bind custom keybindings. The panel lists every configurable action with its curr
 
 Conflict handling: if a combination is already used by another action, the UI highlights both rows and blocks saving until one of them is rebound.
 
-Saved to `localStorage["coconote.userPrefs"].shortcuts`. Only Coconote's custom navigation and mode actions are rebindable. Markdown-editing keys (`Tab` / `Enter` / `Backspace`) and system-level shortcuts (undo / redo / copy-paste / find / cursor motion, etc.) use the defaults and cannot be rebound.
+Saved to `localStorage["coconote.userPrefs"].shortcuts`. Only Coconote's own actions (the list below) are rebindable. Markdown-editing keys (`Tab` / `Enter` / `Backspace`) and system-level shortcuts (undo / redo / copy-paste / find / cursor motion, etc.) use the defaults and cannot be rebound.
 
 Rebindable actions:
 
