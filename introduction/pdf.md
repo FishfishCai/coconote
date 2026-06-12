@@ -17,7 +17,7 @@ The PDF reader supports the following:
     - **change colour**: changes the highlight colour (yellow, green, blue, pink, or orange).
     - **remove**: deletes the highlight along with its anchor and comment.
 
-**Export as PDF** (see [[content]]) downloads a copy with the highlights drawn into the pages. The vault file is untouched.
+**Export PDF** (see [[content]]) downloads a copy with the highlights drawn into the pages. The vault file is untouched.
 
 All of a PDF's data lives in one sidecar **`.<name>.json`** beside it (so `paper.pdf` pairs with `.paper.json`): the four common fields (see [[file]]) plus highlights, anchors, and comments. Its shape:
 

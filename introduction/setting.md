@@ -44,8 +44,8 @@ Rebindable actions:
 - **Open version history panel**: default `Cmd / Ctrl + Shift + H`.
 - **Pin current version** (keeps a version from being auto-deleted by retention, see [[history]]): default `Cmd / Ctrl + Shift + P`.
 - **Open PDF metadata panel** (only active in the PDF viewer, see [[pdf]]): default `Cmd / Ctrl + Shift + M`.
-- **Export as PDF** (the open page, in the md editor or the PDF viewer, see [[content]]): default `Cmd / Ctrl + Shift + E`.
-- **Export as HTML** (the open page, md editor only): default `Cmd / Ctrl + Shift + X`.
+- **Export PDF** (the open page, in the md editor or the PDF viewer, see [[content]]): default `Cmd / Ctrl + Shift + E`.
+- **Export HTML** (the open page, md editor only): default `Cmd / Ctrl + Shift + X`.
 - **Back to previous page**: default `Cmd / Ctrl + Shift + B`.
 - **Forward to next page**: default `Cmd / Ctrl + Shift + F`.
 - **Open Content** (the Content page): default `Cmd / Ctrl + Shift + C`.

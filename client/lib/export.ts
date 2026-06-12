@@ -1,4 +1,4 @@
-// Export as PDF / Export as HTML (content.md Right-click menu,
+// Export PDF / Export HTML (content.md Right-click menu,
 // setting.md Shortcut). Every byte is assembled client-side from the
 // existing GET endpoints and handed to the browser as a download -
 // nothing is ever written into the vault, and the same path works for

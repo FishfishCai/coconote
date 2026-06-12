@@ -65,7 +65,7 @@ ipcMain.handle("coconote_apply_config_path", async (_event, args) => {
   app.exit(0);
 });
 
-// Export as PDF (client/lib/export.ts): render the self-contained HTML
+// Export PDF (client/lib/export.ts): render the self-contained HTML
 // the client assembled in a hidden window and return the printToPDF
 // bytes. A temp file (not a data: URL) keeps loadFile's file: origin so
 // document.fonts settles normally.
