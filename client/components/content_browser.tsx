@@ -80,14 +80,14 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
               className={displayMode === "included" ? "on" : ""}
               onClick={() => setDisplayMode("included")}
             >
-              Coconote files only
+              Coconote
             </button>
             <button
               type="button"
               className={displayMode === "all" ? "on" : ""}
               onClick={() => setDisplayMode("all")}
             >
-              All supported files
+              All
             </button>
           </div>
         )}

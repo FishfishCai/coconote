@@ -22,10 +22,10 @@ Path view arranges files as a folder tree, drilling down by each page's logical 
 
 ### Display mode toggle
 
-The top of Path view has a toggle: "**Coconote files only**" / "**All supported files**".
+The Content header shows a toggle while Path view is active: "**Coconote**" / "**All**".
 
-- **Coconote files only** (default): only files marked `coconote: true` are shown (in a md frontmatter, or in a pdf's sidecar, see [[file]]).
-- **All supported files**: every md and pdf inside the root is listed. Files not included in Coconote appear greyed out: clicking does not open them, and the only right-click menu item is **Include in Coconote**.
+- **Coconote** (default): only files marked `coconote: true` are shown (in a md frontmatter, or in a pdf's sidecar, see [[file]]).
+- **All**: every md and pdf inside the root is listed. Files not included in Coconote appear greyed out: clicking does not open them, and the only right-click menu item is **Include in Coconote**.
 
 ### Right-click menu
 

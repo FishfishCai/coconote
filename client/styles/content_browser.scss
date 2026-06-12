@@ -91,9 +91,9 @@
       &:last-child { border-right: 0; }
       &:hover { color: var(--text-normal); background: var(--background-secondary-alt); }
       &.on {
-        color: var(--text-normal);
+        color: var(--text-accent);
         background: var(--background-secondary);
-        font-weight: 500;
+        font-weight: 600;
       }
     }
   }
