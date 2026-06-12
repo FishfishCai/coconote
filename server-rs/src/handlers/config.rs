@@ -256,17 +256,30 @@ fn rebuild_live_space(app: &AppState, resolved: Vec<crate::space::RootConfig>) -
     } else {
         base
     };
-    // Orphan sweep on every (possibly-new) root, just like boot does.
-    for r in &resolved {
-        let (j, a) = crate::orphan::sweep_root(&r.path);
-        if j + a > 0 {
-            tracing::info!(
-                "orphan sweep at {}: {j} sidecar, {a} assets removed (live reload)",
-                r.path.display()
-            );
-        }
-    }
+    // Orphan sweep only on roots NEW to this swap: surviving roots were
+    // already swept at boot or when they were added, and the sweep is a
+    // full recursive walk that takes seconds on large or iCloud-backed
+    // folders. It is pure cleanup of dot-hidden sidecars, so it runs on
+    // a blocking thread after the swap instead of stalling the PATCH
+    // response (a remove sweeps nothing and returns immediately).
+    let prev = app.live.load();
+    let added: Vec<PathBuf> = resolved
+        .iter()
+        .filter(|r| !prev.roots.values().any(|p| Path::new(p) == r.path))
+        .map(|r| r.path.clone())
+        .collect();
     app.live.store(Arc::new(LiveSpace { roots: pretty, space }));
+    for path in added {
+        tokio::task::spawn_blocking(move || {
+            let (j, a) = crate::orphan::sweep_root(&path);
+            if j + a > 0 {
+                tracing::info!(
+                    "orphan sweep at {}: {j} sidecar, {a} assets removed (live reload)",
+                    path.display()
+                );
+            }
+        });
+    }
     Ok(())
 }
 
