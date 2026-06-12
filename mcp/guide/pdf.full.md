@@ -1,8 +1,8 @@
 # PDF
 
 The PDF reader renders the binary and stores every annotation in the sidecar.
-A highlight is saved from a text selection plus a colour. Right-clicking a
-highlight in the app can:
+A highlight is saved from a text selection plus a colour. Clicking a
+highlight in the app opens a menu that can:
 
 - **anchor / rename anchor**: names the highlight (or renames it). A named
   highlight becomes a jump target written `[[paper.pdf%<name>]]`, where `%`

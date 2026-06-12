@@ -5,7 +5,8 @@
       or drop it. Version history is keyed by it.
     - `coconote`: only the lowercase literal `true` includes the file in Coconote.
       Anything else (false, missing, a string) excludes it.
-    - `title`: display name, also matches in search and wikilink resolution. Defaults to filename.
+    - `title`: display name, also matches in search and wikilink resolution. Defaults to the
+      filename without its extension.
     - `tag`: list of tags, `/` marks hierarchy (`research/algebra`). Multiple allowed.
     - `prereq`: md only, list of prerequisite pages in wikilink syntax.
 - Markdown assets: `notes/foo.md` pairs with `notes/.foo.assets/`. A page may only embed
@@ -14,6 +15,8 @@
   data and follows it on rename/move/delete. Shape:
   `{"metadata": {"id", "coconote", "title", "tag"}, "highlights": [], "anchors": [], "comments": []}`
 - A new md file is included automatically. A PDF starts with no sidecar and must be included
-  explicitly (set_included / import_file create the sidecar).
-- Excluding (`coconote: false`) keeps the file and its companion on disk.
+  explicitly (set_included / import_file create the sidecar). Re-including an excluded pdf
+  flips the existing sidecar's flag in place, keeping its id, title, and tags.
+- Excluding flips `coconote` to `false` in place: the flag line stays, the file and its
+  companion stay on disk, so re-including restores everything.
 - A companion whose md/pdf is gone is an orphan, deleted at server startup.

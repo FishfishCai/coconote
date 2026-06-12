@@ -29,11 +29,11 @@ Append a position marker after `name`. Four markers:
   hyphen, colon, and slash, the first character must be a letter or
   underscore, and it contains no spaces. So `[[note@anchor]]` targets the
   `@anchor` written in `note`.
-- `:label`: jumps to a callout block. A callout is opened with
-  `::: keyword:label` (where `keyword` is the callout type, see the markdown
-  guide). For example a block opened with `::: note:intro` is targeted by
-  `[[note:intro]]`. A numeric form `:3` jumps to the 3rd numbered callout on
-  the page (numbering is defined in the markdown guide).
+- `:label`: jumps to a callout block opened with `::: keyword:label` (where
+  `keyword` is the callout type, see the markdown guide). Only the label is
+  matched, so `[[note:intro]]` targets the callout labeled `intro` in `note`,
+  whatever its keyword. A numeric form `:3` jumps to the 3rd numbered callout
+  on the page (numbering is defined in the markdown guide).
 - `%name`: jumps to a PDF highlight named `name`. Only valid for `.pdf`
   links. For example `[[paper.pdf%name]]` (highlight naming rules in the pdf
   guide).

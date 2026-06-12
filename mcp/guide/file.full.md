@@ -19,8 +19,8 @@ live in the frontmatter. In a PDF they live in the `.<name>.json` sidecar
   included in Coconote. Any other value (`false`, missing, a string) is
   excluded. See "Including and removing" below.
 - **title**: a display name shown instead of the filename, and treated like
-  the filename when searching or resolving links. Starts equal to the
-  filename.
+  the filename when searching or resolving links. Starts as the filename
+  without its extension.
 - **tag**: a list of tags that classify the file. Multiple are allowed, and
   `/` marks hierarchy, for example `research/algebra`. No depth limit and no
   reserved names.
@@ -79,20 +79,25 @@ from the PDF metadata panel in the app.
 ## Including and removing
 
 A new markdown file is included automatically (`coconote: true` is written
-for you). A PDF starts with no sidecar, so it must be included explicitly,
-which creates the sidecar. Ways to include an existing file:
+for you). A PDF starts with no sidecar, so it must be included explicitly.
+Edit the flag where it lives, or use the set_included tool. Either way the
+effect on disk is the same:
 
-- Set `coconote: true` yourself: edit a markdown file's frontmatter, or
-  create a PDF's `.<name>.json` with `coconote: true` in its `metadata`
-  (the set_included tool does both).
-- Markdown only: create a file at an existing markdown file's path. Coconote
-  does not duplicate it, it flips that file's `coconote` to `true`.
-
-To remove a file, set `coconote: false` (set_included with included false).
-Its companion (assets folder or sidecar) is kept.
+- **Include, markdown**: `coconote` flips to `true` in the frontmatter. A
+  missing key is added, and a file with no frontmatter gets a fresh block.
+  Creating a file at an excluded markdown file's path also includes it
+  instead of overwriting.
+- **Include, PDF**: an existing sidecar gets its `coconote` flipped to
+  `true` in place, keeping its id, title, and tags. With no sidecar, one is
+  created with fresh metadata.
+- **Remove, either kind**: `coconote` flips to `false` (set_included with
+  included false). The file stays on disk and keeps the flag line, and its
+  companion (assets folder or sidecar) is kept, so re-including restores
+  everything.
 
 ## Orphan files
 
 A companion left without its file (a `.<name>.json` or `.<name>.assets/`
-whose `.pdf` or `.md` is gone) is an orphan. The server deletes orphans when
-it scans the root folders at startup.
+whose `.pdf` or `.md` is gone) is an orphan. The server sweeps each root
+folder and deletes its orphans, at startup and again for any root added
+while running.

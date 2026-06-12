@@ -9,7 +9,7 @@
 - Position markers, appended after `name`:
     - `#heading` jumps to a heading (H1-H4 text).
     - `@anchor` jumps to an `@anchor` written in the target body.
-    - `:label` jumps to the callout opened with `::: kind:label` (`:3` = 3rd numbered callout).
+    - `:label` jumps to the callout labeled `label`, whatever its kind (`:3` = 3rd numbered callout).
     - `%name` jumps to a named PDF highlight, only on `.pdf` links: `[[paper.pdf%name]]`.
 - Anchor names: letters, digits, `_`, `-`, `:`, `/`, first char a letter or `_`, no spaces.
 - Marker only (`[[#heading]]`, `[[@anchor]]`) targets the current file.

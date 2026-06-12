@@ -35,8 +35,8 @@ Backslash escapes a marker so it renders literally:
 
 Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four
 spaces. Each level uses the next marker in a cycle: unordered runs `• ◦ ▪ ‣`,
-ordered runs `1. a. i. A.`. Ordered items are numbered by position, so the
-exact digits you type are ignored.
+ordered runs `1. a. i. A.`. An ordered item keeps the number you type,
+restyled to its level's marker.
 
 ```markdown
 - one
@@ -45,14 +45,28 @@ exact digits you type are ignored.
             - four
 
 1. first
-   2. second
-       3. third
-           4. fourth
+    1. second
+        1. third
+            1. fourth
+```
+
+## Table
+
+A table uses GFM pipe syntax: a header row, a delimiter row of dashes, then
+body rows. Colons in the delimiter row set column alignment: `:---` left,
+`:---:` center, `---:` right.
+
+```markdown
+| Name | Score |
+| :--- | ---: |
+| Ada  | 100  |
+| Bob  | 42   |
 ```
 
 ## Quote Block
 
-A quote block uses `>`, and stacking `>` markers nests it deeper.
+A quote block uses `>`. Only the first `>` on each line acts as the quote
+marker, any further `>` on the line renders as plain text.
 
 ```markdown
 > outer
@@ -122,7 +136,7 @@ $$
 ## Callout
 
 A callout opens with `::: keyword`, optionally followed by `:label`, and
-closes with `:::` (or a run of more than four colons). The optional `:label`
+closes with a line of three or more colons. The optional `:label`
 shows in the callout's title as `(label)`. There are twelve kinds:
 `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`,
 `proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six
