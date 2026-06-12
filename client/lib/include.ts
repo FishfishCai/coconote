@@ -1,5 +1,5 @@
-// "Include in Coconote" actions for content.md right-click on
-// non-admitted files. Md path -> flip `coconote: true` in frontmatter
+// "Include" actions for content.md right-click on non-admitted
+// files. Md path -> flip `coconote: true` in frontmatter
 // (or create one if missing). Pdf path -> write a sidecar with
 // coconote:true in `metadata` (file.md + pdf.md sidecar shape).
 

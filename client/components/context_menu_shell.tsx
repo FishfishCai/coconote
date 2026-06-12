@@ -14,6 +14,11 @@ type Props = {
   children: ComponentChildren;
 };
 
+/** Thin rule between menu groups (content.md grouped menu template). */
+export function MenuSeparator() {
+  return <div className="coconote-context-menu-sep" />;
+}
+
 export function ContextMenuShell({ x, y, onClose, children }: Props) {
   useDismissOnOutside(onClose);
   const { ref, x: mx, y: my } = useMenuPosition(x, y);

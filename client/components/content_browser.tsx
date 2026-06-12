@@ -80,7 +80,7 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
               className={displayMode === "included" ? "on" : ""}
               onClick={() => setDisplayMode("included")}
             >
-              Coconote
+              Included
             </button>
             <button
               type="button"

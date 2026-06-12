@@ -47,7 +47,12 @@ const initialUiOptions: UiOptions = {
 type CurrentPage = { path: Path; meta: PageMeta };
 type Modal =
   | { kind: "prompt"; message: string; defaultValue: string; callback: (v: string | undefined) => void }
-  | { kind: "confirm"; message: string; callback: (v: boolean) => void }
+  | {
+    kind: "confirm";
+    message: string;
+    okOnly?: boolean;
+    callback: (v: boolean) => void;
+  }
   | null;
 
 type PdfViewerState = { path: string; anchor?: string } | null;
@@ -201,6 +206,23 @@ export class MainUI {
     });
   }
 
+  /** One-button informational modal (notices, failure reports).
+   *  Reuses the Confirm modal with Cancel hidden. */
+  notice(message: string): Promise<void> {
+    return new Promise((resolve) => {
+      this.setters.setModal({
+        kind: "confirm",
+        message,
+        okOnly: true,
+        callback: () => {
+          this.setters.setModal(null);
+          this.client.focus();
+          resolve();
+        },
+      });
+    });
+  }
+
   ViewComponent() {
     const [current, setCurrent] = useState<CurrentPage | undefined>(undefined);
     const [unsavedChanges, setUnsavedChanges] = useState(false);
@@ -287,7 +309,11 @@ export class MainUI {
           />
         )}
         {modal?.kind === "confirm" && (
-          <Confirm message={modal.message} callback={modal.callback} />
+          <Confirm
+            message={modal.message}
+            okOnly={modal.okOnly}
+            callback={modal.callback}
+          />
         )}
         <div id="coconote-content">
           {/* 32px draggable strip for Electron's hidden-inset title bar

@@ -1,9 +1,13 @@
-// Folder right-click menu (content.md Right-click menu -> Folder): New
-// Markdown / New Folder (create under this folder), Include in Coconote
-// (admit every supported file under it), Push (local) / Pull (remote)
-// batch sync, Rename / Remove / Delete (non-root local only - roots are
-// renamed/dropped via Setting). Ops in lib/page_ops.ts + lib/include.ts.
+// Folder right-click menu (content.md Right-click menu -> Folder).
+// Grouped template: New Markdown / New Folder, Include (N) when N
+// excluded files sit under the folder (local roots only), Rename /
+// Remove, Push (local) / Pull (remote) batch sync, Delete alone.
+// Rename / Remove / Delete are non-root local only (roots are renamed
+// or dropped via Setting) and broadcast over the included pages under
+// the folder. A folder with zero included pages (All view only) offers
+// only Include (N). Ops in lib/page_ops.ts + lib/include.ts.
 
+import { useEffect, useState } from "preact/hooks";
 import {
   createMarkdownPage,
   deleteFolder,
@@ -12,8 +16,9 @@ import {
   renameFolder,
 } from "../lib/page_ops.ts";
 import { fetchExcludedPaths, includePath } from "../lib/include.ts";
+import { errMessage } from "../lib/constants.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
-import { ContextMenuShell } from "./context_menu_shell.tsx";
+import { ContextMenuShell, MenuSeparator } from "./context_menu_shell.tsx";
 import type { ClientContext as Client } from "../core/context.ts";
 
 type Props = {
@@ -22,7 +27,7 @@ type Props = {
   folderPath: string;
   x: number;
   y: number;
-  /** Remote folders only support `Pull`, locals get New/New + Push. */
+  /** Remote folders only support `Pull`, locals get the full template. */
   isRemote: boolean;
   onClose(): void;
   onChanged(): void;
@@ -47,6 +52,24 @@ export function FolderContextMenu(
   // rename/remove live in Setting, so the destructive items are hidden.
   const isRoot = !folderPath.includes("/");
 
+  // Excluded supported files under this folder, for the Include (N)
+  // label and the Rename warning. null while the listing loads. Local
+  // roots only: remotes expose no excluded data.
+  const [excludedUnder, setExcludedUnder] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (isRemote) return;
+    let cancelled = false;
+    void fetchExcludedPaths()
+      .then((all) => {
+        if (cancelled) return;
+        setExcludedUnder(all.filter((p) => p.startsWith(`${folderPath}/`)));
+      })
+      .catch(() => {/* listing failed: no Include item */});
+    return () => {
+      cancelled = true;
+    };
+  }, [isRemote, folderPath]);
+
   // On-disk paths of every local page under this folder. Drives the
   // recursive folder ops.
   const fullPathsUnder = (): string[] =>
@@ -57,6 +80,10 @@ export function FolderContextMenu(
       )
       .map((p) => nameToFsPath(p.name));
 
+  // content.md: a failed menu action reports in a modal, never silently.
+  const fail = (action: string, e: unknown) =>
+    client.ui.notice(`${action} failed: ${errMessage(e)}`);
+
   const onNewMarkdown = async () => {
     const raw = await client.ui.prompt("New markdown filename:", "");
     if (!raw) return onClose();
@@ -65,16 +92,21 @@ export function FolderContextMenu(
     const target = (folderPath ? `${folderPath}/${cleaned}` : cleaned) + ".md";
     try {
       // content.md: same-named file on disk with coconote:false -> flip
-      // the key instead of overwriting the user's body. An ALREADY
-      // included file is left untouched (no bogus edit row).
+      // the key instead of overwriting the user's body, with a notice.
+      // An ALREADY included file is left untouched (no bogus edit row).
       const result = await createMarkdownPage(target);
       if (result === "already-included") {
-        await client.ui.confirm(`${target} already exists in Coconote.`);
+        await client.ui.notice(`${target} already exists in Coconote.`);
       } else {
+        if (result === "admitted") {
+          await client.ui.notice(
+            `${target} already existed on disk and was included instead of created.`,
+          );
+        }
         onChanged();
       }
     } catch (e) {
-      console.error(`New markdown failed: ${e}`);
+      await fail("New markdown", e);
     }
     onClose();
   };
@@ -91,32 +123,24 @@ export function FolderContextMenu(
       await putDirectory(target);
       onChanged();
     } catch (e) {
-      console.error(`New folder failed: ${e}`);
+      await fail("New folder", e);
     }
     onClose();
   };
 
-  // content.md: include every supported file under the folder that is
-  // not yet included. Counted + confirmed first, because this writes
-  // frontmatter / sidecars into possibly many files at once.
-  const onIncludeAll = async () => {
+  // content.md: include every excluded supported file under the folder.
+  // Confirmed first, because this writes frontmatter / sidecars into
+  // possibly many files at once.
+  const onIncludeAll = async (targets: string[]) => {
+    const ok = await client.ui.confirm(
+      `Include ${targets.length} file(s) under ${folderPath} into Coconote?`,
+    );
+    if (!ok) return onClose();
     try {
-      const targets = (await fetchExcludedPaths())
-        .filter((p) => p.startsWith(`${folderPath}/`));
-      if (targets.length === 0) {
-        await client.ui.confirm(
-          `Every supported file under ${folderPath} is already in Coconote.`,
-        );
-        return onClose();
-      }
-      const ok = await client.ui.confirm(
-        `Include ${targets.length} file(s) under ${folderPath} into Coconote?`,
-      );
-      if (!ok) return onClose();
       for (const p of targets) await includePath(p);
       onChanged();
     } catch (e) {
-      console.error(`Include folder failed: ${e}`);
+      await fail("Include", e);
     }
     onClose();
   };
@@ -131,11 +155,21 @@ export function FolderContextMenu(
     if (!raw) return onClose();
     const cleaned = raw.trim().replace(/^\/+|\/+$/g, "");
     if (!cleaned || cleaned === rest) return onClose();
+    const newFolder = rootPrefix + cleaned;
+    // content.md: only the included pages move, warn when excluded
+    // files would stay behind.
+    if (excludedUnder && excludedUnder.length > 0) {
+      const ok = await client.ui.confirm(
+        `Rename ${folderPath} to ${newFolder}? ` +
+          `${excludedUnder.length} files not in Coconote will stay in the old folder.`,
+      );
+      if (!ok) return onClose();
+    }
     try {
-      await renameFolder(folderPath, rootPrefix + cleaned, fullPathsUnder());
+      await renameFolder(folderPath, newFolder, fullPathsUnder());
       onChanged();
     } catch (e) {
-      console.error(`Rename folder failed: ${e}`);
+      await fail("Rename folder", e);
     }
     onClose();
   };
@@ -149,21 +183,24 @@ export function FolderContextMenu(
       await removeFolderFromIndex(fullPathsUnder());
       onChanged();
     } catch (e) {
-      console.error(`Remove folder failed: ${e}`);
+      await fail("Remove folder", e);
     }
     onClose();
   };
 
   const onDelete = async () => {
+    const targets = fullPathsUnder();
+    // content.md: Delete states its actual scope - the included pages.
     const ok = await client.ui.confirm(
-      `Delete ${folderPath} and everything in it? This cannot be undone.`,
+      `Delete ${targets.length} Coconote pages under ${folderPath}? ` +
+        `Files not in Coconote stay on disk.`,
     );
     if (!ok) return onClose();
     try {
-      await deleteFolder(folderPath, fullPathsUnder());
+      await deleteFolder(folderPath, targets);
       onChanged();
     } catch (e) {
-      console.error(`Delete folder failed: ${e}`);
+      await fail("Delete folder", e);
     }
     onClose();
   };
@@ -177,33 +214,61 @@ export function FolderContextMenu(
     onClose();
   };
 
+  if (isRemote) {
+    return (
+      <ContextMenuShell x={x} y={y} onClose={onClose}>
+        <button type="button" onClick={onPull}>Pull</button>
+      </ContextMenuShell>
+    );
+  }
+
+  const includeItem = excludedUnder && excludedUnder.length > 0
+    ? (
+      <button type="button" onClick={() => onIncludeAll(excludedUnder)}>
+        Include ({excludedUnder.length})
+      </button>
+    )
+    : null;
+
+  // Fully-excluded folder (subtree holds zero included pages, possible
+  // only in the All display mode): Include is the only sane action, so
+  // it is the only item. Hold the menu until the listing arrives.
+  if (fullPathsUnder().length === 0) {
+    if (!includeItem) return null;
+    return (
+      <ContextMenuShell x={x} y={y} onClose={onClose}>
+        {includeItem}
+      </ContextMenuShell>
+    );
+  }
+
   return (
     <ContextMenuShell x={x} y={y} onClose={onClose}>
-      {isRemote
-        ? <button type="button" onClick={onPull}>Pull</button>
-        : (
-          <>
-            <button type="button" onClick={onNewMarkdown}>New Markdown</button>
-            <button type="button" onClick={onNewFolder}>New Folder</button>
-            <button type="button" onClick={onIncludeAll}>
-              Include in Coconote
-            </button>
-            {isRoot
-              ? <button type="button" onClick={onPush}>Push</button>
-              // Same action order as the file menu (Rename, Remove,
-              // Push, Delete).
-              : (
-                <>
-                  <button type="button" onClick={onRename}>Rename</button>
-                  <button type="button" onClick={onRemove}>Remove</button>
-                  <button type="button" onClick={onPush}>Push</button>
-                  <button type="button" className="danger" onClick={onDelete}>
-                    Delete
-                  </button>
-                </>
-              )}
-          </>
-        )}
+      <button type="button" onClick={onNewMarkdown}>New Markdown</button>
+      <button type="button" onClick={onNewFolder}>New Folder</button>
+      {includeItem && (
+        <>
+          <MenuSeparator />
+          {includeItem}
+        </>
+      )}
+      <MenuSeparator />
+      {!isRoot && (
+        <>
+          <button type="button" onClick={onRename}>Rename</button>
+          <button type="button" onClick={onRemove}>Remove</button>
+          <MenuSeparator />
+        </>
+      )}
+      <button type="button" onClick={onPush}>Push</button>
+      {!isRoot && (
+        <>
+          <MenuSeparator />
+          <button type="button" className="danger" onClick={onDelete}>
+            Delete
+          </button>
+        </>
+      )}
     </ContextMenuShell>
   );
 }

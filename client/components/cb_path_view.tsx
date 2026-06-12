@@ -1,7 +1,8 @@
 // Path view: the vault as a Finder-style folder tree keyed on the
 // page's on-disk path. First segment = a root (`main`, `@label/...`),
 // each further `/` opens a folder, leaves are pages. Right-click a
-// page row -> New / Rename / Remove / Delete (file-manager style).
+// row -> the grouped context menu (content_context_menu.tsx for files,
+// folder_context_menu.tsx for folders).
 
 import { useEffect, useMemo, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
@@ -15,6 +16,7 @@ import {
   type PushTargetChoice,
 } from "./sync_modals.tsx";
 import { fetchExcludedPaths, includePath } from "../lib/include.ts";
+import { errMessage } from "../lib/constants.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
 import type { SyncListings } from "../lib/sync_core.ts";
 import { toPath } from "../lib/ref.ts";
@@ -259,7 +261,7 @@ export function CbPathView({ client, allPages, filter, displayMode }: Props) {
       });
       refresh();
     } catch (e) {
-      console.error(`Include failed: ${e}`);
+      await client.ui.notice(`Include failed: ${errMessage(e)}`);
     }
   };
 

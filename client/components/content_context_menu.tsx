@@ -1,13 +1,16 @@
 // Right-click menu for a content-browser Path-view file row (Tag view
-// is read-only). content.md Right-click menu: .md or .pdf -> Rename /
-// Remove / Delete, plus Push (local) or Pull (remote), plus Export as
-// PDF / HTML (HTML for md only). Rename rewrites every [[wikilink]] to
-// the old name. Dispatch-only: lib/page_ops.ts and lib/export.ts.
+// is read-only). content.md Right-click menu: a row not in Coconote
+// offers only Include. An included row gets the grouped template:
+// Rename / Remove, then Push (local) or Pull (remote) + Export PDF /
+// Export HTML (HTML for md only), then Delete alone. Rename rewrites
+// every [[wikilink]] to the old name. Dispatch-only: lib/page_ops.ts
+// and lib/export.ts.
 
 import { exportHtml, exportPdfOfMd, exportPdfOfPdf } from "../lib/export.ts";
 import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
+import { errMessage } from "../lib/constants.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
-import { ContextMenuShell } from "./context_menu_shell.tsx";
+import { ContextMenuShell, MenuSeparator } from "./context_menu_shell.tsx";
 import type { ClientContext as Client } from "../core/context.ts";
 
 type Props = {
@@ -17,8 +20,8 @@ type Props = {
   y: number;
   /** Local files get `Push`, remote files `Pull` (content.md push/pull). */
   isRemote: boolean;
-  /** Set by "show all supported files" mode for non-admitted rows.
-   *  content.md: only "Include in Coconote" is offered. */
+  /** Set by the All display mode for non-admitted rows.
+   *  content.md: only "Include" is offered. */
   isExcluded: boolean;
   onClose(): void;
   onChanged(): void;
@@ -45,6 +48,10 @@ export function ContentContextMenu(
   const fullPath = nameToFsPath(pageName);
   const isMd = fullPath.toLowerCase().endsWith(".md");
 
+  // content.md: a failed menu action reports in a modal, never silently.
+  const fail = (action: string, e: unknown) =>
+    client.ui.notice(`${action} failed: ${errMessage(e)}`);
+
   // Remove flips the include flag (md frontmatter / pdf sidecar), the
   // file stays on disk.
   const onRemove = async () => {
@@ -52,7 +59,7 @@ export function ContentContextMenu(
       await removeFromIndex(fullPath);
       onChanged();
     } catch (e) {
-      console.error(`Remove failed: ${e}`);
+      await fail("Remove", e);
     }
     onClose();
   };
@@ -80,7 +87,7 @@ export function ContentContextMenu(
       await renamePage(fullPath, newFullPath);
       onChanged();
     } catch (e) {
-      console.error(`Rename failed: ${e}`);
+      await fail("Rename", e);
     }
     onClose();
   };
@@ -94,7 +101,7 @@ export function ContentContextMenu(
       await deletePage(fullPath);
       onChanged();
     } catch (e) {
-      console.error(`Delete failed: ${e}`);
+      await fail("Delete", e);
     }
     onClose();
   };
@@ -117,7 +124,7 @@ export function ContentContextMenu(
       if (isMd) await exportPdfOfMd(client, pageName);
       else await exportPdfOfPdf(client, pageName);
     } catch (e) {
-      console.error(`Export failed: ${e}`);
+      await fail("Export", e);
     }
     onClose();
   };
@@ -126,33 +133,32 @@ export function ContentContextMenu(
     try {
       await exportHtml(client, pageName);
     } catch (e) {
-      console.error(`Export failed: ${e}`);
+      await fail("Export", e);
     }
     onClose();
   };
 
   const exportButtons = (
     <>
-      <button type="button" onClick={onExportPdf}>Export as PDF</button>
+      <button type="button" onClick={onExportPdf}>Export PDF</button>
       {isMd && (
-        <button type="button" onClick={onExportHtml}>Export as HTML</button>
+        <button type="button" onClick={onExportHtml}>Export HTML</button>
       )}
     </>
   );
 
-  // file.md / content.md: excluded rows (visible only in "show all
-  // supported files" mode) expose a single action - Include in Coconote.
+  // file.md / content.md: excluded rows (visible only in the All
+  // display mode) expose a single action - Include.
   if (isExcluded) {
     return (
       <ContextMenuShell x={x} y={y} onClose={onClose}>
-        <button type="button" onClick={onIncludeClick}>
-          Include in Coconote
-        </button>
+        <button type="button" onClick={onIncludeClick}>Include</button>
       </ContextMenuShell>
     );
   }
 
-  // Remote rows are read-only locally: the spec authorizes only `pull`.
+  // Remote rows are read-only locally: the spec authorizes only `pull`,
+  // so the Rename / Remove and Delete groups are absent.
   return (
     <ContextMenuShell x={x} y={y} onClose={onClose}>
       {isRemote
@@ -166,8 +172,10 @@ export function ContentContextMenu(
           <>
             <button type="button" onClick={onRename}>Rename</button>
             <button type="button" onClick={onRemove}>Remove</button>
+            <MenuSeparator />
             <button type="button" onClick={onSync}>Push</button>
             {exportButtons}
+            <MenuSeparator />
             <button type="button" className="danger" onClick={onDelete}>
               Delete
             </button>

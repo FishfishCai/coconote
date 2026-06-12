@@ -49,9 +49,12 @@ export function Prompt({
 
 export function Confirm({
   message,
+  okOnly,
   callback,
 }: {
   message: string;
+  /** Notice mode: hide Cancel, the modal just informs. */
+  okOnly?: boolean;
   callback: (value: boolean) => void;
 }) {
   const okButtonRef = useRef<HTMLButtonElement>(null);
@@ -77,13 +80,15 @@ export function Confirm({
           >
             Ok
           </Button>
-          <Button
-            onActivate={() => {
-              callback(false);
-            }}
-          >
-            Cancel
-          </Button>
+          {!okOnly && (
+            <Button
+              onActivate={() => {
+                callback(false);
+              }}
+            >
+              Cancel
+            </Button>
+          )}
         </div>
       </div>
     </Modal>
