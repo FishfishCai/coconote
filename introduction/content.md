@@ -16,6 +16,10 @@ The file index has three views, each occupying its own URL:
 
 **Filter**: one filter input, shared across all three views (the text persists when you switch view). Plain text matching, no special syntax. The match scope covers folder names, file names, tags (each segment of a hierarchical tag like `a/b`, see [[file]]), titles, and headings inside files. Matching files plus the file trees they belong to are shown.
 
+### Export Site
+
+The **Export Site** header button (between the filter and the setting button, label "Exporting..." while running) downloads `coconote-site.zip`: every included page as a read-only static website with the same Path / Tag / Graph views. md pages become HTML with relative links, pdfs carry their highlights baked in (see [[pdf]]). The site omits Setting, the Included/All toggle, context menus, and all editing. Unzip onto any static host (or open `index.html` from disk) and it works as-is. Pages whose bytes can't be fetched (for example a dead remote) are skipped and reported in a notice.
+
 ## Path view
 
 Path view arranges files as a folder tree, drilling down by each page's logical path (see [[welcome]]). Top-level folders are the configured roots. Local roots show their name from the roots config. Url-mounted roots show as `root<url>` so they stand out from local ones.

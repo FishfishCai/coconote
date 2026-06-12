@@ -48,8 +48,9 @@ function blobToDataUri(blob: Blob): Promise<string> {
 }
 
 /** Read a vault file's bytes, routing `@<label>/` paths to the matching
- *  remote space. Returns null when the file can't be fetched. */
-async function readVaultFile(
+ *  remote space. Returns null when the file can't be fetched. Shared
+ *  with the site export (lib/site_export.ts). */
+export async function readVaultFile(
   client: Client,
   path: string,
 ): Promise<Uint8Array | null> {

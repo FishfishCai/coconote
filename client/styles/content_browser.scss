@@ -153,6 +153,7 @@
     input[type="range"] { flex: 1; }
   }
   .coconote-cb-filter,
+  .coconote-cb-export-site,
   .coconote-cb-settings {
     @include shared.shell-header-control;
     transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
@@ -169,6 +170,7 @@
     border-color: var(--text-accent);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-accent) 22%, transparent);
   }
+  .coconote-cb-export-site,
   .coconote-cb-settings {
     cursor: pointer;
     color: var(--text-muted);
@@ -176,6 +178,15 @@
       color: var(--text-normal);
       background: var(--background-secondary-alt);
       border-color: var(--background-modifier-border-hover);
+    }
+  }
+  .coconote-cb-export-site:disabled {
+    cursor: default;
+    opacity: 0.6;
+    &:hover {
+      color: var(--text-muted);
+      background: transparent;
+      border-color: var(--background-modifier-border);
     }
   }
 

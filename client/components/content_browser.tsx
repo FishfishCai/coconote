@@ -1,14 +1,18 @@
 // Content browser shell - owns the view selector (Path / Tag / Graph),
-// the Path view's display-mode toggle, the shared filter input, and the
-// Settings button. Each view lives in cb_<name>_view.tsx and is
-// switched in-place.
+// the Path view's display-mode toggle, the shared filter input, the
+// Export Site button, and the Settings button. Each view lives in
+// cb_<name>_view.tsx and is switched in-place.
 
 import { useEffect, useState } from "preact/hooks";
 import type { ClientContext as Client } from "../core/context.ts";
 import { CbTagView } from "./cb_tag_view.tsx";
 import { CbPathView, type DisplayMode } from "./cb_path_view.tsx";
 import { CbGraphView } from "./cb_graph_view.tsx";
+import { errMessage } from "../lib/constants.ts";
 import { useLocalStorageState } from "../lib/dom_hooks.ts";
+
+// Skipped-page notices list at most this many paths.
+const MAX_SKIPPED_LISTED = 5;
 
 type ViewMode = "path" | "tag" | "graph";
 const VIEW_KEY = "coconote.contentBrowserView";
@@ -44,6 +48,28 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
     DISPLAY_MODE_KEY,
     () => "included",
   );
+  const [exporting, setExporting] = useState(false);
+
+  const runExportSite = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      // Lazy import keeps fflate + the render pipeline out of the boot path.
+      const { exportSite } = await import("../lib/site_export.ts");
+      const { skipped } = await exportSite(client);
+      if (skipped.length > 0) {
+        const list = skipped.slice(0, MAX_SKIPPED_LISTED).join(", ") +
+          (skipped.length > MAX_SKIPPED_LISTED ? ", ..." : "");
+        void client.ui.notice(
+          `Site exported, ${skipped.length} pages skipped: ${list}`,
+        );
+      }
+    } catch (e) {
+      void client.ui.notice(`Export Site failed: ${errMessage(e)}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Tag chips set initialFilter. Sync prop -> state so a second chip
   // click works while the browser is already mounted.
@@ -99,6 +125,15 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
             value={filter}
             onInput={(e) => setFilter(e.currentTarget.value)}
           />
+          <button
+            type="button"
+            className="coconote-cb-export-site"
+            disabled={exporting}
+            onClick={() => void runExportSite()}
+            title="Export Site"
+          >
+            {exporting ? "Exporting..." : "Export Site"}
+          </button>
           <button
             type="button"
             className="coconote-cb-settings"
