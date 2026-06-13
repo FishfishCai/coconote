@@ -5,7 +5,7 @@ edit a Coconote vault through the existing server HTTP / WebSocket API:
 vault listing and search, page CRUD, live collab edits, includes, imports,
 images, version history, rename with wikilink refactor, PDF text extraction
 and highlights, cross-server push / pull, and exports (single page, raw
-download, or the whole vault as a deployable static site).
+download, or a deployable static site of the whole vault or one folder).
 
 ## Quickstart
 
@@ -112,7 +112,7 @@ stdout carries only the MCP JSON-RPC stream, all logging goes to stderr.
 | `push_page` | `path`, `target_url`, `target_root`, `target_token?`, `overwrite?`, `merged_content?` | history.md Push: direct upload / fast-forward / diff3 auto-merge. Structured outcomes: `pathCollision` (re-call with `overwrite: true`) and `conflict` (returns base/local/remote texts, re-call with `merged_content` to commit both sides as `save_type=push`). |
 | `pull_page` | `remote_url`, `remote_path`, `target_root`, `remote_token?`, `overwrite?`, `merged_content?` | Mirror of `push_page` (history.md Pull), landing remote pages in a local root with `save_type=pull` rows. |
 | `export_page` | `path`, `dest` | The app's Export action. `.md`: one self-contained offline HTML file (CSS / fonts / vault images inlined, static math, wikilinks degraded), `dest` must end in `.html`. `.pdf`: a copy with its sidecar highlights baked into the pages, `dest` must end in `.pdf`. Written to `dest` on the MCP host machine (absolute path, parent dir created). Returns `{dest, bytes}`. |
-| `export_site` | `dest` | The app's Export Site action: the whole vault as a static website (Path / Tag / Graph view shells, per-page HTML with relative wikilinks, PDFs with highlights baked, referenced images, shared css / js / fonts). Written into the `dest` directory on the MCP host machine (absolute path, created when missing, must be empty - deploy pipelines clean first). One call regenerates a site ready for any static host. Returns `{dest, files, bytes, skipped}`. |
+| `export_site` | `dest`, `folder?` | The app's Export action: a static website (Path / Tag / Graph view shells, per-page HTML with relative wikilinks, PDFs with highlights baked, referenced images, shared css / js / fonts). Without `folder` the whole vault (header Export), with `folder` just that subtree (folder Export, wikilinks leaving the folder degrade to spans). Written into the `dest` directory on the MCP host machine (absolute path, created when missing, must be empty - deploy pipelines clean first). One call regenerates a site ready for any static host. Returns `{dest, files, bytes, skipped}`. |
 | `download_page` | `path`, `dest` | The app's Download action: the original `.md` / `.pdf` bytes as-is, no export baking. `dest` must keep the source extension (parent dir created). Returns `{dest, bytes}`. |
 | `get_syntax` | `topic` | Full syntax reference for `markdown` / `wikilink` / `file` / `pdf` (from `guide/*.full.md`). |
 

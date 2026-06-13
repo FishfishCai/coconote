@@ -914,19 +914,25 @@ export function registerTools(server: McpServer): void {
     "export_site",
     {
       description:
-        "Export the whole vault as a static website (the app's Export Site action): Path / Tag " +
-        "/ Graph view shells, every included page (.md as HTML with relative wikilinks, .pdf " +
-        "with highlights baked), referenced images, and the shared viewer assets. Writes the " +
-        "site into the dest directory on the MCP host machine, ready for any static host. One " +
-        "call regenerates the full site. Returns {dest, files, bytes, skipped}.",
+        "Export a static website (the app's header Export, or folder Export when folder is " +
+        "set): Path / Tag / Graph view shells, every included page (.md as HTML with relative " +
+        "wikilinks, .pdf with highlights baked), referenced images, and the shared viewer " +
+        "assets. Without folder the whole vault is built. With folder only that subtree is, " +
+        "and wikilinks pointing outside the folder degrade to plain spans. Writes the site " +
+        "into the dest directory on the MCP host machine, ready for any static host. One call " +
+        "regenerates the full site. Returns {dest, files, bytes, skipped}.",
       inputSchema: {
         dest: z.string().describe(
           "Absolute destination directory on the machine running the MCP server " +
             "(created when missing, must be empty)",
         ),
+        folder: z.string().optional().describe(
+          "Vault folder path to scope the site to, root-prefixed, e.g. main/notes " +
+            "(omit for the whole vault)",
+        ),
       },
     },
-    async ({ dest }) => json(await exportSite(dest)),
+    async ({ dest, folder }) => json(await exportSite(dest, folder)),
   );
 
   server.registerTool(
