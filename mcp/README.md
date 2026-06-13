@@ -11,7 +11,8 @@ download, or a deployable static site of the whole vault or one folder).
 
 Get the server bundle one of two ways:
 
-- Repo checkout: `cd mcp && npm ci && npm run build` produces
+- Repo checkout: run `npm ci` at the repo root first (the bundle reuses
+  client source), then `cd mcp && npm ci && npm run build` produces
   `mcp/dist/index.js` (plus `dist/pdf.worker.mjs` next to it).
 - Release artifact: unzip `coconote-mcp-vX.Y.Z.zip` from a GitHub
   release. It contains `coconote-mcp/index.js`, `pdf.worker.mjs`, and
@@ -65,7 +66,11 @@ and puts a `coconote-mcp` command on PATH (same env vars).
 
 ## Build
 
+The bundle inlines client source (markdown parser, export core), so the
+repo-root deps must be installed first.
+
 ```bash
+npm ci          # repo root: client deps the bundle reuses
 cd mcp
 npm ci
 npm run check   # tsc --noEmit
