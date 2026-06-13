@@ -10,8 +10,7 @@ import { isAbsolute } from "node:path";
 import * as api from "./api";
 import { withRoom } from "./collab";
 import { applySplices, computeSplices, type Splice } from "./diff";
-import { buildHtmlExport, buildPdfExport, writeDest } from "./export";
-import { exportSite } from "./site";
+import { writeDest } from "./dest";
 import * as fm from "./frontmatter";
 import { findQuote, loadPdfPages } from "./pdf";
 import { movePageFile, refactorLinks, renamePage } from "./rename";
@@ -877,63 +876,6 @@ export function registerTools(server: McpServer): void {
   const DEST_DESC =
     "Absolute destination file path on the machine running the MCP server " +
     "(missing parent directories are created)";
-
-  server.registerTool(
-    "export_page",
-    {
-      description:
-        "Export a page (the app's Export action). A .md page becomes one self-contained " +
-        "offline HTML file (app CSS, fonts, and vault images inlined, math statically " +
-        "rendered, cross-page wikilinks degraded to plain spans, light theme - print it from " +
-        "a browser to get a PDF), dest must end in .html. A .pdf page becomes a copy with its " +
-        "sidecar highlights baked into the pages (semi-transparent rects), dest must end in " +
-        ".pdf. Writes the result to dest on the MCP host machine, creating the parent " +
-        "directory when missing, and returns {dest, bytes}.",
-      inputSchema: {
-        path: z.string().describe(PATH_DESC),
-        dest: z.string().describe(DEST_DESC),
-      },
-    },
-    async ({ path, dest }) => {
-      if (!isMd(path) && !isPdf(path)) {
-        throw new Error(`export_page exports .md and .pdf pages, got ${path}`);
-      }
-      const wantExt = isMd(path) ? ".html" : ".pdf";
-      if (!dest.toLowerCase().endsWith(wantExt)) {
-        throw new Error(
-          `a ${isMd(path) ? ".md page exports as self-contained HTML" : ".pdf page exports as a baked PDF"}, ` +
-            `so dest must end in ${wantExt}, got: ${dest}`,
-        );
-      }
-      const data = isMd(path) ? await buildHtmlExport(path) : await buildPdfExport(path);
-      return json({ dest, bytes: await writeDest(dest, data) });
-    },
-  );
-
-  server.registerTool(
-    "export_site",
-    {
-      description:
-        "Export a static website (the app's header Export, or folder Export when folder is " +
-        "set): Path / Tag / Graph view shells, every included page (.md as HTML with relative " +
-        "wikilinks, .pdf with highlights baked), referenced images, and the shared viewer " +
-        "assets. Without folder the whole vault is built. With folder only that subtree is, " +
-        "and wikilinks pointing outside the folder degrade to plain spans. Writes the site " +
-        "into the dest directory on the MCP host machine, ready for any static host. One call " +
-        "regenerates the full site. Returns {dest, files, bytes, skipped}.",
-      inputSchema: {
-        dest: z.string().describe(
-          "Absolute destination directory on the machine running the MCP server " +
-            "(created when missing, must be empty)",
-        ),
-        folder: z.string().optional().describe(
-          "Vault folder path to scope the site to, root-prefixed, e.g. main/notes " +
-            "(omit for the whole vault)",
-        ),
-      },
-    },
-    async ({ dest, folder }) => json(await exportSite(dest, folder)),
-  );
 
   server.registerTool(
     "download_page",

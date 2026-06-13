@@ -4,16 +4,15 @@ An MCP (Model Context Protocol) stdio server that lets AI agents read and
 edit a Coconote vault through the existing server HTTP / WebSocket API:
 vault listing and search, page CRUD, live collab edits, includes, imports,
 images, version history, rename with wikilink refactor, PDF text extraction
-and highlights, cross-server push / pull, and exports (single page, raw
-download, or a deployable static site of the whole vault or one folder).
+and highlights, cross-server push / pull, and raw file download.
 
 ## Quickstart
 
 Get the server bundle one of two ways:
 
-- Repo checkout: run `npm ci` at the repo root first (the bundle reuses
-  client source), then `cd mcp && npm ci && npm run build` produces
-  `mcp/dist/index.js` (plus `dist/pdf.worker.mjs` next to it).
+- Repo checkout: `cd mcp && npm ci && npm run build` produces
+  `mcp/dist/index.js` (plus `dist/pdf.worker.mjs` next to it). The bundle
+  is standalone, so no repo-root install is needed.
 - Release artifact: unzip `coconote-mcp-vX.Y.Z.zip` from a GitHub
   release. It contains `coconote-mcp/index.js`, `pdf.worker.mjs`, and
   this README, no build step needed.
@@ -66,11 +65,10 @@ and puts a `coconote-mcp` command on PATH (same env vars).
 
 ## Build
 
-The bundle inlines client source (markdown parser, export core), so the
-repo-root deps must be installed first.
+The bundle is standalone: it imports nothing from the repo root, so
+everything resolves from `mcp`'s own `node_modules`.
 
 ```bash
-npm ci          # repo root: client deps the bundle reuses
 cd mcp
 npm ci
 npm run check   # tsc --noEmit
@@ -116,8 +114,6 @@ stdout carries only the MCP JSON-RPC stream, all logging goes to stderr.
 | `remove_pdf_highlight` | `path`, `highlight_id` | Remove the highlight from the sidecar over live collab, cascading to its anchors and comments (the app's right-click Remove highlight). Unknown ids error with the existing ids listed. |
 | `push_page` | `path`, `target_url`, `target_root`, `target_token?`, `overwrite?`, `merged_content?` | history.md Push: direct upload / fast-forward / diff3 auto-merge. Structured outcomes: `pathCollision` (re-call with `overwrite: true`) and `conflict` (returns base/local/remote texts, re-call with `merged_content` to commit both sides as `save_type=push`). |
 | `pull_page` | `remote_url`, `remote_path`, `target_root`, `remote_token?`, `overwrite?`, `merged_content?` | Mirror of `push_page` (history.md Pull), landing remote pages in a local root with `save_type=pull` rows. |
-| `export_page` | `path`, `dest` | The app's Export action. `.md`: one self-contained offline HTML file (CSS / fonts / vault images inlined, static math, wikilinks degraded), `dest` must end in `.html`. `.pdf`: a copy with its sidecar highlights baked into the pages, `dest` must end in `.pdf`. Written to `dest` on the MCP host machine (absolute path, parent dir created). Returns `{dest, bytes}`. |
-| `export_site` | `dest`, `folder?` | The app's Export action: a static website (Path / Tag / Graph view shells, per-page HTML with relative wikilinks, PDFs with highlights baked, referenced images, shared css / js / fonts). Without `folder` the whole vault (header Export), with `folder` just that subtree (folder Export, wikilinks leaving the folder degrade to spans). Written into the `dest` directory on the MCP host machine (absolute path, created when missing, must be empty - deploy pipelines clean first). One call regenerates a site ready for any static host. Returns `{dest, files, bytes, skipped}`. |
 | `download_page` | `path`, `dest` | The app's Download action: the original `.md` / `.pdf` bytes as-is, no export baking. `dest` must keep the source extension (parent dir created). Returns `{dest, bytes}`. |
 | `get_syntax` | `topic` | Full syntax reference for `markdown` / `wikilink` / `file` / `pdf` (from `guide/*.full.md`). |
 

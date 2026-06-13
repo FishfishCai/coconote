@@ -307,11 +307,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      # The mcp bundle reuses client source (the markdown parser, the
-      # export core), so esbuild resolves those files' deps from the repo
-      # root node_modules. Install root deps first, then mcp's own.
-      - name: Install root deps
-        run: npm ci
+      # The mcp bundle is standalone: it imports nothing from the repo
+      # root, so esbuild resolves every dep from mcp's own node_modules.
       - name: Build mcp bundle
         working-directory: mcp
         run: |
