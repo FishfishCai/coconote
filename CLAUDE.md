@@ -34,16 +34,31 @@
 
 Every change batch goes through these steps, in this order:
 
-1. Implement. Code follows the introduction/ spec, and behavior changes
-   update the spec in the same batch (keep spec wording terse).
-2. Simplify pass over the touched area (rules above).
-3. Feature verification: update .claude/feature/FEATURES.md and its tests
-   for the new or changed behavior, then run the affected suites (the
-   full suite before a release) and fix until green.
-4. Periphery check: .gitignore coverage, the three version manifests,
+1. Implement. Code follows the introduction/ spec.
+2. Simplify pass over the touched area (rules above). The bar: the
+   changed code is modular and clear, and it actually delivers every
+   requested feature in full (not a partial or stubbed version).
+3. Documentation pass, all three surfaces, before any feature run:
+   - introduction/ spec (the 10 files): the behavior the batch changed
+     is written, correct, and terse. Read the changed sections and fix
+     anything wrong, missing, mis-stated, or redundant. Spec is the
+     source of truth, so it leads the other two.
+   - .claude/feature/FEATURES.md: every new or changed behavior has a
+     row, every row is correct, nothing is duplicated or stale.
+   - mcp/: when the spec changed, propagate it. The guides (mcp/guide/)
+     must agree with the spec, and the principle holds that anything a
+     human can change through the UI the AI must be able to do through
+     an MCP tool. So check whether the batch needs a new or changed
+     tool, and add it. Read paths matter, mutations are mandatory.
+4. Feature verification: update .claude/feature/ tests for the new or
+   changed behavior. The FULL suite is run only ONCE, at the end, when
+   the code is frozen and will not change again. Running it earlier
+   wastes a cycle, because any later edit invalidates the result. Fix
+   until the full frozen-code run is green.
+5. Periphery check: .gitignore coverage, the three version manifests,
    .github/workflows, README.
-5. Staged commits (one concern per commit), push.
-6. Release only: fast-forward main, tag vX.Y.Z matching the manifests,
+6. Staged commits (one concern per commit), push.
+7. Release only: fast-forward main, tag vX.Y.Z matching the manifests,
    push the tag, then watch the GitHub release workflow until every
    asset is attached. Debug failures immediately.
 
