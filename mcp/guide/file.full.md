@@ -10,20 +10,18 @@ Markdown files and PDFs share the same four fields. In a markdown file they
 live in the frontmatter. In a PDF they live in the `.<name>.json` sidecar
 (see below).
 
-- **id**: auto-generated, and used for version tracking. It is 16 lowercase
-  Crockford base32 characters (alphabet `0123456789abcdefghjkmnpqrstvwxyz`,
-  which already omits the look-alike `i l o u`). On write it is regenerated
-  if it is missing or collides with another id in the vault. Editable, but
-  not recommended (the MCP tools refuse to change it).
+- **id**: auto-generated, used for version tracking. 16 lowercase Crockford
+  base32 characters (alphabet `0123456789abcdefghjkmnpqrstvwxyz`, omitting the
+  look-alike `i l o u`). Regenerated on write if missing or if it collides with
+  another id in the vault. Editable, but the MCP tools refuse to change it.
 - **coconote**: a boolean gate. Only `coconote: true` (lowercase) counts as
-  included in Coconote. Any other value (`false`, missing, a string) is
-  excluded. See "Including and removing" below.
-- **title**: a display name shown instead of the filename, and treated like
-  the filename when searching or resolving links. Starts as the filename
-  without its extension.
-- **tag**: a list of tags that classify the file. Multiple are allowed, and
-  `/` marks hierarchy, for example `research/algebra`. No depth limit and no
-  reserved names.
+  included, any other value (`false`, missing, a string) is excluded. See
+  "Including and removing".
+- **title**: display name shown instead of the filename, treated like the
+  filename when searching or resolving links. Starts as the filename without
+  its extension.
+- **tag**: list of tags classifying the file, `/` marks hierarchy
+  (`research/algebra`). No depth limit, no reserved names.
 
 ## Markdown
 
@@ -44,19 +42,17 @@ prereq: [...]           # prerequisite files
   wikilink guide for the syntax.
 
 If a markdown file references images, an `.<name>.assets/` folder is created
-beside it to hold them (none is created if it references no images). `<name>`
-is the basename without the `.md`, so `notes/foo.md` pairs with
-`notes/.foo.assets/`. The folder follows the file on rename, move, and
-delete. A markdown file may reference images only inside its own assets
-folder.
+beside it to hold them, with no images referenced no folder is created.
+`<name>` is the basename without the `.md`, so `notes/foo.md` pairs with
+`notes/.foo.assets/`. The folder follows the file on rename, move, and delete.
+A markdown file may reference images only inside its own assets folder.
 
 ## PDF
 
 A PDF carries a sidecar `.<name>.json`, where `<name>` is the basename
 without the `.pdf`, so `papers/foo.pdf` pairs with `papers/.foo.json`. The
 sidecar holds the common fields plus the PDF's highlights, anchors, and
-comments (see the pdf guide for those), and it follows the PDF on rename,
-move, and delete.
+comments (see the pdf guide). It follows the PDF on rename, move, and delete.
 
 ```json
 {
@@ -99,5 +95,5 @@ effect on disk is the same:
 
 A companion left without its file (a `.<name>.json` or `.<name>.assets/`
 whose `.pdf` or `.md` is gone) is an orphan. The server sweeps each root
-folder and deletes its orphans, at startup and again for any root added
-while running.
+folder and deletes its orphans, at startup and for any root added while
+running.

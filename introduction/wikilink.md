@@ -14,7 +14,7 @@ title: wikilink
 
 - `name` matches the page's **filename** (with the `.md` extension stripped) or the frontmatter `title`.
 - `path` is an optional disambiguation prefix. It can be a file-path segment (e.g. `path/to/`) or a tag prefix (e.g. `tag/`).
-- **Minimum-prefix principle**: if `name` is unique, write `[[name]]` directly. If it collides, add a prefix until it is unique. When both a filename match and a title match exist, the filename match wins (this is not treated as a collision). Autocomplete suggests candidates by this principle.
+- **Minimum-prefix principle**: if `name` is unique, write `[[name]]` directly. On collision, add a prefix until it is unique. A filename match outranks a title match (not treated as a collision). Autocomplete suggests candidates by this principle.
 - If the link matches more than one page, or none, it shows in **red** and is not clickable.
 
 ## Jumping to a position
@@ -22,9 +22,9 @@ title: wikilink
 Append a position marker after `name`. Four markers:
 
 - `#heading`: jumps to a markdown heading. Levels 1 through 4 (`#` to `####`) are targetable.
-- `@anchor`: jumps to a named anchor placed in the body. Create an anchor by writing `@name` in the body. The name uses letters, digits, underscore, hyphen, colon, and slash, the first character must be a letter or underscore, and it contains no spaces. So `[[note@anchor]]` targets the `@anchor` written in `note`.
-- `:label`: jumps to a callout block opened with `::: keyword:label` (where `keyword` is the callout type, see [[markdown]]). Only the label is matched, so `[[note:intro]]` targets the callout labeled `intro` in `note`, whatever its keyword. A numeric form `:3` jumps to the 3rd numbered callout on the page (numbering is defined in [[markdown]]).
-- `%name`: jumps to a PDF highlight named `name`. Only valid for `.pdf` links. For example `[[paper.pdf%name]]` (highlight naming rules in [[pdf]]).
+- `@anchor`: jumps to a named anchor placed in the body. Create an anchor by writing `@name` in the body. The name uses letters, digits, underscore, hyphen, colon, and slash, the first character must be a letter or underscore, and it contains no spaces.
+- `:label`: jumps to a callout block opened with `::: keyword:label` (see [[markdown]]). Only the label is matched, whatever the keyword. The numeric form `:3` jumps to the 3rd numbered callout on the page.
+- `%name`: jumps to a PDF highlight named `name`. Only valid for `.pdf` links (naming rules in [[pdf]]).
 
 Omit `name` and write only the position marker (e.g. `[[#heading]]`, `[[@anchor]]`) to target the **current file**. If the marker doesn't match anything, the link lands at the top of the file.
 

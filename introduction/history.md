@@ -6,9 +6,9 @@ title: history
 
 # History
 
-The server keeps a history database per vault, recording every write of every page. Each page can be more than one file: an md page is its body plus assets, a pdf page is the pdf plus its sidecar (see Storage model below). A page's identity is stored only in the `id:` field of its frontmatter (markdown) or sidecar (pdf), nowhere else.
+The server keeps a history database per vault, recording every write of every page. A page's identity is stored only in the `id:` field of its frontmatter (markdown) or sidecar (pdf), nowhere else.
 
-The history serves two uses: review and restore (covered by the Version history panel), and cross-vault sync via push and pull (covered by Push, Pull, and Merge), where it supplies the merge base.
+The history serves two uses: review and restore, and cross-vault sync via push and pull, where it supplies the merge base.
 
 ## Storage model
 
@@ -37,7 +37,7 @@ CREATE INDEX idx_versions_page ON versions(page_id, ts DESC);
 A page's full file set:
 
 - md page: the md body + every image under `.<filename>.assets/`
-- pdf page: the sidecar `.<filename>.json`. The PDF body itself never enters the history because it is never edited after import (frozen on import).
+- pdf page: the sidecar `.<filename>.json` (the PDF body itself never enters the history - it's frozen on import).
 
 The five `save_type` values:
 
@@ -60,7 +60,7 @@ Read each hash from the version row's manifest, fetch the blob from the content 
 Periodic pruning of history records:
 
 - The four types `create` / `push` / `pull` / `pin` are **never pruned**.
-- The `edit` type is pruned on a time window. In each bucket below "1 per X" means keep only the last edit of each X:
+- The `edit` type is pruned on a time window (each bucket keeps the last edit of its period):
     - Within the last hour: keep all
     - 1 hour to 1 day: 1 per hour
     - 1 to 7 days: 1 per day
@@ -76,19 +76,19 @@ At server startup, the history DB drops every `page_id` that no on-disk file cla
 - Left column: recorded versions, newest to oldest. Each row shows the timestamp and the `save_type` tag.
 - Right column: preview of the selected version. A diff block highlights the difference between this version and the current on-disk content, git-diff style (red for removed, green for added).
 - Bottom buttons:
-    - **Restore this version**: runs Restore on the selected version (see above), writing it back to disk and producing a new `edit` row.
+    - **Restore this version**: runs Restore on the selected version, producing a new `edit` row.
     - **Delete**: deletes that version row from the database. Any type can be deleted directly.
 
 The panel is indexed by `page_id`, so even if the file has been renamed, the full chain is visible.
 
-## Sync branching (push and pull)
+## Sync branching
 
-Push and pull share one branching logic, differing only in direction. Below, "source" is the side being sent from and "target" is the side being written to: for push the source is local and the target is remote, for pull the source is remote and the target is local.
+Push and pull share one branching logic, differing only in direction. "Source" is the side sent from, "target" the side written to: push is local -> remote, pull is remote -> local.
 
-After the target is chosen, the operation branches by how the target side already holds the page:
+After the target is chosen, the operation branches by how the target holds the page:
 
 - **A target file exists with the same page_id**:
-    - The target file equals the content of the local latest `push` / `pull` row (the merge base, see Merge): **fast-forward**, source content overwrites target. (That row is the last agreed-on common version, so if the target has not diverged from it, the source's newer content can be written directly.)
+    - Target file == content of the local latest `push` / `pull` row (the merge base, see Merge): **fast-forward**, source content overwrites target.
     - Otherwise: **merge** (see below).
 - **No same page_id, but the same relative path holds a same-named file**: a "confirm overwrite" dialog pops up, prompting per file, with an "apply the same choice to the rest" option.
 - **No same page_id, no path collision**: direct transfer (upload for push, download for pull).
@@ -115,18 +115,18 @@ On completion, the local history appends one `save_type = pull` row.
 
 ## Merge
 
-When push / pull detects that both sides have changes, a merge is triggered. The merge base is the content of the local latest `push` / `pull` row in the database for that page (the last version both sides agreed on).
+When push / pull detects that both sides have changes, a merge is triggered. The merge base is the content of the local latest `push` / `pull` row for that page, the last version both sides agreed on.
 
 ### Three-way diff
 
-The diff works chunk by chunk, a chunk being a contiguous region of the file as produced by the line-based diff.
+The diff works chunk by chunk, a chunk being a contiguous region produced by the line-based diff.
 
 1. diff base $\leftrightarrow$ local: $\Delta$L (the local-side change set)
 2. diff base $\leftrightarrow$ remote: $\Delta$R (the remote-side change set)
 3. Classify each chunk:
-    - Only $\Delta$L changed it: take the local version
-    - Only $\Delta$R changed it: take the remote version
-    - Both changed, in different (non-overlapping) regions: keep both changes
+    - Only $\Delta$L changed it: take local
+    - Only $\Delta$R changed it: take remote
+    - Both changed, non-overlapping regions: keep both
     - Both changed the same region: **conflict**, pop the MergeView for the user to decide
 
 No conflict -> auto-merge -> write to disk -> sync. With conflict, pop the MergeView.
@@ -145,4 +145,4 @@ On submit, both ends are aligned to the merged result:
 
 1. Write the merged result to the trigger side (push-triggered writes the remote, pull-triggered writes the local).
 2. Write the same content to the other side.
-3. Each side records one sync-marker row, of the same type the triggering operation appends (push-triggered: `save_type = push` on both sides, pull-triggered: `save_type = pull` on both sides). These are the same rows described under Push / Pull above, not extra ones.
+3. Each side records one sync-marker row of the triggering type (push: `save_type = push`, pull: `save_type = pull`). These are the rows described under Push / Pull above, not extra ones.

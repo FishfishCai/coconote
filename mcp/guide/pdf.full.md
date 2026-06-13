@@ -1,12 +1,12 @@
 # PDF
 
 The PDF reader renders the binary and stores every annotation in the sidecar.
-A highlight is saved from a text selection plus a colour. Clicking a
-highlight in the app opens a menu that can:
+A highlight is saved from a text selection plus a colour. Clicking a highlight
+in the app opens a menu that can:
 
 - **anchor / rename anchor**: names the highlight (or renames it). A named
-  highlight becomes a jump target written `[[paper.pdf%<name>]]`, where `%`
-  separates the file from the anchor name (see the wikilink guide).
+  highlight becomes a jump target written `[[paper.pdf%<name>]]` (see the
+  wikilink guide).
 - **add / edit comment**: adds or edits a comment, shown on hover.
 - **change colour**: changes the highlight colour (yellow, green, blue, pink,
   or orange).
@@ -46,7 +46,7 @@ Shape of each highlight:
 }
 ```
 
-Each rect is `{"x": ..., "y": ..., "w": ..., "h": ...}` in page fractions.
+Each rect is `{"x", "y", "w", "h"}` in page fractions from the top-left.
 
 ### anchors
 
@@ -67,7 +67,6 @@ A comment attached to a highlight:
 
 ## Collaboration and history
 
-The sidecar collaborates and is versioned exactly like a markdown body,
-because both ride the same per-file channel. Highlights, anchors, comments,
-and metadata sync live across open clients, and every save records a sidecar
-snapshot that can be restored.
+The sidecar collaborates and is versioned exactly like a markdown body.
+Highlights, anchors, comments, and metadata sync live across open clients, and
+every save records a sidecar snapshot that can be restored.

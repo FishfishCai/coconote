@@ -6,7 +6,7 @@ title: markdown
 
 # Markdown
 
-The markdown syntax Coconote renders. Each section pairs the source with its rendered result.
+The markdown editor supports the following basic features.
 
 ## Headings
 Four levels of headings.
@@ -31,7 +31,7 @@ Four inline marks:
 - `~~strike~~`: ~~strike~~
 - `==highlight==`: ==highlight==
 
-Bold, italic, and strike nest in any order, with either marker spelling:
+Bold, italic and strike can be combined in any order, with either marker spelling:
 - `***bold italic***`: ***bold italic***
 - `**~~bold strike~~**`: **~~bold strike~~**
 - `~~_strike italic_~~`: ~~_strike italic_~~
@@ -43,7 +43,7 @@ Backslash escapes a marker so it renders literally:
 
 ## Lists
 
-Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four spaces. Each level uses the next marker in a cycle: unordered runs `• ◦ ▪ ‣`, ordered runs `1. a. i. A.`. An ordered item keeps the number you type, restyled to its level's marker.
+Unordered uses `-`, ordered uses `1.`. Nesting is four spaces. Unordered counter cycles `• ◦ ▪ ‣`, ordered counter cycles `1. a. i. A.`. An ordered item keeps the number you type, restyled to its level's marker.
 
 ```markdown
 - one
@@ -69,7 +69,7 @@ Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four space
 
 ## Table
 
-A table uses GFM pipe syntax: a header row, a delimiter row of dashes, then body rows. Colons in the delimiter row set column alignment: `:---` left, `:---:` center, `---:` right. Render mode shows the table, and the source reappears when the cursor enters it.
+A table uses pipe syntax: a header row, a delimiter row of dashes, then body rows. Colons in the delimiter row set alignment: `:---` left, `:---:` center, `---:` right. The cursor entering the table reveals its source.
 
 ```markdown
 | Name | Score |
@@ -85,7 +85,7 @@ A table uses GFM pipe syntax: a header row, a delimiter row of dashes, then body
 
 ## Quote Block
 
-A quote block uses `>`. Only the first `>` on each line acts as the quote marker, any further `>` on the line renders as plain text. Click a quote block to reveal all of its `>` markers.
+A quote block uses `>`. Only the first `>` on each line is rendered as the marker, any further `>` renders as plain text. Click a quote block to reveal all of its `>` markers.
 
 ```markdown
 > outer
@@ -169,9 +169,9 @@ $$
 
 ## Callout
 
-A callout opens with `::: keyword`, optionally followed by `:label`, and closes with a line of three or more colons. The optional `:label` shows in the callout's title as `(label)`. There are twelve kinds: `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six (`definition` through `example`) share one counter that numbers them in order of appearance. `theorem`, `proposition`, `lemma`, `corollary`, and `proof` render their body in italic, the rest upright. `proof` ends with `∎`.
+A callout opens with `::: keyword[:label]` and closes with a line of three or more colons. The `:label` shows in the title as `(label)`. Twelve kinds: `definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six (`definition` through `example`) share one auto-incrementing counter. `theorem`, `proposition`, `lemma`, `corollary`, `proof` render their body in italic, the rest upright. `proof` ends with `∎`.
 
-One example per behavior (the other keywords look like one of these):
+One example per behavior:
 
 ::: definition
 Body of a counter callout, upright.

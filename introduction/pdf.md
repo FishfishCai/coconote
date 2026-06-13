@@ -9,7 +9,7 @@ title: pdf
 The PDF reader supports the following:
 
 - Continuous scrolling (mouse wheel / trackpad).
-- Zoom (`Cmd / Ctrl + +/-`), using the host window's zoom.
+- Browser-level zoom (`Cmd / Ctrl + +/-`).
 - Select text, then click a colour to save it as a highlight.
 - Clicking a highlight opens a menu:
     - **anchor / rename anchor**: names the highlight (or renames it). A named highlight becomes a jump target written `[[paper.pdf%<name>]]` (see [[wikilink]]).
@@ -73,4 +73,4 @@ While the PDF reader is open, **`Cmd / Ctrl + Shift + M`** opens a floating pane
 
 ## Collaboration and history
 
-The sidecar collaborates and is versioned exactly like a markdown body, because both ride the same per-file channel. Highlights, anchors, comments, and metadata sync live across open clients (see [[editor]]), and every save records a sidecar snapshot you can restore (see [[history]]).
+The sidecar collaborates and is versioned exactly like a markdown body. Highlights, anchors, comments, and metadata sync live across open clients (see [[editor]]), and every save records a sidecar snapshot you can restore (see [[history]]).

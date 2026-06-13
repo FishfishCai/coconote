@@ -34,9 +34,9 @@ Backslash escapes a marker so it renders literally:
 ## Lists
 
 Unordered lists use `-`, ordered lists use `1.`. Indent a sub-item by four
-spaces. Each level uses the next marker in a cycle: unordered runs `• ◦ ▪ ‣`,
-ordered runs `1. a. i. A.`. An ordered item keeps the number you type,
-restyled to its level's marker.
+spaces. Each level cycles a marker: unordered `• ◦ ▪ ‣`, ordered
+`1. a. i. A.`. An ordered item keeps the number you type, restyled to its
+level's marker.
 
 ```markdown
 - one
@@ -135,14 +135,13 @@ $$
 
 ## Callout
 
-A callout opens with `::: keyword`, optionally followed by `:label`, and
-closes with a line of three or more colons. The optional `:label`
-shows in the callout's title as `(label)`. There are twelve kinds:
-`definition`, `theorem`, `proposition`, `lemma`, `corollary`, `example`,
-`proof`, `remark`, `note`, `warning`, `tip`, `info`. The first six
-(`definition` through `example`) share one counter that numbers them in order
-of appearance. `theorem`, `proposition`, `lemma`, `corollary`, and `proof`
-render their body in italic, the rest upright. `proof` ends with `∎`.
+A callout opens with `::: keyword`, optionally `::: keyword:label`, and closes
+with a line of three or more colons. The `:label` shows in the title as
+`(label)`. Twelve kinds: `definition`, `theorem`, `proposition`, `lemma`,
+`corollary`, `example`, `proof`, `remark`, `note`, `warning`, `tip`, `info`.
+The first six (`definition` through `example`) share one counter numbering them
+in order of appearance. `theorem`, `proposition`, `lemma`, `corollary`, and
+`proof` render their body in italic, the rest upright. `proof` ends with `∎`.
 
 One example per behavior (the other keywords look like one of these):
 

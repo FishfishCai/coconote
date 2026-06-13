@@ -8,35 +8,26 @@ title: server
 
 Every Coconote interaction is plain HTTP or WebSocket.
 
-## Concepts
-
-- vault / space: interchangeable names for the file tree the server exposes, assembled from one or more named roots (the `rootPath` map in `/.health`).
-- page id / frontmatter: pages are markdown files with a YAML header (frontmatter). A page carries `id:` in that header, and history is keyed by this id rather than by path. See [[file]].
-- manifest: what one history snapshot stores for a page (its content plus metadata). See [[history]].
-- cross-server push / pull: Coconote can sync between two servers. The remote caller drives these writes (see `save_type` on PUT below).
-- Yjs: the CRDT library Coconote uses for real-time collab (see [[editor]]).
-- embedded client bundle: the web UI ships inside the server and is served from the same origin.
-
 ## API
 
-These endpoints can be called directly from a script (no native binding or IPC needed). All endpoints require `auth` token authentication (see [[welcome]]), except: loopback (`127.0.0.1`) bypasses it, and the health probe `/.health` is always reachable.
+These endpoints can be called directly from a script (no native binding or IPC needed). All endpoints require `auth` token authentication (see [[welcome]]), except loopback (`127.0.0.1`) bypasses it and the health probe `/.health` is always reachable.
 
 - `GET /.health`: returns `{app, version, pid, startedAt, rootPath}`. The desktop shell uses this to probe an existing server. Clients use it to verify a remote url is actually a coconote server.
-- `GET /.file`: lists every entry in the current vault. Returns an array. Each item is `{type: "file"|"dir", path, ...}`. File items also carry `page_id`, `title`, and `tag` (each omitted when empty), plus `size` and `mtime`, but no body or hash. Dir items carry no page fields (`size` and `mtime` are 0 for them).
-- `GET /.file?prefix=<dir-path>`: lists every file under that directory, as a flat array of path strings. Unlike the plain listing, dot-prefixed entries (assets folders, sidecars) are included.
+- `GET /.file`: lists every entry in the current vault. Returns an array. Each item is `{type: "file"|"dir", path, ...}`. File items also carry `page_id`, `title`, and `tag` (each omitted when empty), plus `size` and `mtime` (no body, no hash). Dir items carry no page fields, and their `size` and `mtime` are 0.
+- `GET /.file?prefix=<dir-path>`: lists every file under that directory as a flat array of path strings. Unlike the plain listing, dot-prefixed entries (assets folders, sidecars) are included.
 - `GET /.file/<path>`: reads a file. Body + `X-*` metadata headers.
 - `HEAD /.file/<path>`: same as GET but returns headers only (cheap, use when only metadata is needed).
 - `PUT /.file/<path>`: writes a file. Query: `save_type=edit|push|pull` tags the history type for this write (defaults to `edit`, with push / pull set by the cross-server caller). `type=dir` creates an empty directory (no body).
 - `DELETE /.file/<path>`: physically deletes the file or an empty directory.
-- `GET /.history/<page_id>`: without query, lists snapshots `[{ts, save_type}, ...]`. With `?ts=<ms>`, returns that snapshot's main file text (the md body, or the PDF sidecar) for the version history panel preview.
+- `GET /.history/<page_id>`: without query, lists snapshots `[{ts, save_type}, ...]`. With `?ts=<ms>`, returns that snapshot's main file text (md body, or PDF sidecar) for the version history panel preview.
 - `DELETE /.history/<page_id>?ts=<ms>`: deletes a single version row (any `save_type` can be deleted).
 - `POST /.history/<page_id>/restore?ts=<ms>`: writes that snapshot back to the current path and appends a `save_type = edit` row.
 - `POST /.history/<page_id>/pin`: clones the latest version row as a labeled checkpoint (same manifest, new ts, `save_type = pin`). Pins are not delete-protected.
-- `WS /.collab/<path>?token=<token>`: real-time collab over Yjs (sync + awareness). Binary frames only. See the WebSocket protocol section below.
+- `WS /.collab/<path>?token=<token>`: Yjs sync + awareness. Binary frames only, single-frame cap 16 MB.
 - `GET /.config`: returns the active config, including `configDir`, the directory currently holding `coconote.yaml`.
-- `PATCH /.config` with `{configDir}`: repoints `configDir` to a new location and triggers a self-restart so it takes effect (see [[setting]], Config file section).
+- `PATCH /.config` with `{configDir}`: repoints `configDir` and triggers a self-restart so it takes effect (see [[setting]], Config file section).
 
-History is indexed by page id (frontmatter `id:`), not by path. Files without an id (assets, sidecars, etc.) don't get history rows. Any GET that doesn't match the routes above falls back to serving the embedded client bundle (the web UI).
+History is indexed by page id (frontmatter `id:`), not by path. Files without an id (assets, sidecars, etc.) don't get history rows. Any GET that doesn't match the routes above falls back to the embedded client bundle (static fallback).
 
 ## File metadata protocol
 
@@ -53,7 +44,7 @@ GET /.file/notes/foo.md
 If-Modified-Since: 1717000000000
 ```
 
-The value is a millisecond epoch, not an RFC 7231 date (see `X-Last-Modified`). If the file's `last_modified` is no later than the given value, the server returns `304 Not Modified` (metadata headers only, empty body).
+The value is a millisecond epoch, not an RFC 7231 date (see `X-Last-Modified`). If the file's `last_modified` is no later than that value, the server returns `304 Not Modified` with metadata headers and an empty body.
 
 ## Optimistic concurrency on PUT
 
@@ -66,15 +57,13 @@ Content-Type: text/markdown
 
 If the file was modified after that millisecond value, the server returns `409 Conflict` with body `stale write` and current headers (see Errors). Omit the header for unconditional overwrite.
 
-## WebSocket protocol (collab)
+## WebSocket protocol
 
 ```
 ws://localhost:40704/.collab/notes/foo.md?token=<token>
 ```
 
-Coconote collab follows the Yjs sync + awareness standard directly, so clients can use `yjs` + `y-websocket` as-is without handling the wire format. Frames are binary Yjs updates.
-
-Single-frame cap: **16 MB**. The server closes the connection on overflow. Normal updates are far smaller, so hitting the cap usually means the page is too large and should be split.
+Coconote collab follows the Yjs sync + awareness standard directly, so clients can use `yjs` + `y-websocket` as-is without handling the wire format. Frames are binary Yjs updates. Single-frame cap **16 MB** - the server closes the connection on overflow (normal updates are far smaller, so hitting the cap usually means the page should be split).
 
 ## Errors
 
