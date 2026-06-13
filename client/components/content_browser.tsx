@@ -133,7 +133,8 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
             onClick={() => void runExportSite()}
             title="Export the vault as a static site"
           >
-            {exporting ? "Exporting..." : "Export"}
+            Export
+
           </button>
           <button
             type="button"
