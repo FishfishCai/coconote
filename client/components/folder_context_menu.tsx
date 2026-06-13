@@ -1,11 +1,13 @@
 // Folder right-click menu (content.md Right-click menu -> Folder).
-// Grouped template: New Markdown / New Folder, Include (N) when N
-// excluded files sit under the folder (local roots only), Rename /
-// Remove, Push (local) / Pull (remote) batch sync, Delete alone.
+// Grouped template: New Markdown / New Folder, then Rename / Include
+// (when excluded files sit under the folder, local only) / Remove, then
+// Push (local) / Pull (remote) + Download + Export, Delete alone.
 // Rename / Remove / Delete are non-root local only (roots are renamed
 // or dropped via Setting) and broadcast over the included pages under
-// the folder. A folder with zero included pages (All view only) offers
-// only Include (N). Ops in lib/page_ops.ts + lib/include.ts.
+// the folder. A root keeps Include in its own group after New Folder. A
+// folder with zero included pages (All view only) offers only Include.
+// Ops in lib/page_ops.ts + lib/include.ts, Download / Export in
+// lib/site_export.ts.
 
 import { useEffect, useState } from "preact/hooks";
 import {
@@ -16,8 +18,12 @@ import {
   renameFolder,
 } from "../lib/page_ops.ts";
 import { fetchExcludedPaths, includePath } from "../lib/include.ts";
+import {
+  downloadFolder,
+  exportFolderSite,
+  localFsPathsUnder,
+} from "../lib/site_export.ts";
 import { errMessage } from "../lib/constants.ts";
-import { nameToFsPath } from "../lib/path_url.ts";
 import { ContextMenuShell, MenuSeparator } from "./context_menu_shell.tsx";
 import type { ClientContext as Client } from "../core/context.ts";
 
@@ -52,9 +58,9 @@ export function FolderContextMenu(
   // rename/remove live in Setting, so the destructive items are hidden.
   const isRoot = !folderPath.includes("/");
 
-  // Excluded supported files under this folder, for the Include (N)
-  // label and the Rename warning. null while the listing loads. Local
-  // roots only: remotes expose no excluded data.
+  // Excluded supported files under this folder, for the Include item
+  // (shown only when any exist) and the Rename warning. null while the
+  // listing loads. Local only: remotes expose no excluded data.
   const [excludedUnder, setExcludedUnder] = useState<string[] | null>(null);
   useEffect(() => {
     if (isRemote) return;
@@ -72,13 +78,7 @@ export function FolderContextMenu(
 
   // On-disk paths of every local page under this folder. Drives the
   // recursive folder ops.
-  const fullPathsUnder = (): string[] =>
-    client.ui.viewState.allPages
-      .filter((p) =>
-        p.origin?.kind !== "remote" &&
-        (p.name === folderPath || p.name.startsWith(`${folderPath}/`))
-      )
-      .map((p) => nameToFsPath(p.name));
+  const fullPathsUnder = (): string[] => localFsPathsUnder(client, folderPath);
 
   // content.md: a failed menu action reports in a modal, never silently.
   const fail = (action: string, e: unknown) =>
@@ -133,7 +133,7 @@ export function FolderContextMenu(
   // possibly many files at once.
   const onIncludeAll = async (targets: string[]) => {
     const ok = await client.ui.confirm(
-      `Include ${targets.length} file(s) under ${folderPath} into Coconote?`,
+      `Include every file under ${folderPath} into Coconote?`,
     );
     if (!ok) return onClose();
     try {
@@ -214,6 +214,34 @@ export function FolderContextMenu(
     onClose();
   };
 
+  // Download / Export save to the local machine, never into the vault.
+  // Download copies the folder's included files raw (md + assets, pdf +
+  // sidecar), Export builds the subtree as a static site.
+  const onDownload = async () => {
+    try {
+      await downloadFolder(client, folderPath);
+    } catch (e) {
+      await fail("Download", e);
+    }
+    onClose();
+  };
+
+  const onExport = async () => {
+    try {
+      const { skipped } = await exportFolderSite(client, folderPath);
+      if (skipped.length > 0) {
+        const list = skipped.slice(0, 5).join(", ") +
+          (skipped.length > 5 ? ", ..." : "");
+        await client.ui.notice(
+          `Site exported, ${skipped.length} page(s) skipped: ${list}`,
+        );
+      }
+    } catch (e) {
+      await fail("Export", e);
+    }
+    onClose();
+  };
+
   if (isRemote) {
     return (
       <ContextMenuShell x={x} y={y} onClose={onClose}>
@@ -225,7 +253,7 @@ export function FolderContextMenu(
   const includeItem = excludedUnder && excludedUnder.length > 0
     ? (
       <button type="button" onClick={() => onIncludeAll(excludedUnder)}>
-        Include ({excludedUnder.length})
+        Include
       </button>
     )
     : null;
@@ -246,7 +274,8 @@ export function FolderContextMenu(
     <ContextMenuShell x={x} y={y} onClose={onClose}>
       <button type="button" onClick={onNewMarkdown}>New Markdown</button>
       <button type="button" onClick={onNewFolder}>New Folder</button>
-      {includeItem && (
+      {/* Root: Include keeps its own group (no Rename/Remove to join). */}
+      {isRoot && includeItem && (
         <>
           <MenuSeparator />
           {includeItem}
@@ -255,12 +284,16 @@ export function FolderContextMenu(
       <MenuSeparator />
       {!isRoot && (
         <>
+          {/* Non-root: Include sits between Rename and Remove. */}
           <button type="button" onClick={onRename}>Rename</button>
+          {includeItem}
           <button type="button" onClick={onRemove}>Remove</button>
           <MenuSeparator />
         </>
       )}
       <button type="button" onClick={onPush}>Push</button>
+      <button type="button" onClick={() => void onDownload()}>Download</button>
+      <button type="button" onClick={() => void onExport()}>Export</button>
       {!isRoot && (
         <>
           <MenuSeparator />

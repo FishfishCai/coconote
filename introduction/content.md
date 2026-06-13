@@ -16,9 +16,9 @@ The file index has three views, each occupying its own URL:
 
 **Filter**: one filter input, shared across all three views (the text persists when you switch view). Plain text matching, no special syntax. The match scope covers folder names, file names, tags (each segment of a hierarchical tag like `a/b`, see [[file]]), titles, and headings inside files. Matching files plus the file trees they belong to are shown.
 
-## Export Site
+## Export (header button)
 
-The **Export Site** header button (between the filter and the setting button, label "Exporting..." while running) downloads `coconote-site.zip`: every included page as a read-only static website with the same Path / Tag / Graph views. md pages become HTML with relative links, pdfs carry their highlights baked in (see [[pdf]]). The site omits Setting, the Included/All toggle, context menus, and all editing. Unzip onto any static host (or open `index.html` from disk) and it works as-is. Pages whose bytes can't be fetched (for example a dead remote) are skipped and reported in a notice.
+The **Export** header button (between the filter and the setting button, label "Exporting..." while running) downloads `coconote-site.zip`: the whole vault, every included page as a read-only static website with the same Path / Tag / Graph views. md pages become HTML with relative links, pdfs carry their highlights baked in (see [[pdf]]). The site omits Setting, the Included/All toggle, context menus, and all editing. Unzip onto any static host (or open `index.html` from disk) and it works as-is. Pages whose bytes can't be fetched (for example a dead remote) are skipped and reported in a notice.
 
 ## Path view
 
@@ -39,12 +39,14 @@ Every row is either not in Coconote (single item: **Include**) or in Coconote (t
 
 - **New Markdown**: prompts for a name and creates `<name>.md` in that folder. If a same-named file already exists but is excluded (`coconote: false`, see [[file]]), it is included instead of overwritten and a notice says so.
 - **New Folder**: creates a new folder under the folder.
-- **Include (N)**: shown only when N > 0 supported files under the folder are not yet included (local roots only). Includes all N after confirmation. A folder whose subtree holds no included pages (possible only in All view) offers only this item.
 - **Rename / Remove**: apply the file actions to every included page under the folder at once. Rename keeps the folder inside its root and warns when excluded files will stay in the old folder.
+- **Include**: between Rename and Remove on a sub-folder (its own group after New Folder on a root). Shown only when some supported file under the folder is not yet included (local only). Includes every such file under the folder after confirmation. A folder whose subtree holds no included pages (possible only in All view) offers only this item, nothing else.
 - **Push**: pushes every included page under the folder (see [[history]]).
+- **Download**: saves a raw copy of the folder's included files (md source / original pdf), each md page's image assets and each pdf's sidecar, zipped to a location you pick.
+- **Export**: builds the folder subtree as a static site, the same artifact as the whole-vault Export but scoped, with the folder's internal wikilinks kept relative (links pointing outside the folder become plain spans).
 - **Delete**: deletes every included page under the folder. The confirmation states how many Coconote pages that is and that files not in Coconote stay on disk.
 
-Rename, Remove, and Delete appear only on sub-folders, never on a configured root (a root is renamed or dropped only via Setting, see [[setting]]).
+Rename, Remove, and Delete appear only on sub-folders that hold at least one included page, never on a configured root (a root is renamed or dropped only via Setting, see [[setting]]) and never on a folder with no included pages (which offers only Include, as above). The three operate on the included pages just like Include, so they share the same gate.
 
 **`.md` and `.pdf`:**
 
@@ -55,7 +57,7 @@ Rename, Remove, and Delete appear only on sub-folders, never on a configured roo
 - **Export**: downloads to the local machine, never written into the vault. md downloads a single self-contained `.html` (styles, fonts, images, and math all inlined) that works fully offline (print it from a browser to get a PDF). pdf downloads a copy with the highlights baked into the pages (see [[pdf]]).
 - **Delete**: permanently deletes the file and its assets folder after confirmation.
 
-Download, Export, and Export Site save via the OS save dialog when the browser has one, otherwise as a plain download. Cancelling the dialog saves nothing.
+Every Download and Export (file, folder, and the header Export) saves via the OS save dialog when the browser has one, otherwise as a plain download. Cancelling the dialog saves nothing.
 
 Url-mounted remote rows are read-only and get **Pull** in place of Push (see [[history]]): a remote file offers Pull, Download, and Export, a remote folder only Pull.
 

@@ -1,6 +1,7 @@
 // Content browser shell - owns the view selector (Path / Tag / Graph),
 // the Path view's display-mode toggle, the shared filter input, the
-// Export Site button, and the Settings button. Each view lives in
+// Export button (whole vault as a static site), and the Settings button.
+// Each view lives in
 // cb_<name>_view.tsx and is switched in-place.
 
 import { useEffect, useState } from "preact/hooks";
@@ -65,7 +66,7 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
         );
       }
     } catch (e) {
-      void client.ui.notice(`Export Site failed: ${errMessage(e)}`);
+      void client.ui.notice(`Export failed: ${errMessage(e)}`);
     } finally {
       setExporting(false);
     }
@@ -130,9 +131,9 @@ export function ContentBrowser({ client, view, initialFilter }: Props) {
             className="coconote-cb-export-site"
             disabled={exporting}
             onClick={() => void runExportSite()}
-            title="Export Site"
+            title="Export the vault as a static site"
           >
-            {exporting ? "Exporting..." : "Export Site"}
+            {exporting ? "Exporting..." : "Export"}
           </button>
           <button
             type="button"

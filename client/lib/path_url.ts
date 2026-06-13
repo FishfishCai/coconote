@@ -33,6 +33,14 @@ export function nameToFsPath(name: string): string {
     : `${name}.md`;
 }
 
+/** True when `name` is the folder itself or sits anywhere under it.
+ *  The `+ "/"` guard keeps `notes/a` from matching the folder `note`.
+ *  Shared by every folder-subtree filter (rename/remove/delete, push,
+ *  Download, Export). */
+export function isUnderFolder(name: string, folderPath: string): boolean {
+  return name === folderPath || name.startsWith(`${folderPath}/`);
+}
+
 /** `"papers/foo.pdf"` -> `"foo"`. */
 export function pdfStem(pdfPath: string): string {
   return basename(pdfPath).replace(/\.pdf$/i, "");
