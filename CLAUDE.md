@@ -10,7 +10,9 @@
   source of truth for behavior: code follows the spec, and behavior changes
   update it.
 - .claude/ (gitignored) holds throwaway scripts plus the feature-test
-  scaffolding: .claude/feature/FEATURES.md and .claude/feature/tests/.
+  scaffolding: .claude/feature/FEATURES.md, .claude/feature/tests/, and
+  .claude/feature/fixtures/ (the test vault). The harness mounts fixtures
+  as root `fixtures` and introduction/ as root `spec`.
 - Checks: `npm run check` (tsc), `npm run lint` (biome), `npm run build`
   (client bundle), `cargo test --manifest-path server-rs/Cargo.toml`.
   Feature tests: `node .claude/feature/tests/test_<name>.cjs` (they spawn
