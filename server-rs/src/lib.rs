@@ -1,6 +1,7 @@
 // coconote server crate root.
 
 pub mod body_scan;
+pub mod boot;
 pub mod config;
 pub mod error;
 pub mod frontmatter;
