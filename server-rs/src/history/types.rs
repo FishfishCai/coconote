@@ -57,18 +57,28 @@ pub struct VersionMeta {
     pub save_type: SaveType,
 }
 
-/// A page's full file set at one ts, stored as the flat {filename: hash}
-/// JSON history.md specifies. `main_file` is derived from filename shapes
-/// on read and never serialized.
+/// A page's full file set at one ts: the flat {filename: hash} JSON
+/// history.md specifies, relative to the page's directory (page basename
+/// for the main file, `.<stem>.assets/<f>` for images). The main file is
+/// derived from filename shape on demand, never stored.
 #[derive(Debug)]
 pub struct Manifest {
-    /// Filename whose body the preview endpoint returns (server.md: "?ts=<ms>
-    /// returns the main md text"): the .md file for md pages, the
-    /// `.<name>.json` sidecar for pdf pages.
-    pub main_file: String,
-    /// {filename -> blake3 hex hash}, relative to the page's directory:
-    /// page basename for the main file, `.<stem>.assets/<f>` for images.
     pub files: indexmap::IndexMap<String, String>,
+}
+
+impl Manifest {
+    /// The entry whose body the preview endpoint returns (server.md: "?ts=<ms>
+    /// returns the main md text"): top-level `*.md` for md pages, the
+    /// `.<name>.json` sidecar for pdf pages, else the first entry.
+    pub fn main_file(&self) -> &str {
+        self.files
+            .keys()
+            .find(|k| !k.contains('/') && k.to_ascii_lowercase().ends_with(".md"))
+            .or_else(|| self.files.keys().find(|k| is_sidecar_name(k)))
+            .or_else(|| self.files.keys().next())
+            .map(String::as_str)
+            .unwrap_or("")
+    }
 }
 
 impl Serialize for Manifest {
@@ -83,20 +93,13 @@ impl<'de> Deserialize<'de> for Manifest {
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum Wire {
-            /// Pre-flat rows, kept readable so existing DBs survive.
-            Legacy {
-                main_file: String,
-                files: indexmap::IndexMap<String, String>,
-            },
+            /// Pre-flat rows {main_file, files}: the wrapper is dropped and
+            /// main_file recomputed, so existing DBs still read.
+            Legacy { files: indexmap::IndexMap<String, String> },
             Flat(indexmap::IndexMap<String, String>),
         }
-        Ok(match Wire::deserialize(d)? {
-            Wire::Legacy { main_file, files } => Manifest { main_file, files },
-            Wire::Flat(files) => {
-                let main_file = derive_main_file(&files);
-                Manifest { main_file, files }
-            }
-        })
+        let (Wire::Legacy { files } | Wire::Flat(files)) = Wire::deserialize(d)?;
+        Ok(Manifest { files })
     }
 }
 
@@ -107,20 +110,4 @@ pub fn is_sidecar_name(name: &str) -> bool {
             .strip_prefix('.')
             .and_then(|r| r.strip_suffix(".json"))
             .is_some_and(|stem| !stem.is_empty())
-}
-
-/// Pick the main entry by filename shape: top-level `*.md` = md body,
-/// top-level `.{stem}.json` = pdf sidecar, rest (`.{stem}.assets/<f>`) = assets.
-pub(crate) fn derive_main_file(files: &indexmap::IndexMap<String, String>) -> String {
-    for k in files.keys() {
-        if !k.contains('/') && k.to_ascii_lowercase().ends_with(".md") {
-            return k.clone();
-        }
-    }
-    for k in files.keys() {
-        if is_sidecar_name(k) {
-            return k.clone();
-        }
-    }
-    files.keys().next().cloned().unwrap_or_default()
 }

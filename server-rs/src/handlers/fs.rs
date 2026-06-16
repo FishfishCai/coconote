@@ -256,10 +256,7 @@ pub(crate) async fn record_history(
             files.insert(rel, hash.clone());
             blobs.push((hash, bytes));
         }
-        let manifest = crate::history::Manifest {
-            main_file: main_file.clone(),
-            files,
-        };
+        let manifest = crate::history::Manifest { files };
         if let Err(e) = h.record(&pid, explicit, &manifest, &blobs).await {
             tracing::warn!("history record({pid}): {e}");
         }

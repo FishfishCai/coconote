@@ -74,10 +74,7 @@ impl HistoryDb {
         let hash = crate::util::blake3_hex(bytes);
         let mut files = indexmap::IndexMap::new();
         files.insert(main_file.to_string(), hash.clone());
-        let manifest = Manifest {
-            main_file: main_file.to_string(),
-            files,
-        };
+        let manifest = Manifest { files };
         self.record(page_id, save_type, &manifest, &[(hash, bytes.to_vec())])
             .await
     }
@@ -103,7 +100,7 @@ impl HistoryDb {
         let Some(manifest) = self.manifest_at(page_id, ts).await? else {
             return Ok(None);
         };
-        let Some(hash) = manifest.files.get(&manifest.main_file) else {
+        let Some(hash) = manifest.files.get(manifest.main_file()) else {
             return Ok(None);
         };
         self.get_blob(hash).await
@@ -111,30 +108,23 @@ impl HistoryDb {
 
     /// Whole manifest at one ts (for Restore).
     pub async fn manifest_at(&self, page_id: &str, ts: i64) -> sqlx::Result<Option<Manifest>> {
-        let row: Option<(String,)> =
-            sqlx::query_as("SELECT manifest FROM versions WHERE page_id = ? AND ts = ? LIMIT 1")
-                .bind(page_id)
-                .bind(ts)
-                .fetch_optional(&self.pool)
-                .await?;
-        let Some((json,)) = row else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_str(&json).ok())
+        let row = sqlx::query_as("SELECT manifest FROM versions WHERE page_id = ? AND ts = ? LIMIT 1")
+            .bind(page_id)
+            .bind(ts)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(parse_manifest_row(row))
     }
 
     /// Most recent row's manifest, used by /pin (clones it).
     pub async fn latest_manifest(&self, page_id: &str) -> sqlx::Result<Option<Manifest>> {
-        let row: Option<(String,)> = sqlx::query_as(
+        let row = sqlx::query_as(
             "SELECT manifest FROM versions WHERE page_id = ? ORDER BY ts DESC LIMIT 1",
         )
         .bind(page_id)
         .fetch_optional(&self.pool)
         .await?;
-        let Some((json,)) = row else {
-            return Ok(None);
-        };
-        Ok(serde_json::from_str(&json).ok())
+        Ok(parse_manifest_row(row))
     }
 
     /// DELETE /.history/<page_id>?ts=<ms>: exactly one row (server.md
@@ -151,4 +141,10 @@ impl HistoryDb {
         .await?;
         Ok(r.rows_affected())
     }
+}
+
+/// Deserialize a `SELECT manifest` row into a Manifest (None for a missing
+/// row or unparseable JSON).
+fn parse_manifest_row(row: Option<(String,)>) -> Option<Manifest> {
+    serde_json::from_str(&row?.0).ok()
 }

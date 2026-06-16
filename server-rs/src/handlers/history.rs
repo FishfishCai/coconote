@@ -126,7 +126,7 @@ pub async fn restore(
             .await
             .map_err(|e| Error::Other(e.to_string()))?
             .ok_or_else(|| Error::Other(format!("blob lost for {name}")))?;
-        let dest = if name == &manifest.main_file {
+        let dest = if name.as_str() == manifest.main_file() {
             if crate::history::is_sidecar_name(name) {
                 sidecar_path_for(&target_path)
             } else {

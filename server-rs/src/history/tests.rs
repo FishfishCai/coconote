@@ -1,4 +1,3 @@
-use super::types::derive_main_file;
 use super::*;
 use crate::util::now_ms;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
@@ -73,19 +72,19 @@ async fn legacy_manifest_shape_still_reads() {
     .await
     .unwrap();
     let m = db.manifest_at("p", 5).await.unwrap().unwrap();
-    assert_eq!(m.main_file, "f.md");
+    assert_eq!(m.main_file(), "f.md");
     assert_eq!(db.preview_at("p", 5).await.unwrap().unwrap(), b"h");
 }
 
 #[test]
-fn derive_main_prefers_md_then_sidecar() {
+fn main_file_prefers_md_then_sidecar() {
     let mut files = indexmap::IndexMap::new();
     files.insert(".note.assets/img.png".to_string(), "h1".to_string());
     files.insert("note.md".to_string(), "h2".to_string());
-    assert_eq!(derive_main_file(&files), "note.md");
+    assert_eq!(Manifest { files }.main_file(), "note.md");
     let mut pdf = indexmap::IndexMap::new();
     pdf.insert(".paper.json".to_string(), "h3".to_string());
-    assert_eq!(derive_main_file(&pdf), ".paper.json");
+    assert_eq!(Manifest { files: pdf }.main_file(), ".paper.json");
 }
 
 #[tokio::test]
