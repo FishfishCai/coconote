@@ -1,46 +1,22 @@
 import { history } from "@codemirror/commands";
-import type { Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import {
-  getNameFromPath,
-  type Path,
-  type Ref,
-} from "coconote/lib/ref";
+import type { Ref } from "coconote/lib/ref";
 import type { ClickEvent } from "coconote/type/client";
-import type { PageMeta } from "coconote/type/page";
-import {
-  createEditorState,
-  rebuildEditorState as rebuildEditorStateFn,
-  reconfigureLanguage as reconfigureLanguageFn,
-} from "../codemirror/editor_state.ts";
+import { createEditorState } from "../codemirror/editor_state.ts";
 import type { Config } from "./config.ts";
 import { ContentManager } from "./content_manager.ts";
 import { MainUI } from "../components/editor_ui.tsx";
-import {
-  initNavigator,
-  navigate as navigateFn,
-  navigateSpecialRoute,
-  openUrl as openUrlFn,
-  type OpenLocations,
-  parseRefFromURI,
-  type SpecialRoute,
-} from "./navigator.ts";
-import { Space } from "./space.ts";
-import { absFsBase } from "../spaces/constants.ts";
-import { writeUserPrefs } from "../lib/user_prefs.ts";
-import { nameToFsPath } from "../lib/path_url.ts";
-import { HttpSpacePrimitives } from "../spaces/http_space_primitives.ts";
+import { initNavigator, type SpecialRoute } from "./navigator.ts";
 import { wireModuleLifecycle } from "./lifecycle.ts";
-import { getAuthToken } from "../lib/authed_fetch.ts";
 import { DEFAULT_SHORTCUTS } from "../lib/shortcuts.ts";
+import { writeUserPrefs } from "../lib/user_prefs.ts";
 import { errMessage, notAuthenticatedError } from "../lib/constants.ts";
-import type {
-  AttachedCollabHandle,
-  ClientContext,
-  WidgetMeta,
-} from "./context.ts";
+import { EditorService } from "./services/editor.ts";
+import { VaultService } from "./services/vault.ts";
+import { NavService } from "./services/nav.ts";
+import type { ClientContext } from "./context.ts";
 
-export type { WidgetMeta };
+export type { WidgetMeta } from "./ctx/editor.ts";
 
 declare global {
   var client: Client;
@@ -48,36 +24,17 @@ declare global {
 
 const fetchFileListInterval = 10000;
 
+// The Client is the composition root: it owns the per-domain services
+// (editor / vault / nav) plus the UI, config, and lifecycle hooks, and
+// wires them together in init(). It implements the flat ClientContext by
+// delegating to the services, so existing call sites keep working while
+// consumers migrate to the nested `client.editor` / `.vault` / `.nav` API.
 export class Client implements ClientContext {
-  space!: Space;
-  httpSpacePrimitives!: HttpSpacePrimitives;
+  readonly editor: EditorService;
+  readonly vault: VaultService;
+  readonly nav: NavService;
+
   ui!: MainUI;
-
-  editorView!: EditorView;
-  undoHistoryCompartment!: Compartment;
-  markdownLanguageCompartment!: Compartment;
-  renderModeCompartment!: Compartment;
-  editModeCompartment!: Compartment;
-  collabCompartment!: Compartment;
-  // Live collab session - kept so loadPage can disconnect before the
-  // doc swap AND rebuildEditorState can reseed the compartment with
-  // the same yCollab extension instead of dropping it.
-  collabHandle?: AttachedCollabHandle;
-
-  contentManager!: ContentManager;
-  // Seeds CM's heightMap via WidgetType.estimatedHeight before async measure.
-  widgetMeta = new Map<string, WidgetMeta>();
-
-  // Opt-in page index (filled by updatePageListCache). Wiki link
-  // rendering uses it to mark missing/ambiguous targets.
-  readonly allKnownFiles = new Set<string>();
-  knownFilesLoaded = false;
-
-  systemReady = false;
-
-  /** Session-only cursor/scroll per page - drives back/forward restore. */
-  openLocations: OpenLocations = new Map();
-  onLoadRef: Ref | null;
 
   // Single-slot lifecycle callbacks - each event has exactly one owner.
   onEditorInit?: () => void;
@@ -88,120 +45,144 @@ export class Client implements ClientContext {
     private parent: Element,
     readonly config: Config,
   ) {
-    this.onLoadRef = parseRefFromURI();
+    this.editor = new EditorService(this);
+    this.vault = new VaultService(this);
+    this.nav = new NavService(this);
   }
 
-  async init() {
-    this.contentManager = new ContentManager(this);
-    this.initSpace();
-
-    this.ui = new MainUI(this);
-    this.ui.render(this.parent);
-
-    wireModuleLifecycle(this);
-
-    this.editorView = new EditorView({
-      state: createEditorState(this, "", "", true),
-      parent: document.getElementById("coconote-editor")!,
-    });
-    this.focus();
-
-    try {
-      await this.httpSpacePrimitives.ping();
-    } catch (e: unknown) {
-      if (errMessage(e) === notAuthenticatedError.message) {
-        console.warn("Not authenticated, boot token gate will handle it");
-        return;
-      }
-      console.warn("Could not reach remote server", e);
-    }
-
-    // Must run before initNavigator: in multi-root mode the initial URL
-    // (`/test-page`) lacks a root prefix and resolveWikiLinkPath needs
-    // allKnownFiles to find `<root>/test-page.md`. Without the await the
-    // first navigate races the page-list fetch and 404s.
-    await this.updatePageListCache();
-
-    await initNavigator(this);
-    this.systemReady = true;
-    this.rebuildEditorState();
-
-    this.onEditorInit?.();
-
-    // Drop boot-time undo entries so Cmd+Z can't revert the initial doc
-    // load. Under a live collab session Yjs owns undo - leave the CM
-    // history disabled then (attach_to_editor manages it).
-    this.editorView.dispatch({
-      effects: this.undoHistoryCompartment.reconfigure([]),
-    });
-    if (!this.collabHandle) {
-      this.editorView.dispatch({
-        effects: this.undoHistoryCompartment.reconfigure([history()]),
-      });
-    }
-
-    setInterval(() => {
-      void this.updatePageListCache();
-    }, fetchFileListInterval);
+  // --- flat ClientContext delegation (EditorCtx) -------------------------
+  get editorView() {
+    return this.editor.editorView;
   }
-
-  initSpace() {
-    this.httpSpacePrimitives = new HttpSpacePrimitives(
-      absFsBase(),
-      (message, actionOrRedirectHeader) => {
-        alert(message);
-        if (actionOrRedirectHeader === "reload") {
-          location.reload();
-        } else if (typeof actionOrRedirectHeader === "string") {
-          location.href = actionOrRedirectHeader;
-        }
-      },
-      // welcome.md: remote browser clients present the auth token -
-      // boot.ts's token gate stored it and seeded the module state.
-      getAuthToken(),
-    );
-    this.space = new Space(this.httpSpacePrimitives);
+  set editorView(v) {
+    this.editor.editorView = v;
   }
-
-  async updatePageListCache() {
-    try {
-      const [localPages, remotePages] = await Promise.all([
-        this.space.fetchPageList(),
-        // Lazy import: don't pull remote-vault code at boot.
-        import("../lib/remote_index.ts").then((m) => m.fetchAllRemotePages()),
-      ]);
-      const allPages = localPages.concat(remotePages);
-      this.allKnownFiles.clear();
-      for (const p of allPages) {
-        this.allKnownFiles.add(nameToFsPath(p.name));
-      }
-      this.knownFilesLoaded = true;
-      this.ui.updatePageList(allPages);
-    } catch (e) {
-      console.warn("Could not fetch page list", e);
-    }
+  get undoHistoryCompartment() {
+    return this.editor.undoHistoryCompartment;
   }
-
-  currentPath(): Path {
-    return (this.ui.viewState.current?.path ?? this.onLoadRef?.path ??
-      "") as Path;
+  set undoHistoryCompartment(v) {
+    this.editor.undoHistoryCompartment = v;
   }
-
-  currentName(): string {
-    const p = this.ui.viewState.current?.path ?? this.onLoadRef?.path;
-    return p ? getNameFromPath(p) : "";
+  get markdownLanguageCompartment() {
+    return this.editor.markdownLanguageCompartment;
   }
-
-  currentPageMeta(): PageMeta | undefined {
-    return this.ui.viewState.current?.meta;
+  set markdownLanguageCompartment(v) {
+    this.editor.markdownLanguageCompartment = v;
   }
-
-  save(immediate = false): Promise<void> {
-    return this.contentManager.save(immediate);
+  get renderModeCompartment() {
+    return this.editor.renderModeCompartment;
   }
-
+  set renderModeCompartment(v) {
+    this.editor.renderModeCompartment = v;
+  }
+  get editModeCompartment() {
+    return this.editor.editModeCompartment;
+  }
+  set editModeCompartment(v) {
+    this.editor.editModeCompartment = v;
+  }
+  get collabCompartment() {
+    return this.editor.collabCompartment;
+  }
+  set collabCompartment(v) {
+    this.editor.collabCompartment = v;
+  }
+  get collabHandle() {
+    return this.editor.collabHandle;
+  }
+  set collabHandle(v) {
+    this.editor.collabHandle = v;
+  }
+  get widgetMeta() {
+    return this.editor.widgetMeta;
+  }
+  set widgetMeta(v) {
+    this.editor.widgetMeta = v;
+  }
+  get systemReady() {
+    return this.editor.systemReady;
+  }
+  set systemReady(v) {
+    this.editor.systemReady = v;
+  }
+  currentPath() {
+    return this.editor.currentPath();
+  }
+  currentName() {
+    return this.editor.currentName();
+  }
+  currentPageMeta() {
+    return this.editor.currentPageMeta();
+  }
+  isReadOnlyMode() {
+    return this.editor.isReadOnlyMode();
+  }
+  focus() {
+    this.editor.focus();
+  }
+  save(immediate = false) {
+    return this.editor.save(immediate);
+  }
+  rebuildEditorState() {
+    this.editor.rebuildEditorState();
+  }
   reconfigureLanguage() {
-    reconfigureLanguageFn(this);
+    this.editor.reconfigureLanguage();
+  }
+
+  // --- flat ClientContext delegation (SpaceCtx) --------------------------
+  get space() {
+    return this.vault.space;
+  }
+  set space(v) {
+    this.vault.space = v;
+  }
+  get httpSpacePrimitives() {
+    return this.vault.httpSpacePrimitives;
+  }
+  set httpSpacePrimitives(v) {
+    this.vault.httpSpacePrimitives = v;
+  }
+  get contentManager() {
+    return this.vault.contentManager;
+  }
+  set contentManager(v) {
+    this.vault.contentManager = v;
+  }
+  get allKnownFiles() {
+    return this.vault.allKnownFiles;
+  }
+  get knownFilesLoaded() {
+    return this.vault.knownFilesLoaded;
+  }
+  set knownFilesLoaded(v) {
+    this.vault.knownFilesLoaded = v;
+  }
+  reloadEditor() {
+    return this.vault.reloadEditor();
+  }
+  updatePageListCache() {
+    return this.vault.updatePageListCache();
+  }
+
+  // --- flat ClientContext delegation (NavigationCtx / UICtx route) -------
+  get openLocations() {
+    return this.nav.openLocations;
+  }
+  set openLocations(v) {
+    this.nav.openLocations = v;
+  }
+  get onLoadRef() {
+    return this.nav.onLoadRef;
+  }
+  navigate(ref: Ref | null, replaceState = false) {
+    return this.nav.navigate(ref, replaceState);
+  }
+  navigateRoute(route: SpecialRoute) {
+    this.nav.navigateRoute(route);
+  }
+  openUrl(url: string) {
+    return this.nav.openUrl(url);
   }
 
   setUiOption(key: string, value: unknown) {
@@ -218,35 +199,57 @@ export class Client implements ClientContext {
     } catch (_) { /* quota / disabled - ignore */ }
   }
 
-  rebuildEditorState() {
-    rebuildEditorStateFn(this);
-  }
+  async init() {
+    this.vault.contentManager = new ContentManager(this);
+    this.vault.initSpace();
 
-  isReadOnlyMode(): boolean {
-    return this.config.get<boolean>(["_boot", "readOnly"], false) ||
-      this.currentPageMeta()?.perm === "ro";
-  }
+    this.ui = new MainUI(this);
+    this.ui.render(this.parent);
 
-  reloadEditor() {
-    return this.contentManager.reloadEditor();
-  }
+    wireModuleLifecycle(this);
 
-  focus() {
-    const vs = this.ui.viewState;
-    if (vs.showConfirm || vs.showPrompt) return;
-    this.editorView.focus();
-  }
+    this.editor.editorView = new EditorView({
+      state: createEditorState(this, "", "", true),
+      parent: document.getElementById("coconote-editor")!,
+    });
+    this.focus();
 
-  navigate(ref: Ref | null, replaceState = false) {
-    return navigateFn(this, ref, replaceState);
-  }
+    try {
+      await this.vault.httpSpacePrimitives.ping();
+    } catch (e: unknown) {
+      if (errMessage(e) === notAuthenticatedError.message) {
+        console.warn("Not authenticated, boot token gate will handle it");
+        return;
+      }
+      console.warn("Could not reach remote server", e);
+    }
 
-  navigateRoute(route: SpecialRoute) {
-    navigateSpecialRoute(this, route);
-  }
+    // Must run before initNavigator: in multi-root mode the initial URL
+    // (`/test-page`) lacks a root prefix and resolveWikiLinkPath needs
+    // allKnownFiles to find `<root>/test-page.md`. Without the await the
+    // first navigate races the page-list fetch and 404s.
+    await this.updatePageListCache();
 
-  openUrl(url: string) {
-    return openUrlFn(url);
+    await initNavigator(this);
+    this.editor.systemReady = true;
+    this.rebuildEditorState();
+
+    this.onEditorInit?.();
+
+    // Drop boot-time undo entries so Cmd+Z can't revert the initial doc
+    // load. Under a live collab session Yjs owns undo - leave the CM
+    // history disabled then (attach_to_editor manages it).
+    this.editor.editorView.dispatch({
+      effects: this.editor.undoHistoryCompartment.reconfigure([]),
+    });
+    if (!this.editor.collabHandle) {
+      this.editor.editorView.dispatch({
+        effects: this.editor.undoHistoryCompartment.reconfigure([history()]),
+      });
+    }
+
+    setInterval(() => {
+      void this.updatePageListCache();
+    }, fetchFileListInterval);
   }
 }
-
