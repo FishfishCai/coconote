@@ -3,324 +3,35 @@
 // baked PDFs, shared assets) from a small IO interface. Same discipline
 // as export_core.ts - no DOM and no client context in here - so the
 // client wrapper (lib/site_export.ts) and a future MCP tool can share
-// it. Post-processing is done with string transforms over our own
-// renderer output, mirroring mcp/src/export.ts.
+// it. The IO types, manifest, HTML scaffolding, and link/media rewriting
+// live in ./site/*; this file is the assembly orchestrator.
 
 import type { PageMeta } from "coconote/type/page";
 import { stripFrontmatter } from "../markdown/frontmatter.ts";
 import { parseMarkdown } from "../markdown/parser/parser.ts";
-import { htmlEscapeAttr } from "../markdown/render/html_render.ts";
 import { renderMarkdownToHtml } from "../markdown/render/markdown_render.ts";
 import { resolveImageRefs } from "../markdown/transclusion_resolver.ts";
-import { resolvePdfWikiLinkPath } from "../markdown/wiki_link_resolver.ts";
 import type { Anchor, Highlight } from "../pdf/notes_client.ts";
-import { resolveTemplate } from "./callout.ts";
 import {
   bakeHighlights,
-  decodeEntities,
   injectHeadingIds,
   inlineWoff2,
   renderExportBody,
-  slugify,
-  splitCallouts,
 } from "./export_core.ts";
-import {
-  basename,
-  encodePathSegments,
-  nameToFsPath,
-  pdfSidecarPath,
-} from "./path_url.ts";
-import { parseToRef, type Ref } from "./ref.ts";
+import { basename, nameToFsPath, pdfSidecarPath } from "./path_url.ts";
 import { isLocalURL, resolveMarkdownLink } from "./resolve.ts";
-import { resolveWikiLink } from "./wikilink.ts";
+import { SITE_VIEWS, pageHtml, relativeHref, shellHtml } from "./site/document.ts";
+import type { SiteFiles, SiteIo, SiteProgress } from "./site/io.ts";
+import {
+  type LinkContext,
+  injectCalloutIds,
+  rewriteMediaRefs,
+  rewriteWikiLinks,
+} from "./site/links.ts";
+import { manifestEntry } from "./site/manifest.ts";
 
-// --- the IO interface ---------------------------------------------------
-
-export type SiteIo = {
-  /** The live page listing - the same PageMeta array the app resolves
-   *  wikilinks against (client: ui.viewState.allPages, mcp: derived
-   *  from one /.file listing like mcp/src/export.ts loadPageContext). */
-  listPages(): readonly PageMeta[] | Promise<readonly PageMeta[]>;
-  /** Vault file bytes by fs path, null when unfetchable (the page is
-   *  then skipped, the export keeps going). */
-  readFile(path: string): Promise<Uint8Array | null>;
-  /** A built client asset by `/.client`-relative path ("site.css",
-   *  "fonts/x.woff2"), null when the server doesn't have it. */
-  fetchAsset(path: string): Promise<string | Uint8Array | null>;
-  /** Mirrors the client's shortWikiLinks config (mcp keeps the default). */
-  shortWikiLinks?: boolean;
-};
-
-export type SiteProgress = (done: number, total: number) => void;
-
-export type SiteFiles = {
-  /** Zip entry path -> content. Strings are UTF-8 text files. */
-  files: Map<string, string | Uint8Array>;
-  /** Vault paths of pages whose bytes could not be fetched. */
-  skipped: string[];
-};
-
-// --- manifest -----------------------------------------------------------
-
-type SitePageEntry = {
-  path: string;
-  kind: "md" | "pdf";
-  title: string;
-  tags: string[];
-  headings: string[];
-  links: string[];
-  prereqs: string[];
-};
-
-/** Resolve raw wikilink / prereq locators to vault paths, exactly like
- *  the Graph view's edge construction (lib/graph_layout.ts buildGraph):
- *  resolveWikiLink, drop unresolved, drop self, dedupe. */
-function resolveTargets(
-  queries: readonly string[] | undefined,
-  selfPath: string,
-  allPages: readonly PageMeta[],
-): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const q of queries ?? []) {
-    const r = resolveWikiLink(q, allPages);
-    if (r.kind !== "ok") continue;
-    const target = nameToFsPath(r.page.name);
-    if (target === selfPath || seen.has(target)) continue;
-    seen.add(target);
-    out.push(target);
-  }
-  return out;
-}
-
-function manifestEntry(
-  p: PageMeta,
-  allPages: readonly PageMeta[],
-): SitePageEntry {
-  const path = nameToFsPath(p.name);
-  // Remote pages carry no edges, matching buildGraph.
-  const local = p.origin?.kind !== "remote";
-  return {
-    path,
-    kind: path.toLowerCase().endsWith(".pdf") ? "pdf" : "md",
-    title: p.title || basename(p.name),
-    tags: p.tags ?? [],
-    headings: p.headings ?? [],
-    links: local ? resolveTargets(p.wikilinks, path, allPages) : [],
-    prereqs: local ? resolveTargets(p.prereq, path, allPages) : [],
-  };
-}
-
-// --- document scaffolding ------------------------------------------------
-
-const SITE_VIEWS = [
-  ["index.html", "Path", "path"],
-  ["tag.html", "Tag", "tag"],
-  ["graph.html", "Graph", "graph"],
-] as const;
-
-function topbarHtml(prefix: string, active?: string): string {
-  const links = SITE_VIEWS.map(([file, label, view]) =>
-    `<a href="${prefix}${file}"${
-      view === active ? ' class="active"' : ""
-    }>${label}</a>`
-  ).join("");
-  return `<header class="coconote-site-topbar">` +
-    `<a class="coconote-site-title" href="${prefix}index.html">Coconote</a>` +
-    `<nav class="coconote-site-nav">${links}</nav>` +
-    `</header>`;
-}
-
-function documentHtml(
-  title: string,
-  prefix: string,
-  topbar: string,
-  body: string,
-): string {
-  return `<!doctype html>
-<html lang="en" data-theme="light">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${htmlEscapeAttr(title)}</title>
-<link rel="stylesheet" href="${prefix}assets/site.css">
-</head>
-<body>
-${topbar}
-${body}
-</body>
-</html>
-`;
-}
-
-function shellHtml(view: "path" | "tag" | "graph", label: string): string {
-  return documentHtml(
-    `Coconote - ${label}`,
-    "",
-    topbarHtml("", view),
-    `<div id="site-root" data-view="${view}"></div>\n` +
-      `<script src="assets/manifest.js"></script>\n` +
-      `<script src="assets/site.js"></script>`,
-  );
-}
-
-function pageHtml(title: string, depth: number, bodyHtml: string): string {
-  const prefix = "../".repeat(depth);
-  return documentHtml(
-    title,
-    prefix,
-    topbarHtml(prefix),
-    `<article class="coconote-export-article">\n${bodyHtml}\n</article>`,
-  );
-}
-
-// --- relative URLs --------------------------------------------------------
-
-/** Relative href from the file at `fromFile` to the file at `toFile`
- *  (both zip-root paths), segment-encoded so it works from file://. */
-export function relativeHref(fromFile: string, toFile: string): string {
-  const from = fromFile.split("/").slice(0, -1);
-  const to = toFile.split("/");
-  let i = 0;
-  while (i < from.length && i < to.length - 1 && from[i] === to[i]) i++;
-  return (
-    "../".repeat(from.length - i) + encodePathSegments(to.slice(i).join("/"))
-  );
-}
-
-// --- HTML post-processing (string transforms over our own renderer
-// output, shared building blocks in export_core.ts) -----------------------
-
-/** Give callout sections the ids `[[:N]]` / `[[:label]]` fragments
- *  point at. The sections come from renderExportBody over the same
- *  `body`, so re-running splitCallouts yields one mark per rendered
- *  section in document order. Numbered callouts get `callout-<n>`,
- *  labelled ones `callout-<label>` (on an inner span when the section
- *  id is already taken by the number). */
-function injectCalloutIds(body: string, html: string): string {
-  const marks: Array<{ id: string | null; labelId: string | null }> = [];
-  let counter = 0;
-  for (const seg of splitCallouts(body)) {
-    if (seg.kind !== "callout") continue;
-    const t = resolveTemplate(seg.keyword)!;
-    const number = t.numbered ? ++counter : null;
-    const labelId = seg.label ? `callout-${slugify(seg.label)}` : null;
-    marks.push({
-      id: number != null ? `callout-${number}` : labelId,
-      labelId: number != null ? labelId : null,
-    });
-  }
-  let i = 0;
-  return html.replace(
-    /<section class="coconote-export-callout[^"]*">/g,
-    (open) => {
-      const m = marks[i++];
-      if (!m) return open;
-      let out = m.id
-        ? open.replace("<section ", `<section id="${htmlEscapeAttr(m.id)}" `)
-        : open;
-      if (m.labelId) out += `<span id="${htmlEscapeAttr(m.labelId)}"></span>`;
-      return out;
-    },
-  );
-}
-
-type LinkContext = {
-  allPages: readonly PageMeta[];
-  allKnownFiles: ReadonlySet<string>;
-  /** pdf vault path -> parsed sidecar (anchors + highlights). */
-  sidecars: Map<string, { anchors: Anchor[]; highlights: Highlight[] }>;
-  /** Current page, vault fs path / output html path. */
-  fsPath: string;
-  htmlPath: string;
-  shortWikiLinks?: boolean;
-};
-
-function sigilFragment(ref: Ref): string {
-  switch (ref.details?.type) {
-    case "header":
-      return `#${slugify(ref.details.header)}`;
-    case "anchor":
-      return `#anchor-${slugify(ref.details.name)}`;
-    case "callout":
-      return `#callout-${slugify(ref.details.target)}`;
-    default:
-      return "";
-  }
-}
-
-/** The relative href a wikilink rewrites to, or null when the link
- *  can't be resolved (it then degrades to a span like the single-page
- *  export). Resolution mirrors the app's link follow (core/lifecycle.ts
- *  actionFollow): md through resolveWikiLink, pdf through
- *  resolvePdfWikiLinkPath, externals pass through. */
-function wikiHref(ctx: LinkContext, refStr: string): string | null {
-  if (/^https?:\/\//i.test(refStr)) return refStr;
-  const ref = parseToRef(refStr);
-  if (!ref) return null;
-  const frag = sigilFragment(ref);
-  if (ref.path === "") return frag || null;
-  if (ref.path.toLowerCase().endsWith(".pdf")) {
-    const resolved = resolvePdfWikiLinkPath(
-      ref.path,
-      ctx.fsPath,
-      ctx.allKnownFiles,
-      ctx.allPages,
-    );
-    if (!ctx.allKnownFiles.has(resolved)) return null;
-    let pageFrag = "";
-    if (ref.details?.type === "pdfAnchor") {
-      const sc = ctx.sidecars.get(resolved);
-      const anchorName = ref.details.anchor;
-      const a = sc?.anchors.find((x) => x.name === anchorName);
-      const h = a && sc?.highlights.find((x) => x.id === a.highlightId);
-      if (h) pageFrag = `#page=${h.page}`;
-    }
-    return relativeHref(ctx.htmlPath, resolved) + pageFrag;
-  }
-  if (ref.details?.type === "pdfAnchor") return null; // % is pdf-only
-  const query = ref.path.endsWith(".md") ? ref.path.slice(0, -3) : ref.path;
-  const r = resolveWikiLink(query, ctx.allPages);
-  if (r.kind !== "ok") return null;
-  const target = nameToFsPath(r.page.name);
-  return target.toLowerCase().endsWith(".pdf")
-    ? relativeHref(ctx.htmlPath, target)
-    : relativeHref(ctx.htmlPath, target.replace(/\.md$/i, ".html")) + frag;
-}
-
-/** Rewrite every wiki-link anchor to a relative href into the site,
- *  degrading unresolvable ones to non-clickable spans. */
-function rewriteWikiLinks(ctx: LinkContext, html: string): string {
-  return html.replace(
-    /<a href="[^"]*" class="wiki-link" data-ref="([^"]*)">([\s\S]*?)<\/a>/g,
-    (_full, refAttr, inner) => {
-      const href = wikiHref(ctx, decodeEntities(refAttr));
-      if (href == null) return `<span class="wiki-link">${inner}</span>`;
-      return `<a href="${htmlEscapeAttr(href)}" class="wiki-link" data-ref="${refAttr}">${inner}</a>`;
-    },
-  );
-}
-
-/** Rewrite `/.file/<path>` media references to relative paths inside
- *  the zip and collect the referenced vault asset paths for copying. */
-function rewriteMediaRefs(
-  ctx: LinkContext,
-  html: string,
-  assets: Set<string>,
-): string {
-  return html.replace(
-    /(src|data)="(\/?\.file\/[^"]*)"/gi,
-    (full, attr, val) => {
-      const m = /^\/?\.file\/(.+)$/.exec(decodeEntities(val));
-      if (!m) return full;
-      const assetPath = decodeURIComponent(m[1]);
-      assets.add(assetPath);
-      return `${attr}="${htmlEscapeAttr(relativeHref(ctx.htmlPath, assetPath))}"`;
-    },
-  );
-}
-
-// --- page rendering --------------------------------------------------------
+export type { SiteFiles, SiteIo, SiteProgress } from "./site/io.ts";
+export { relativeHref } from "./site/document.ts";
 
 function renderSitePage(
   ctx: LinkContext,
@@ -361,8 +72,6 @@ function renderSitePage(
     assets,
   };
 }
-
-// --- assembly ---------------------------------------------------------------
 
 const utf8 = new TextDecoder();
 
