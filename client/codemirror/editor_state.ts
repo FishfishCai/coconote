@@ -286,6 +286,42 @@ export function editModeExtensionsFor(
   ];
 }
 
+/** Rebuild the editor state in place (settings / mode change): re-derive
+ *  the extension set for the current page, preserving selection + scroll. */
+export function rebuildEditorState(client: Client): void {
+  const editorView = client.editorView;
+  const previousSelection = editorView.state.selection;
+  const previousScrollTop = editorView.scrollDOM.scrollTop;
+  editorView.setState(
+    createEditorState(
+      client,
+      client.currentName(),
+      editorView.state.sliceDoc(),
+      client.currentPageMeta()?.perm === "ro",
+      previousSelection,
+    ),
+  );
+  editorView.scrollDOM.scrollTop = previousScrollTop;
+  // Block widgets from the old state can linger in the DOM after
+  // setState. requestMeasure forces the view to reconcile decorations
+  // against the new state's StateFields.
+  editorView.requestMeasure();
+  queueMicrotask(() => {
+    editorView.requestMeasure();
+    editorView.dispatch({});
+  });
+}
+
+/** Swap in a freshly built markdown language extension (e.g. after a
+ *  snippet change) without rebuilding the whole state. */
+export function reconfigureLanguage(client: Client): void {
+  client.editorView.dispatch({
+    effects: client.markdownLanguageCompartment.reconfigure(
+      buildMarkdownLanguageExtension(),
+    ),
+  });
+}
+
 function createRegularKeyBindings(_client: Client): Extension {
   // Expose the @codemirror/search commands on globalThis so headless
   // tests can fire them without depending on Playwright's flaky

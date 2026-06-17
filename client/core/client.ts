@@ -9,8 +9,9 @@ import {
 import type { ClickEvent } from "coconote/type/client";
 import type { PageMeta } from "coconote/type/page";
 import {
-  buildMarkdownLanguageExtension,
   createEditorState,
+  rebuildEditorState as rebuildEditorStateFn,
+  reconfigureLanguage as reconfigureLanguageFn,
 } from "../codemirror/editor_state.ts";
 import type { Config } from "./config.ts";
 import { ContentManager } from "./content_manager.ts";
@@ -200,11 +201,7 @@ export class Client implements ClientContext {
   }
 
   reconfigureLanguage() {
-    this.editorView.dispatch({
-      effects: this.markdownLanguageCompartment.reconfigure(
-        buildMarkdownLanguageExtension(),
-      ),
-    });
+    reconfigureLanguageFn(this);
   }
 
   setUiOption(key: string, value: unknown) {
@@ -222,27 +219,7 @@ export class Client implements ClientContext {
   }
 
   rebuildEditorState() {
-    const editorView = this.editorView;
-    const previousSelection = editorView.state.selection;
-    const previousScrollTop = editorView.scrollDOM.scrollTop;
-    editorView.setState(
-      createEditorState(
-        this,
-        this.currentName(),
-        editorView.state.sliceDoc(),
-        this.currentPageMeta()?.perm === "ro",
-        previousSelection,
-      ),
-    );
-    editorView.scrollDOM.scrollTop = previousScrollTop;
-    // Block widgets from the old state can linger in the DOM after
-    // setState. requestMeasure forces the view to reconcile decorations
-    // against the new state's StateFields.
-    editorView.requestMeasure();
-    queueMicrotask(() => {
-      editorView.requestMeasure();
-      editorView.dispatch({});
-    });
+    rebuildEditorStateFn(this);
   }
 
   isReadOnlyMode(): boolean {
