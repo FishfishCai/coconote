@@ -1,0 +1,26 @@
+# Scope the knowledge graph to application SOURCE CODE only. Everything
+# below is excluded because it is not app source, and its nodes (config
+# keys, dependency names, prose) clutter the force layout without showing
+# code structure. Build artifacts (target/, dist/, node_modules/, build/)
+# are already skipped by graphify's built-in rules.
+
+# Separate components / prose, excluded by request.
+mcp/
+introduction/
+
+# Config + manifest files: every key and dependency name becomes its own
+# node (package.json deps, tsconfig / biome / electron-builder keys),
+# rendering as a per-file starburst that dominates the layout.
+*.json
+*.toml
+*.yaml
+*.yml
+
+# Docs and metadata: prose, not code structure.
+*.md
+*.txt
+LICENSE
+
+# Build / CI tooling, not application source.
+scripts/
+.github/
