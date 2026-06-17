@@ -1,7 +1,11 @@
 import type { EditorState, Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Decoration } from "@codemirror/view";
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+import type { NavigationCtx } from "../../../core/ctx/navigation.ts";
+import type { SpaceCtx } from "../../../core/ctx/space.ts";
+import type { UICtx } from "../../../core/ctx/ui.ts";
+type Client = EditorCtx & NavigationCtx & SpaceCtx & UICtx;
 import {
   decoratorStateField,
   invisibleDecoration,

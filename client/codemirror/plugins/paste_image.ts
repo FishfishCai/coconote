@@ -2,7 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { authedFetch } from "../../lib/authed_fetch.ts";
 import { mdAssetsPrefix } from "../../lib/path_url.ts";
 import { fileUrl } from "../../spaces/constants.ts";
-import type { ClientContext as Client } from "../../core/context.ts";
+import type { EditorCtx as Client } from "../../core/ctx/editor.ts";
 
 /** file.md: "Images pasted or dropped into the editor are
  *  automatically saved into that folder." Generates a stable name with

@@ -7,7 +7,7 @@
 // browser save boundary, vault read, and the HTML export pipeline live in
 // ./export/*; the pure assembly is in export_core.ts (shared with MCP).
 
-import type { ClientContext as Client } from "../core/context.ts";
+import type { SpaceCtx as Client } from "../core/ctx/space.ts";
 import { bakeHighlights } from "./export_core.ts";
 import { basename, pdfSidecarPath } from "./path_url.ts";
 import mime from "mime";

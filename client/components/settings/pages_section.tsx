@@ -1,4 +1,6 @@
-import type { ClientContext as Client } from "../../core/context.ts";
+import type { UICtx } from "../../core/ctx/ui.ts";
+import type { NavigationCtx } from "../../core/ctx/navigation.ts";
+type Client = UICtx & NavigationCtx;
 import type { PageMeta } from "coconote/type/page";
 import { encodePageURI, toPath } from "../../lib/ref.ts";
 import { getConfig, patchConfig } from "../../lib/config_api.ts";

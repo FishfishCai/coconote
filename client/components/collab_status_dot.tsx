@@ -1,8 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import type {
-  ClientContext as Client,
   CollabUiStatus,
-} from "../core/context.ts";
+  EditorCtx as Client,
+} from "../core/ctx/editor.ts";
 
 // Live collab WS state dot (editor.md Collaboration: "green / yellow").
 // The short interval re-bind covers loadPage swapping in a new handle.

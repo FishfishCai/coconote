@@ -1,11 +1,9 @@
 import type { EditorState, Range } from "@codemirror/state";
 import { Decoration } from "@codemirror/view";
 import katex from "katex";
-import type {
-  ClientContext as Client,
-  EditorCtx,
-  NavigationCtx,
-} from "../../../core/context.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+import type { NavigationCtx } from "../../../core/ctx/navigation.ts";
+type Client = EditorCtx & NavigationCtx;
 import {
   invisibleDecoration,
   isCursorInRange,

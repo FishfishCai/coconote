@@ -8,7 +8,7 @@ import {
 import { EditorView, keymap } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNode } from "@lezer/common";
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { ConfigCtx as Client } from "../../../core/ctx/config.ts";
 import { isCodeOrCommentNode } from "../../util/util.ts";
 
 // LaTeX Suite-compatible snippet format. options flags:

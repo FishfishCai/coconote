@@ -4,7 +4,7 @@
 // blocks persistence until the user rebinds the offending pair.
 
 import { useEffect, useMemo, useState } from "preact/hooks";
-import type { ClientContext as Client } from "../../core/context.ts";
+import type { UICtx as Client } from "../../core/ctx/ui.ts";
 import {
   DEFAULT_SHORTCUTS,
   groupBindingsByCombo,

@@ -11,7 +11,11 @@ import {
   type Path,
   type Ref,
 } from "coconote/lib/ref";
-import type { ClientContext as Client } from "./context.ts";
+import type { EditorCtx } from "./ctx/editor.ts";
+import type { SpaceCtx } from "./ctx/space.ts";
+import type { NavigationCtx } from "./ctx/navigation.ts";
+import type { UICtx } from "./ctx/ui.ts";
+type Client = EditorCtx & SpaceCtx & NavigationCtx & UICtx;
 import type { EditorView } from "@codemirror/view";
 import { detachCollab } from "../collab/attach_to_editor.ts";
 import { resolveWikiLinkPath } from "../markdown/wiki_link_resolver.ts";

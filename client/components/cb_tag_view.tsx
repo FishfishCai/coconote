@@ -4,7 +4,7 @@
 // Finder-style CRUD.
 
 import { useMemo } from "preact/hooks";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { NavigationCtx as Client } from "../core/ctx/navigation.ts";
 import type { PageMeta } from "coconote/type/page";
 import { pageMatchesQuery } from "../lib/page_match.ts";
 import { toPath } from "../lib/ref.ts";

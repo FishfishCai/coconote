@@ -9,7 +9,10 @@ import { syntaxTree } from "@codemirror/language";
 import { Prec } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+import type { UICtx } from "../../../core/ctx/ui.ts";
+import type { SpaceCtx } from "../../../core/ctx/space.ts";
+type Client = EditorCtx & UICtx & SpaceCtx;
 import { parseMarkdown } from "../../../markdown/parser/parser.ts";
 import {
   traverseTree,

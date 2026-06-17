@@ -9,7 +9,11 @@ import {
 } from "coconote/lib/ref";
 import { resolveWikiLink } from "../../../lib/wikilink.ts";
 import type { ClickEvent } from "coconote/type/client";
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+import type { ConfigCtx } from "../../../core/ctx/config.ts";
+import type { UICtx } from "../../../core/ctx/ui.ts";
+import type { LifecycleCtx } from "../../../core/ctx/lifecycle.ts";
+type Client = EditorCtx & ConfigCtx & UICtx & LifecycleCtx;
 import { decoratorStateField, isCursorInRange, LinkWidget } from "../../util/util.ts";
 import { wikiLinkRegex } from "../../../markdown/parser/constants.ts";
 

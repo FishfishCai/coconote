@@ -2,7 +2,7 @@
 // matching remote space. Shared by the page exports and the site export.
 
 import { notFoundError } from "coconote/constants";
-import type { ClientContext as Client } from "../../core/context.ts";
+import type { SpaceCtx as Client } from "../../core/ctx/space.ts";
 import { getRemoteSpaceByLabel, parseRemotePath } from "../remote_index.ts";
 
 /** Read a vault file's bytes, routing `@<label>/` paths to the matching

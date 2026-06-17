@@ -1,6 +1,10 @@
 import { type EditorView, type PluginValue, ViewPlugin } from "@codemirror/view";
 import { parseToRef, sliceByRef } from "coconote/lib/ref";
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+import type { UICtx } from "../../../core/ctx/ui.ts";
+import type { SpaceCtx } from "../../../core/ctx/space.ts";
+import type { ConfigCtx } from "../../../core/ctx/config.ts";
+type Client = EditorCtx & UICtx & SpaceCtx & ConfigCtx;
 import { resolveWikiLink } from "../../../lib/wikilink.ts";
 import { resolvePdfWikiLinkPath } from "../../../markdown/wiki_link_resolver.ts";
 import { stripFrontmatter } from "../../../markdown/frontmatter.ts";

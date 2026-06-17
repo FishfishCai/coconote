@@ -1,7 +1,11 @@
 import { type EditorState, type Range } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import { syntaxTree } from "@codemirror/language";
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+import type { ConfigCtx } from "../../../core/ctx/config.ts";
+import type { UICtx } from "../../../core/ctx/ui.ts";
+import type { NavigationCtx } from "../../../core/ctx/navigation.ts";
+type Client = EditorCtx & ConfigCtx & UICtx & NavigationCtx;
 import { decoratorStateField, isCursorInRange } from "../../util/util.ts";
 import { extractFrontmatter } from "../../../markdown/frontmatter.ts";
 import { toPath } from "../../../lib/ref.ts";

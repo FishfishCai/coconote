@@ -1,11 +1,9 @@
 import type { Range } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Decoration } from "@codemirror/view";
-import type {
-  ClientContext as Client,
-  ConfigCtx,
-  EditorCtx,
-} from "../../../core/context.ts";
+import type { ConfigCtx } from "../../../core/ctx/config.ts";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+type Client = EditorCtx & ConfigCtx;
 import { parseMarkdown } from "../../../markdown/parser/parser.ts";
 import { renderMarkdownToHtml } from "../../../markdown/render/markdown_render.ts";
 import {

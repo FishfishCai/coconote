@@ -9,7 +9,7 @@ import {
 } from "@codemirror/state";
 import type { DecorationSet } from "@codemirror/view";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
-import type { ClientContext as Client } from "../../core/context.ts";
+import type { EditorCtx as Client } from "../../core/ctx/editor.ts";
 
 type LinkOptions = {
   text: string;

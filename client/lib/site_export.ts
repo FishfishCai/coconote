@@ -5,7 +5,10 @@
 // zip+save tail below.
 
 import { type AsyncZippable, zip } from "fflate";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { SpaceCtx } from "../core/ctx/space.ts";
+import type { ConfigCtx } from "../core/ctx/config.ts";
+import type { UICtx } from "../core/ctx/ui.ts";
+type Client = SpaceCtx & ConfigCtx & UICtx;
 import { authedFetch } from "./authed_fetch.ts";
 import { readVaultFile, saveBlobAs } from "./export.ts";
 import { buildSiteFiles, type SiteProgress } from "./site_core.ts";

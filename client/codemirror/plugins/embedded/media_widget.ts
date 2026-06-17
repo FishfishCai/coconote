@@ -1,4 +1,4 @@
-import type { ClientContext as Client } from "../../../core/context.ts";
+import type { EditorCtx as Client } from "../../../core/ctx/editor.ts";
 import {
   attachWidgetEventHandlers,
   CachedWidget,

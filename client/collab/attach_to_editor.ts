@@ -4,7 +4,7 @@
 // safety net seeding from HTTP when the WebSocket never produces text.
 
 import { history } from "@codemirror/commands";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { EditorCtx as Client } from "../core/ctx/editor.ts";
 import { externalUpdate } from "../codemirror/editor_state.ts";
 
 const FALLBACK_MS = 3000;

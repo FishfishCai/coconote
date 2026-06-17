@@ -11,7 +11,11 @@ import { deletePage, removeFromIndex, renamePage } from "../lib/page_ops.ts";
 import { errMessage } from "../lib/constants.ts";
 import { nameToFsPath } from "../lib/path_url.ts";
 import { ContextMenuShell, MenuSeparator } from "./context_menu_shell.tsx";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { EditorCtx } from "../core/ctx/editor.ts";
+import type { SpaceCtx } from "../core/ctx/space.ts";
+import type { UICtx } from "../core/ctx/ui.ts";
+import type { ConfigCtx } from "../core/ctx/config.ts";
+type Client = EditorCtx & SpaceCtx & UICtx & ConfigCtx;
 
 type Props = {
   client: Client;

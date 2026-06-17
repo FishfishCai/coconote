@@ -6,7 +6,7 @@
 // data filtering, the tuner panel, and navigation.
 
 import { useMemo } from "preact/hooks";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { NavigationCtx as Client } from "../core/ctx/navigation.ts";
 import type { PageMeta } from "coconote/type/page";
 import { safeJsonParse } from "../lib/json.ts";
 import { useLocalStorageState } from "../lib/dom_hooks.ts";

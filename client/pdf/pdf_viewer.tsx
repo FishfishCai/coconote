@@ -3,7 +3,7 @@
 // and the imperative render pipeline live in the pdf_* sibling modules.
 
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { EditorCtx as Client } from "../core/ctx/editor.ts";
 import { ANCHOR_NAME_RE } from "../markdown/parser/constants.ts";
 import { newUuid } from "../lib/uuid.ts";
 import {

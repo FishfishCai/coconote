@@ -4,7 +4,7 @@
 // auto-run, collisions offer "apply to the rest" (history.md Push / Pull).
 
 import { useEffect, useMemo, useState } from "preact/hooks";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { SpaceCtx as Client } from "../core/ctx/space.ts";
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { errMessage } from "../lib/constants.ts";
 import { toPath } from "../lib/ref.ts";

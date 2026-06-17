@@ -1,5 +1,5 @@
 import { WidgetType } from "@codemirror/view";
-import type { EditorCtx } from "../../core/context.ts";
+import type { EditorCtx } from "../../core/ctx/editor.ts";
 import {
   isLocalURL,
   resolveMarkdownLink,

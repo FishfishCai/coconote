@@ -25,7 +25,10 @@ import {
 } from "../lib/site_export.ts";
 import { errMessage } from "../lib/constants.ts";
 import { ContextMenuShell, MenuSeparator } from "./context_menu_shell.tsx";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { SpaceCtx } from "../core/ctx/space.ts";
+import type { UICtx } from "../core/ctx/ui.ts";
+import type { ConfigCtx } from "../core/ctx/config.ts";
+type Client = SpaceCtx & UICtx & ConfigCtx;
 
 type Props = {
   client: Client;

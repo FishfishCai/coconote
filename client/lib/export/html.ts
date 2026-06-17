@@ -2,7 +2,11 @@
 // renderer, inline every vault image as a data URI, degrade wikilinks, and
 // inline the stylesheet + fonts so the single .html file works fully offline.
 
-import type { ClientContext as Client } from "../../core/context.ts";
+import type { EditorCtx } from "../../core/ctx/editor.ts";
+import type { SpaceCtx } from "../../core/ctx/space.ts";
+import type { UICtx } from "../../core/ctx/ui.ts";
+import type { ConfigCtx } from "../../core/ctx/config.ts";
+type Client = EditorCtx & SpaceCtx & UICtx & ConfigCtx;
 import { buildTranslateUrls } from "../../codemirror/util/widget_util.ts";
 import { stripFrontmatter } from "../../markdown/frontmatter.ts";
 import { parseMarkdown } from "../../markdown/parser/parser.ts";

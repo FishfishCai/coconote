@@ -3,7 +3,7 @@
 // on-disk path.
 
 import { useEffect, useState } from "preact/hooks";
-import type { ClientContext as Client } from "../core/context.ts";
+import type { UICtx as Client } from "../core/ctx/ui.ts";
 import { Modal } from "./modal.tsx";
 import { authedFetch } from "../lib/authed_fetch.ts";
 import { fileUrl } from "../spaces/constants.ts";
