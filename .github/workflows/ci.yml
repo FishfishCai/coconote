@@ -1,0 +1,54 @@
+name: ci
+
+# Trigger: every push and pull request against the default branch (main).
+# Runs the TRACKED test suite on a single Linux runner: type-check, lint,
+# client build, the Rust server tests, and the vitest client unit tests.
+#
+# Feature tests (.claude/feature/tests/) are NOT run here: that directory is
+# gitignored, so it is absent from a clean CI checkout, and it needs a release
+# build + a Playwright browser + the .claude/ harness. Those run locally via
+# `bash scripts/test_all.sh` (or `make test-all`), which executes the feature
+# tests on top of everything below, but only when that directory exists.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # One ubuntu-latest job covering everything in a clean checkout. Node is
+  # pinned to 24.13.0 to match package.json `engines.node` (>=24.13.0); the
+  # `24` major alone could resolve below that floor. Rust uses the stable
+  # toolchain with a cargo cache keyed on server-rs (same setup as release.yml).
+  # ---------------------------------------------------------------------------
+  test:
+    name: checks + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.0'
+          cache: 'npm'
+      - run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server-rs -> target
+
+      - name: Type check
+        run: npm run check
+      - name: Boundaries (import tiers)
+        run: npm run boundaries
+      - name: Lint
+        run: npm run lint
+      - name: Build client
+        run: npm run build
+      - name: Server tests
+        run: cargo test --manifest-path server-rs/Cargo.toml
+      - name: Client unit tests
+        run: npm run test:unit

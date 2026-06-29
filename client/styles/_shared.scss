@@ -1,0 +1,215 @@
+// Shared variables + mixins. No CSS output of its own: safe to @use
+// from any partial without affecting bundle order.
+
+// ---- Shell geometry ---------------------------------------------------------
+// Horizontal gutter shared by the Settings / Content-browser panes:
+// at least 1.5rem, otherwise whatever centres a 56rem column.
+$shell-gutter: max(1.5rem, calc((100% - 56rem) / 2));
+
+// ---- Context menu -----------------------------------------------------------
+// Scaffolding shared by the Content-browser and PDF context menus.
+// Callers add sizing (padding / min-width / shadow) and item hover.
+@mixin context-menu {
+  position: fixed;
+  z-index: var(--layer-menu);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  // Menu items are commands, not text - never select their labels.
+  user-select: none;
+}
+
+@mixin context-menu-item {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+
+// ---- Buttons ----------------------------------------------------------------
+// Outlined neutral button, shared by the Sync modal + merge actions
+// and the PDF comment buttons.
+// Per-site differences (padding / radius / surface / hover tint /
+// :disabled) are arguments so each call site stays byte-equivalent.
+// :hover and :disabled selectors are left to the caller (`:hover` vs
+// `:hover:not(:disabled)`, and some sites have no :disabled): emit the
+// helper mixins below inside them. $color: null drops the declaration
+// for the Sync modal + merge buttons, which never declared a color (a
+// <button>'s UA color is buttontext, NOT inherited, so emitting
+// `color: inherit` there would change the rendered color).
+@mixin button-outlined(
+  $padding: 0.35rem 0.9rem,
+  $radius: 5px,
+  $background: transparent,
+  $color: inherit
+) {
+  padding: $padding;
+  border: 1px solid var(--background-modifier-border);
+  background: $background;
+  @if $color {
+    color: $color;
+  }
+  border-radius: $radius;
+  cursor: pointer;
+}
+
+// Hover surface for an outlined button: emit inside the caller's chosen
+// hover selector so the `:hover` vs `:hover:not(:disabled)` split stays.
+@mixin button-hover-bg($hover-bg: var(--background-secondary-alt)) {
+  background: $hover-bg;
+}
+
+// :disabled treatment. Opacity + cursor differ per site, caller emits
+// inside its own `&:disabled`.
+@mixin button-disabled($opacity: 0.4, $cursor: not-allowed) {
+  opacity: $opacity;
+  cursor: $cursor;
+}
+
+// Accent / primary variant, layered on an outlined button to recolor it
+// (Sync modal primary, PDF comment save). $border
+// defaults to the accent so the outline matches the fill. The Sync
+// primary passes `transparent` to keep its borderless look.
+@mixin button-accent(
+  $color: white,
+  $border: var(--interactive-accent)
+) {
+  background: var(--interactive-accent);
+  border-color: $border;
+  color: $color;
+}
+
+@mixin button-accent-hover {
+  background: var(--interactive-accent-hover);
+}
+
+// ---- Text inputs ------------------------------------------------------------
+// Boxed text input/textarea surface shared by the Sync modal inputs, the
+// PDF comment textarea + anchor input, and the prompt / pdf-meta inputs.
+// Per-site padding / radius / surface /
+// text + font are arguments: byte-equivalence is preserved by passing each
+// site's current values. Callers wanting `font: inherit` pass $font: false
+// and emit the shorthand themselves. $border / $radius / $background /
+// $color accept `null` to drop the declaration entirely: the prompt /
+// pdf-meta inputs style only padding + font, UA/theme defaults the rest.
+@mixin text-input(
+  $padding: 0.4rem 0.6rem,
+  $radius: 5px,
+  $background: var(--background-primary),
+  $color: var(--text-normal),
+  $font: var(--font-monospace),
+  $border: 1px solid var(--background-modifier-border)
+) {
+  padding: $padding;
+  @if $border {
+    border: $border;
+  }
+  @if $radius {
+    border-radius: $radius;
+  }
+  @if $background {
+    background: $background;
+  }
+  @if $color {
+    color: $color;
+  }
+  @if $font {
+    font-family: $font;
+  }
+}
+
+// ---- Prose typography -------------------------------------------------------
+// One look for markdown content, consumed by the editor surface
+// (prose.scss) and the hover-preview card (hover_preview.scss).
+// Selector wiring and surface extras (margins, CM-specific !important)
+// stay with each caller.
+
+// Heading scale. $line-classes additionally targets the CM line classes
+// (h1-h4 only: the markdown.md spec stops at four levels, while h5/h6
+// elements still occur in rendered HTML and get the down-styled look).
+// $margin: null drops the declaration entirely (editor lines must not
+// carry margins: CM's heightMap ignores them).
+@mixin prose-headings($line-classes: false, $margin: null) {
+  $h1: "h1";
+  $h2: "h2";
+  $h3: "h3";
+  $h4: "h4";
+  @if $line-classes {
+    $h1: ".coconote-line-h1, h1";
+    $h2: ".coconote-line-h2, h2";
+    $h3: ".coconote-line-h3, h3";
+    $h4: ".coconote-line-h4, h4";
+  }
+  #{$h1} {
+    font-size: var(--h1-size);
+    font-weight: var(--h1-weight);
+    margin: $margin;
+  }
+  #{$h2} {
+    font-size: var(--h2-size);
+    font-weight: var(--h2-weight);
+    margin: $margin;
+  }
+  #{$h3} {
+    font-size: var(--h3-size);
+    font-weight: var(--h3-weight);
+    line-height: 1.35;
+    margin: $margin;
+  }
+  #{$h4} {
+    font-size: var(--h4-size);
+    font-weight: var(--h4-weight);
+    margin: $margin;
+  }
+}
+
+// Inline code chip (`.coconote-code` in CM, `tt`/`code` in rendered HTML).
+@mixin prose-code-inline($radius: var(--radius-s)) {
+  background: var(--editor-code-background-color);
+  padding: 0.1em 0.35em;
+  border-radius: $radius;
+  font-family: var(--font-monospace);
+  font-size: 0.88em;
+}
+
+// Code block text metrics. Background + spacing are per surface.
+@mixin prose-code-block-text {
+  font-family: var(--font-monospace);
+  font-size: 0.88em;
+  line-height: 1.5;
+}
+
+@mixin prose-blockquote {
+  color: var(--text-muted);
+  border-left: 3px solid var(--text-accent);
+  font-style: italic;
+}
+
+@mixin prose-link {
+  color: var(--text-accent);
+  text-decoration: none;
+}
+
+@mixin prose-link-hover {
+  color: var(--text-accent-hover);
+  text-decoration: underline;
+}
+
+@mixin prose-table {
+  border-collapse: collapse;
+  border: 1px solid var(--background-modifier-border);
+  font-size: 0.875em;
+}
+
+@mixin prose-table-head-cell {
+  background: var(--background-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--background-modifier-border);
+}

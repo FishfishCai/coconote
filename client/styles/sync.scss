@@ -1,0 +1,185 @@
+@use "shared";
+
+// Push / Pull + Merge bodies. Box / backdrop / header come from the
+// unified Modal base (modals.scss) - this file styles the form contents.
+
+.coconote-sync-form {
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.85rem;
+    input, select {
+      @include shared.text-input(
+        $padding: 0.3rem 0.5rem,
+        $radius: 4px,
+        $background: var(--background-secondary),
+        $font: false
+      );
+      font-size: 0.95rem;
+    }
+  }
+}
+
+.coconote-modal-error {
+  color: var(--color-red);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.coconote-modal-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.coconote-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  // Button row (ModalActions): labels are chrome, not selectable text.
+  user-select: none;
+  button {
+    @include shared.button-outlined(
+      $padding: 0.32rem 0.85rem,
+      $radius: 5px,
+      $background: var(--background-primary),
+      $color: null
+    );
+    &:hover { @include shared.button-hover-bg($hover-bg: var(--background-secondary)); }
+    &:disabled { @include shared.button-disabled($opacity: 0.55, $cursor: progress); }
+  }
+  // Primary action, recolored with the shared accent button.
+  .coconote-modal-primary {
+    @include shared.button-accent($border: transparent);
+    &:hover { @include shared.button-accent-hover; }
+  }
+}
+
+// ---- Merge view ----
+
+// Wider than the default `wide` variant, applied via Modal className.
+.coconote-merge-modal {
+  width: min(1300px, 95vw);
+  max-width: 95vw;
+}
+
+.coconote-merge-body {
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.coconote-merge-head {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 0.4rem;
+  p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0.15rem 0 0;
+  }
+}
+
+.coconote-merge-chunks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.coconote-merge-ok {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  background: var(--background-secondary);
+  border-left: 3px solid var(--color-green);
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.coconote-merge-conflict {
+  border: 1px solid var(--color-red);
+  border-radius: 5px;
+  padding: 0.4rem 0.5rem;
+  background: color-mix(in srgb, var(--color-red) 5%, transparent);
+}
+
+.coconote-merge-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.coconote-merge-col {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  padding: 0.25rem 0.4rem;
+  &.picked {
+    border-color: var(--text-accent);
+    box-shadow: 0 0 0 1px var(--text-accent);
+  }
+  .coconote-merge-col-head {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+  }
+  pre {
+    margin: 0;
+    font-family: var(--font-monospace);
+    font-size: 0.82rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.coconote-merge-actions-row {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  button {
+    @include shared.button-outlined(
+      $padding: 0.18rem 0.55rem,
+      $radius: 4px,
+      $background: var(--background-secondary),
+      $color: null
+    );
+    font-size: 0.8rem;
+    &:hover { @include shared.button-hover-bg; }
+    &:disabled { @include shared.button-disabled($opacity: 0.5, $cursor: default); }
+  }
+}
+
+.coconote-merge-edit-panel {
+  border-top: 1px solid var(--background-modifier-border);
+  padding-top: 0.4rem;
+  summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+}
+
+.coconote-merge-textarea {
+  @include shared.text-input(
+    $padding: 0.5rem,
+    $radius: 4px,
+    $background: var(--background-secondary)
+  );
+  width: 100%;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 200px;
+}

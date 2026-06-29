@@ -1,0 +1,102 @@
+@use "shared";
+
+// Scoped to `#coconote-main .cm-editor` so it wins specificity ties with
+// editor.scss and stays out of modals / file tree.
+#coconote-main .cm-editor {
+  // The editor body uses the configured prose font (--font-text), matching
+  // HTML export + the PDF viewer (WYSIWYG). This CSS is the single source CM
+  // measures char-width against - EditorView.theme stays empty in
+  // editor_state.ts, so a font-size set there can't disagree and drift the
+  // selection. Headings below inherit this family (they only set size/weight).
+  .cm-content {
+    font-family: var(--font-text, var(--font-text-theme));
+    padding: var(--size-4-5) var(--size-4-8);
+  }
+
+  // Two-edge justified prose. Each soft-wrapped visual line fills both margins
+  // instead of leaving a ragged right edge. This is safe inside CM because
+  // justify only redistributes HORIZONTAL space - it never moves a break point
+  // or changes a line's height - so the heightMap stays exact and the cursor
+  // stays put (coordsAtPos/posAtCoords read the real, already-justified
+  // geometry from the DOM). For Chinese this looks clean out of the box: CJK
+  // justifies between characters, so a line of prose + inline math sits flush
+  // with no oversized gaps. text-wrap:pretty (Chromium 117+, no-op on older
+  // engines) picks calmer break points - trimming the loose, under-filled
+  // lines a greedy break leaves - the closest pure-CSS step toward a
+  // Knuth-Plass paragraph without taking over layout from the browser.
+  //
+  // Deliberately NOT setting text-align-last: the default `auto` already
+  // left-aligns the LAST line of justified text (justify's last line is
+  // `start`), so the closing line of a paragraph is never stretched. Forcing
+  // text-align-last:left here would be worse than redundant - it is an
+  // INHERITED property, so it leaks into centered widgets on the same line
+  // (the display-math block, a `:---:` centered table column) and, because
+  // their formula/cell is a single = last line, drags it to the left. Leaving
+  // it `auto` lets those children keep following their own text-align:center.
+  .cm-line {
+    text-align: justify;
+    text-wrap: pretty;
+  }
+  // Structured / monospace lines must keep their tokens un-stretched: code and
+  // table rows would have their spacing blown apart by justify, and a wrapped
+  // heading reads better flush-left than stretched. (Listed after .cm-line so
+  // it wins the same-specificity tie.)
+  .coconote-line-code,
+  .coconote-line-fenced-code,
+  .coconote-line-table-outside,
+  .coconote-line-hr,
+  .coconote-line-h1,
+  .coconote-line-h2,
+  .coconote-line-h3,
+  .coconote-line-h4 {
+    text-align: left;
+  }
+
+  // Headings via the shared prose look (no margins: CM's heightMap
+  // ignores margins, so margins would make `posAtCoords` drift by the
+  // margin px for every line below - use padding on `.cm-line` instead).
+  @include shared.prose-headings($line-classes: true);
+
+  .coconote-code {
+    @include shared.prose-code-inline;
+  }
+  .coconote-line-fenced-code,
+  .coconote-line-code {
+    background: var(--editor-code-block-background-color) !important;
+    @include shared.prose-code-block-text;
+  }
+
+  .coconote-line-blockquote {
+    @include shared.prose-blockquote;
+    background: transparent !important;
+    padding-left: var(--size-4-3);
+  }
+
+  .coconote-line-li { padding-block: 0.05em; }
+  .coconote-line-ul .coconote-meta,
+  .coconote-line-ol .coconote-meta { color: var(--text-faint); }
+
+  .coconote-wiki-link {
+    @include shared.prose-link;
+    transition: color 100ms ease;
+    &:hover {
+      @include shared.prose-link-hover;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+    }
+  }
+
+  table {
+    @include shared.prose-table;
+  }
+  th, td {
+    padding: var(--size-4-1) var(--size-4-3);
+    border: none;
+  }
+  thead th {
+    @include shared.prose-table-head-cell;
+  }
+
+  .cm-selectionBackground,
+  ::selection { background: var(--text-selection) !important; }
+}

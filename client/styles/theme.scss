@@ -1,0 +1,216 @@
+// Design tokens, app-wide. Base ramp + accent + semantic tiers first.
+// The `--editor-*` / `--modal-*` / `--top-*` variables further down are
+// semantic aliases over those tokens. editor_ui.tsx flips `data-theme`
+// on <html> for dark mode and writes user overrides (accent, colour
+// rows, fonts) as inline custom properties on the root.
+
+html {
+  // --- Base ramp (light) -----------------------------------------------------
+  --color-base-00: #ffffff;
+  --color-base-10: #fafafa;
+  --color-base-20: #f6f6f6;
+  --color-base-25: #e3e3e3;
+  --color-base-30: #e0e0e0;
+  --color-base-35: #d4d4d4;
+  --color-base-40: #bdbdbd;
+  --color-base-50: #ababab;
+  --color-base-70: #5a5a5a;
+  --color-base-100: #222222;
+
+  // --- Accent ----------------------------------------------------------------
+  // Single hue change retunes link/hover via derived shades below.
+  --accent-h: 254;
+  --accent-s: 80%;
+  --accent-l: 68%;
+  --interactive-accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+  --interactive-accent-hover: hsl(
+    var(--accent-h) var(--accent-s) calc(var(--accent-l) - 10%)
+  );
+  --text-accent: hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) - 8%));
+  --text-accent-hover: hsl(
+    var(--accent-h) var(--accent-s) calc(var(--accent-l) - 16%)
+  );
+
+  // --- Extended palette ------------------------------------------------------
+  --color-red: #e93147;
+  --color-orange: #ec7500;
+  --color-yellow: #e0ac00;
+  --color-green: #08b94e;
+  --color-cyan: #00bfbc;
+  --color-blue: #086ddd;
+  --color-purple: #7852ee;
+  --color-pink: #d53984;
+
+  // --- Backgrounds & surfaces ------------------------------------------------
+  --background-primary: var(--color-base-00);
+  --background-primary-alt: var(--color-base-10);
+  --background-secondary: var(--color-base-20);
+  --background-secondary-alt: var(--color-base-25);
+  --background-modifier-border: var(--color-base-30);
+  --background-modifier-border-hover: var(--color-base-35);
+  --background-modifier-hover: rgba(0, 0, 0, 0.04);
+  --text-selection: hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.18);
+  --text-highlight-bg: rgba(255, 208, 0, 0.4);
+
+  // --- Text tiers ------------------------------------------------------------
+  --text-normal: var(--color-base-100);
+  --text-muted: var(--color-base-70);
+  --text-faint: var(--color-base-50);
+  --text-on-accent: #ffffff;
+
+  // --- Spacing ramp (4-px grid) ----------------------------------------------
+  --size-2-1: 2px;
+  --size-2-2: 4px;
+  --size-2-3: 6px;
+  --size-4-1: 4px;
+  --size-4-2: 8px;
+  --size-4-3: 12px;
+  --size-4-4: 16px;
+  --size-4-5: 20px;
+  --size-4-6: 24px;
+  --size-4-8: 32px;
+  --size-4-9: 36px;
+  --size-4-12: 48px;
+
+  // --- Border radii ----------------------------------------------------------
+  --radius-s: 4px;
+  --radius-m: 8px;
+
+  // --- Typography ------------------------------------------------------------
+  // CodeNewRoman has no CJK glyphs: fall back to system CJK fonts.
+  // Nerd Font variants preferred when locally installed (icon glyphs).
+  --font-text-theme:
+    "CodeNewRoman Nerd Font", "CodeNewRoman", -apple-system, BlinkMacSystemFont,
+    "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans", "Microsoft YaHei",
+    sans-serif;
+  --font-interface-theme:
+    "CodeNewRoman Nerd Font Mono", "CodeNewRoman Mono", "SF Mono", Menlo,
+    Consolas, monospace;
+  --font-monospace-theme:
+    "CodeNewRoman Nerd Font Mono", "CodeNewRoman Mono", "SF Mono", Menlo,
+    Consolas, monospace;
+  --font-text: var(--font-text-theme);
+  --font-interface: var(--font-interface-theme);
+  --font-monospace: var(--font-monospace-theme);
+
+  // markdown.md caps headings at four levels; H5/H6 are never produced.
+  --h1-size: 1.75em;
+  --h2-size: 1.4em;
+  --h3-size: 1.2em;
+  --h4-size: 1.05em;
+  --h1-weight: 700;
+  --h2-weight: 600;
+  --h3-weight: 600;
+  --h4-weight: 600;
+
+  // --- Layer / z-index ladder ------------------------------------------------
+  // Single source of truth for stacking order: in-pane toolbars /
+  // status chrome / floating panels < modal overlays < context menus
+  // (a menu may open on top of a modal) < hover previews & tooltips.
+  --layer-toolbar: 10;
+  --layer-status-bar: 15;
+  --layer-menu: 200;
+  --layer-tooltip: 1000;
+
+  // Legacy variables repointed to token system above for backward compat.
+  --link-color: var(--text-accent);
+  --link-invalid-color: var(--color-pink);
+
+  --root-background-color: var(--background-primary);
+  --root-color: var(--text-normal);
+
+  --top-background-color: var(--background-secondary);
+  --top-loading-color: var(--text-faint);
+
+  --modal-color: var(--text-normal);
+  --modal-background-color: var(--background-primary);
+  --modal-border-color: var(--background-modifier-border);
+
+  --button-background-color: var(--background-secondary);
+  --button-hover-background-color: var(--background-secondary-alt);
+  --button-color: var(--text-normal);
+  --button-border-color: var(--background-modifier-border);
+  --primary-button-background-color: var(--interactive-accent);
+  --primary-button-hover-background-color: var(--interactive-accent-hover);
+  --primary-button-color: var(--text-on-accent);
+  --primary-button-border-color: transparent;
+
+  --editor-caret-color: var(--text-normal);
+  --editor-selection-background-color: var(--text-selection);
+  --editor-panels-bottom-color: var(--text-normal);
+  --editor-panels-bottom-background-color: var(--background-secondary);
+  --editor-panels-bottom-border-color: var(--background-modifier-border);
+  --editor-completion-detail-color: var(--text-muted);
+  --editor-completion-detail-selected-color: rgba(255, 255, 255, 0.7);
+  --editor-list-bullet-color: var(--text-faint);
+  --editor-heading-color: var(--text-normal);
+  --editor-heading-meta-color: var(--text-faint);
+  --editor-code-color: var(--text-muted);
+  --editor-link-color: var(--link-color);
+  --editor-wiki-link-page-background-color: rgba(120, 82, 238, 0.06);
+  --editor-wiki-link-page-color: var(--text-accent);
+  // Settings "Missing link" colour row overrides this inline.
+  --editor-wiki-link-missing-color: var(--color-red);
+  --editor-wiki-link-page-invalid-color: var(--link-invalid-color);
+  --editor-line-meta-color: var(--text-faint);
+  --editor-meta-color: var(--text-muted);
+  --editor-table-head-background-color: var(--background-secondary);
+  --editor-table-head-color: var(--text-normal);
+  --editor-table-even-background-color: transparent;
+  --editor-code-background-color: #eceef1;
+  --editor-code-block-background-color: #f0f2f5;
+  --editor-highlight-background-color: var(--text-highlight-bg);
+  --editor-code-comment-color: var(--text-faint);
+  --editor-code-variable-color: var(--color-blue);
+  --editor-code-typename-color: var(--color-green);
+  --editor-code-string-color: var(--color-purple);
+  --editor-code-number-color: var(--color-orange);
+  --editor-code-operator-color: var(--text-muted);
+  --editor-code-atom-color: var(--color-red);
+
+  --editor-panels-bottom-input-background-color: var(--background-primary);
+  --editor-panels-bottom-button-background-image: none;
+  --editor-panels-bottom-button-active-background-image: none;
+
+  --ui-font: var(--font-interface);
+  --editor-font: var(--font-monospace);
+  // ~40rem clamps prose to a print-comfortable measure.
+  --editor-width: 40rem;
+  --editor-font-size: 18px;
+}
+
+html[data-theme="light"] { color-scheme: light; }
+
+/* Most `--editor-*` derive from tier tokens, so flipping the ramp + a few
+   surface tokens carries the rest. */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Inverted base ramp: high index = light. */
+  --color-base-00: #1e1e1e;
+  --color-base-10: #262626;
+  --color-base-20: #2c2c2c;
+  --color-base-25: #353535;
+  --color-base-30: #3a3a3a;
+  --color-base-35: #444444;
+  --color-base-40: #555555;
+  --color-base-50: #707070;
+  --color-base-70: #c0c0c0;
+  --color-base-100: #e8e8e8;
+
+  /* Hover overlay must be light-on-dark. */
+  --background-modifier-hover: rgba(255, 255, 255, 0.06);
+
+  --text-highlight-bg: rgba(255, 208, 0, 0.30);
+
+  --editor-code-background-color: #2a2a2a;
+  --editor-code-block-background-color: #242424;
+  --editor-code-color: var(--text-normal);
+
+  /* Push syntax hues lighter for dark readability. */
+  --editor-code-variable-color: #7aafff;
+  --editor-code-typename-color: #4ec9b0;
+  --editor-code-string-color: #c997ff;
+  --editor-code-number-color: #f0a04f;
+  --editor-code-atom-color: #ff7080;
+}

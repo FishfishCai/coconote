@@ -1,0 +1,41 @@
+// Relation graph overlay (SPEC graph): force-directed ego-graph in a
+// modal, rendered by force_graph.tsx. Ported from the deleted content
+// browser graph view.
+
+.coconote-cb-graph {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.coconote-cb-graph-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.coconote-cb-graph-node text {
+  font-family: var(--font-interface);
+  pointer-events: none;
+}
+
+// Centered empty state instead of tiny italic text flush in the corner.
+.coconote-cb-graph-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}

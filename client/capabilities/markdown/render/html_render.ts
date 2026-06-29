@@ -1,0 +1,67 @@
+export const Fragment = "FRAGMENT";
+// Body emitted verbatim, no escaping - only for trusted generated HTML
+// (KaTeX output), never user text.
+export const Raw = "RAW";
+
+export type Tag =
+  | {
+      name: string;
+      attrs?: Record<string, string | undefined>;
+      body: Tag[] | string;
+    }
+  | string;
+
+/** Escape `s` for inclusion in HTML body text. Newlines become <br/>,
+ *  runs of two+ spaces are preserved with non-breaking spaces. */
+function htmlEscape(s: string): string {
+  if (typeof s !== "string") {
+    return s;
+  }
+  s = htmlEscapeAttr(s).replace(/\n/g, "<br/>");
+  let oldS = s;
+  do {
+    oldS = s;
+    s = s.replace(/ {2}/g, "&nbsp; ");
+  } while (s !== oldS);
+  return s;
+}
+
+/** Escape `s` for inclusion in a double-quoted HTML attribute. No
+ *  <br/> substitution - newlines must stay literal so consumers can
+ *  preserve textarea/title-style multi-line values. */
+export function htmlEscapeAttr(s: string): string {
+  if (typeof s !== "string") {
+    return s;
+  }
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function renderHtml(t: Tag | null): string {
+  if (!t) {
+    return "";
+  }
+  if (typeof t === "string") {
+    return htmlEscape(t);
+  }
+  if (t.name === Raw) {
+    return typeof t.body === "string" ? t.body : t.body.map(renderHtml).join("");
+  }
+  const attrs = t.attrs
+    ? ` ${Object.entries(t.attrs)
+        .filter(([, value]) => value !== undefined)
+        .map(([k, v]) => `${k}="${htmlEscapeAttr(v!)}"`)
+        .join(" ")}`
+    : "";
+  const body =
+    typeof t.body === "string"
+      ? htmlEscape(t.body)
+      : t.body.map(renderHtml).join("");
+  if (t.name === Fragment) {
+    return body;
+  }
+  return `<${t.name}${attrs}>${body}</${t.name}>`;
+}

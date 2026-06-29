@@ -1,0 +1,105 @@
+import { WidgetType } from "@codemirror/view";
+import type { EditorCtx } from "../../../core/ctx/editor.ts";
+
+// fallbackHeight seeds CM's heightMap before the widget renders.
+// Cache the real height in widgetMeta on first measure so the
+// heightMap stays accurate after the initial paint.
+export abstract class CachedWidget<Ctx extends EditorCtx = EditorCtx>
+  extends WidgetType {
+  abstract readonly cacheKey: string;
+  /** Per-subclass seed in CSS px. Override for block widgets. */
+  protected readonly fallbackHeight: number = 24;
+  constructor(readonly ctx: Ctx) {
+    super();
+  }
+  override get estimatedHeight(): number {
+    const cached = this.ctx.widgetMeta.get(this.cacheKey)?.height;
+    return cached ?? this.fallbackHeight;
+  }
+  override eq(other: WidgetType): boolean {
+    return (
+      other instanceof CachedWidget &&
+      other.constructor === this.constructor &&
+      other.cacheKey === this.cacheKey
+    );
+  }
+}
+
+function moveCursorToWidgetStart(
+  ctx: EditorCtx,
+  widgetDom: HTMLElement,
+  widgetText?: string,
+) {
+  const view = ctx.editorView;
+  const pos = view.posAtDOM(widgetDom, 0);
+
+  let anchor = pos;
+  if (widgetText) {
+    const searchFrom = Math.max(0, pos - widgetText.length);
+    const region = view.state.sliceDoc(searchFrom, pos + widgetText.length);
+    const idx = region.lastIndexOf(widgetText);
+    if (idx !== -1) {
+      anchor = searchFrom + idx;
+    }
+  }
+
+  view.dispatch({ selection: { anchor } });
+  ctx.focus();
+}
+
+export function attachWidgetEventHandlers(
+  div: HTMLElement,
+  ctx: EditorCtx,
+  widgetText?: string,
+) {
+  if (!div.dataset.handlersAttached) {
+    div.dataset.handlersAttached = "true";
+    div.addEventListener("mousedown", (e) => {
+      if (e.altKey && widgetText) {
+        moveCursorToWidgetStart(ctx, div, widgetText);
+        e.preventDefault();
+      }
+      e.stopPropagation();
+    });
+
+    div.addEventListener("mouseup", (e) => {
+      e.stopPropagation();
+    });
+  }
+}
+
+// Cache keys embed the full widget source (TeX / markdown), so cap the
+// map and evict oldest-inserted entries to bound memory across long
+// sessions.
+const WIDGET_META_CAP = 4000;
+
+// Caches the measured height and nudges CM to re-read estimatedHeight,
+// realigning heightMap with the DOM. Skipped during IME composition.
+export function measureAndCacheWidgetHeight(
+  ctx: EditorCtx,
+  dom: HTMLElement,
+  cacheKey: string,
+  block: boolean,
+) {
+  setTimeout(() => {
+    const view = ctx.editorView;
+    // Fast scrolling can unmount the DOM before the async render finishes.
+    // Detached node has offsetHeight 0 - caching that poisons the next
+    // render so the widget renders as a gap.
+    if (!dom.isConnected) return;
+    const h = dom.offsetHeight;
+    if (h <= 0) return;
+    const prev = ctx.widgetMeta.get(cacheKey);
+    if (prev?.height === h && prev?.block === block) return;
+    ctx.widgetMeta.set(cacheKey, { height: h, block });
+    if (ctx.widgetMeta.size > WIDGET_META_CAP) {
+      for (const key of ctx.widgetMeta.keys()) {
+        if (ctx.widgetMeta.size <= WIDGET_META_CAP) break;
+        ctx.widgetMeta.delete(key);
+      }
+    }
+    if (!view.composing) {
+      view.dispatch({ selection: view.state.selection });
+    }
+  });
+}

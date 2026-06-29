@@ -1,0 +1,323 @@
+.cm-focused {
+  outline: none !important;
+}
+
+#coconote-main .cm-editor {
+  // --editor-zoom is the transient per-window markdown reader zoom (default
+  // 1), layered on top of the persistent font-size setting. Set by the zoom
+  // keyboard handler in keyboard.ts.
+  font-size: calc(var(--editor-font-size, 18px) * var(--editor-zoom, 1));
+  height: 100%;
+
+  // Width + centering live here; the content gutter (padding) and font live in
+  // prose.scss (which @uses after editor.scss and wins the specificity tie) -
+  // do not re-add padding here, it would be silently overridden.
+  .cm-content {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: var(--editor-width);
+  }
+
+  .cm-line {
+    padding: 0;
+
+    // Only h1-h4 line classes exist (registry.ts, markdown.md spec).
+    &.coconote-line-h1,
+    &.coconote-line-h2,
+    &.coconote-line-h3,
+    &.coconote-line-h4 {
+      padding: 2px;
+    }
+  }
+
+  .cm-gutters {
+    background-color: transparent;
+    border-right: none;
+  }
+
+  .cm-foldPlaceholder {
+    background-color: transparent;
+    border: 0;
+  }
+
+  @mixin lineOverflow($baseIndent, $bulletIndent: 0) {
+    text-indent: calc(-1 * (#{$baseIndent}ch + 2ch));
+    padding-left: calc(#{$baseIndent}ch + 2ch);
+
+    &.coconote-line-blockquote {
+      text-indent: calc(-1 * (#{$baseIndent}ch + 4ch));
+      padding-left: calc(#{$baseIndent}ch + 4ch);
+    }
+
+    .cm-list-bullet::after {
+      left: calc(#{$baseIndent}ch + #{$bulletIndent}ch + 2ch);
+    }
+  }
+
+  .coconote-line-ul {
+    &.coconote-line-li-1 {
+      @include lineOverflow(0);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2 {
+      @include lineOverflow(2);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3 {
+      @include lineOverflow(4);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4 {
+      @include lineOverflow(6);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4.coconote-line-li-5 {
+      @include lineOverflow(8);
+    }
+  }
+
+  .coconote-line-ol {
+    &.coconote-line-li-1 {
+      @include lineOverflow(1);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2 {
+      @include lineOverflow(4);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3 {
+      @include lineOverflow(7);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4 {
+      @include lineOverflow(10);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4.coconote-line-li-5 {
+      @include lineOverflow(13);
+    }
+  }
+
+  .coconote-line-ol.coconote-line-ul {
+    &.coconote-line-li-1.coconote-line-li-2 {
+      @include lineOverflow(3);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3 {
+      @include lineOverflow(6);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4 {
+      @include lineOverflow(9);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4.coconote-line-li-5 {
+      @include lineOverflow(12);
+    }
+  }
+
+  .coconote-line-blockquote {
+    &.coconote-line-li-1 {
+      @include lineOverflow(-1, 2);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2 {
+      @include lineOverflow(1, 2);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3 {
+      @include lineOverflow(4);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4 {
+      @include lineOverflow(6);
+    }
+
+    &.coconote-line-li-1.coconote-line-li-2.coconote-line-li-3.coconote-line-li-4.coconote-line-li-5 {
+      @include lineOverflow(8);
+    }
+  }
+
+  .cm-list-bullet {
+    position: relative;
+    visibility: hidden;
+  }
+
+  // Default bullet • (U+2022). Deeper levels overridden below.
+  .cm-list-bullet::after {
+    visibility: visible;
+    position: absolute;
+    content: "\2022";
+  }
+
+  // Bullets CYCLE per depth (markdown.md): • ◦ ▪ ‣ then around again.
+  // lineWrapper stacks .coconote-line-li-1..N, so "exactly depth N" is
+  // li-N:not(li-N+1). Two full cycles are spelled out (depth <= 8),
+  // deeper levels fall back to the base • - the cycle restart.
+  .coconote-line-li-2:not(.coconote-line-li-3) .cm-list-bullet::after,
+  .coconote-line-li-6:not(.coconote-line-li-7) .cm-list-bullet::after {
+    content: "\25E6"; /* ◦ */
+  }
+  .coconote-line-li-3:not(.coconote-line-li-4) .cm-list-bullet::after,
+  .coconote-line-li-7:not(.coconote-line-li-8) .cm-list-bullet::after {
+    content: "\25AA"; /* ▪ */
+  }
+  .coconote-line-li-4:not(.coconote-line-li-5) .cm-list-bullet::after,
+  .coconote-line-li-8:not(.coconote-line-li-9) .cm-list-bullet::after {
+    content: "\2023"; /* ‣ */
+  }
+
+  // A replace widget empties `---` lines. The rule is the centered border.
+  .coconote-line-hr {
+    position: relative;
+    color: transparent;
+  }
+  .coconote-line-hr::before {
+    content: "";
+    position: absolute;
+    left: 1em;
+    right: 1em;
+    top: 50%;
+    border-top: 1px solid var(--background-modifier-border);
+  }
+
+  .cm-tooltip-autocomplete {
+    .cm-completionDetail {
+      font-style: normal;
+      display: block;
+      font-size: 80%;
+      margin-left: 5px;
+    }
+
+    .cm-completionLabel {
+      display: block;
+      margin-left: 5px;
+    }
+
+    .cm-completionIcon {
+      display: none;
+    }
+  }
+
+  .coconote-strikethrough {
+    text-decoration: line-through;
+
+    &.coconote-meta {
+      text-decoration: none;
+    }
+  }
+
+  .coconote-hr {
+    font-weight: bold;
+  }
+
+  // Table widget wrapper. flow-root keeps the table's box inside the
+  // widget for CM's heightMap, overflow-x scrolls wide tables. The
+  // <table> itself uses the shared prose rules in prose.scss.
+  .coconote-table {
+    display: flow-root;
+    overflow-x: auto;
+    padding: 0.2em 0;
+  }
+
+  .coconote-wiki-link {
+    border-radius: 5px;
+    padding: 0 5px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .coconote-loading-widget {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    color: var(--top-loading-color, #888);
+    opacity: 0.7;
+    vertical-align: middle;
+  }
+
+  .coconote-loading-widget-block {
+    display: flex;
+    padding: 0.2em 0;
+  }
+
+  .coconote-loading-spinner {
+    display: inline-block;
+    width: 0.9em;
+    height: 0.9em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: coconote-loading-spin 0.8s linear infinite;
+    box-sizing: border-box;
+  }
+
+  @keyframes coconote-loading-spin {
+    to { transform: rotate(360deg); }
+  }
+
+
+  .coconote-line-table-outside {
+    display: none;
+  }
+
+  // Table look (border-collapse, cell padding, head cell) lives in prose.scss;
+  // only the width + nowrap are set here. (border-spacing / cell padding used
+  // to be duplicated here but were dead - prose.scss wins the specificity tie.)
+  table {
+    width: 100%;
+  }
+
+  th,
+  td {
+    white-space: nowrap;
+  }
+
+  .coconote-line-code .coconote-code {
+    background-color: transparent;
+  }
+
+  .coconote-line-fenced-code .coconote-code {
+    background-color: transparent;
+  }
+
+  .coconote-line-fenced-code .coconote-comment {
+    border-radius: 0;
+    font-style: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .coconote-keyword {
+    font-weight: bold;
+  }
+
+  .coconote-media-wrapper {
+    ::selection {
+      background-color: var(--editor-selection-background-color) !important;
+    }
+  }
+
+  .coconote-inline-content > div > .content > * {
+    max-width: 100%;
+    display: block;
+  }
+
+  .coconote-inline-content {
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .coconote-line-blockquote.coconote-line-ul.coconote-line-li > .coconote-quote.coconote-meta:first-child {
+    margin-left: -1ch;
+  }
+
+  .cm-scroller {
+    padding-bottom: 20em;
+  }
+}
+
+div:not(.cm-focused).cm-fat-cursor {
+  outline: none !important;
+}

@@ -1,0 +1,47 @@
+// Entry point bundled by build_client.ts. Order matters where specificity
+// ties exist - `prose` comes after `editor` so the polish layer wins.
+
+@use "theme";
+@use "colors";
+@use "base";
+@use "editor";
+@use "prose";
+@use "modals";
+@use "frontmatter";
+@use "settings";
+@use "recent";
+@use "graph";
+@use "history_panel";
+@use "pdf_viewer";
+@use "callout";
+@use "hover_preview";
+@use "sync";
+
+/* Collab WS state dot: green = connected, yellow = (re)connecting,
+ * faint = no live session (editor.md Collaboration). The editor-mode
+ * dot sits just left of it and shares the size/shape. */
+.coconote-collab-status,
+.coconote-mode-dot {
+  position: fixed;
+  top: 8px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: var(--layer-status-bar);
+  pointer-events: auto;
+  cursor: help;
+}
+.coconote-collab-status-connected   { background: var(--color-green); }
+.coconote-collab-status-connecting,
+.coconote-collab-status-reconnecting { background: var(--color-yellow); }
+.coconote-collab-status-disposed    { background: var(--text-faint); }
+
+/* Editor-mode dot: green = render, orange = source, blue = read,
+ * faint = the active view is not a markdown editor. */
+.coconote-mode-dot        { right: 24px; }
+.coconote-mode-dot-render { background: var(--color-green); }
+.coconote-mode-dot-source { background: var(--color-orange); }
+.coconote-mode-dot-read   { background: var(--color-blue); }
+.coconote-mode-dot-none   { background: var(--text-faint); }
+

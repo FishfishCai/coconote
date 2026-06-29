@@ -1,0 +1,160 @@
+@use "shared";
+
+// Unified modal base - every popup is a native <dialog class="coconote-modal">
+// (see components/modal.tsx). Structure only, colours live in colors.scss.
+
+.coconote-modal {
+  inset: 0;
+  margin: auto; // UA-centres a showModal() dialog with inset 0 + auto margin
+  padding: 0;
+  max-height: 88vh;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  // No dimming - just the centered box floats over the page. (The
+  // backdrop still exists and captures the click-outside-to-close.)
+  &::backdrop {
+    background: transparent;
+  }
+
+  @media only screen and (max-width: 600px) {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 16px);
+    border-radius: 0;
+  }
+}
+
+// Width variants. Height stays content-driven except for `large`.
+.coconote-modal-small   { width: auto; min-width: 340px; max-width: min(460px, 92vw); }
+.coconote-modal-default { width: auto; min-width: 360px; max-width: min(560px, 92vw); }
+.coconote-modal-wide    { width: min(720px, 92vw); }
+.coconote-modal-large   { width: 80vw; max-width: 1100px; height: 80vh; }
+
+.coconote-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-weight: 600;
+  // Chrome, not content - the body below stays selectable.
+  user-select: none;
+}
+.coconote-modal-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coconote-modal-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+}
+
+// Body fills the remaining height. Inner content supplies its own padding.
+.coconote-modal-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  // No modal ever shows a HORIZONTAL scrollbar: content that is slightly too
+  // wide is clipped, not scrolled. Inner panes (a diff <pre>, a table) keep
+  // their own overflow for genuine horizontal content.
+  overflow-x: hidden;
+}
+// Short popups (forms / prompts) scroll the body vertically. The large panel
+// lets its own list/preview columns scroll instead.
+.coconote-modal-default .coconote-modal-body,
+.coconote-modal-small .coconote-modal-body,
+.coconote-modal-wide .coconote-modal-body { overflow-y: auto; }
+
+.coconote-modal-loading {
+  padding: 1rem;
+  color: var(--text-muted);
+}
+
+// ---- Prompt / Confirm body (basic_modals.tsx) ----
+.coconote-prompt {
+  padding: 14px 16px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  > label {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+
+    input[type="text"] {
+      @include shared.text-input(
+        $padding: 6px 8px,
+        $radius: null,
+        $background: null,
+        $color: null,
+        $border: null,
+        $font: var(--font-monospace, monospace)
+      );
+      flex: 1 1 220px;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+  }
+
+  .coconote-prompt-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 6px;
+    gap: 10px;
+  }
+}
+
+// ---- PDF metadata form (pdf_metadata_panel.tsx), shares .coconote-prompt ----
+.coconote-pdf-meta {
+  .coconote-pdf-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    > label {
+      flex: 0 0 88px;
+      font-weight: bold;
+    }
+
+    > input[type="text"] {
+      @include shared.text-input(
+        $padding: 6px 8px,
+        $radius: null,
+        $background: null,
+        $color: null,
+        $border: null,
+        $font: var(--font-monospace, monospace)
+      );
+      flex: 1 1 auto;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+  }
+}

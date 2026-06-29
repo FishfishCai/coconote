@@ -1,0 +1,98 @@
+// Recent list overlay (SPEC navigation, Cmd/Ctrl+P): recent + pin files,
+// filterable by path or tag, rendered in a modal.
+
+.coconote-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 30rem;
+  // The modal body has no padding of its own - give the list a gutter so the
+  // filter and rows don't sit flush against the dialog edges. border-box so
+  // the gutter is inside min-width (no horizontal overflow / scrollbar).
+  box-sizing: border-box;
+  padding: 0.85rem 1rem 1rem;
+}
+
+// Quiet, centered empty state instead of bare top-left text.
+.coconote-recent-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.coconote-recent-filter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.95em;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+
+  &::placeholder {
+    color: var(--text-muted);
+  }
+}
+
+.coconote-recent-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.coconote-recent-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text-normal);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--background-secondary-alt);
+  }
+}
+
+.coconote-recent-pin {
+  // Pinned marker drawn as a CSS star (source stays ASCII, no glyph in
+  // the markup). The SVG path is a 5-point star tinted by the accent.
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  background-color: var(--text-accent);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 17.8 5.8 21.2l1.6-7L2 9.5l7.1-.6z'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+}
+
+.coconote-recent-name {
+  font-weight: 600;
+}
+
+.coconote-recent-path {
+  color: var(--text-muted);
+  font-size: 0.82em;
+  font-family: var(--font-monospace);
+}
+
+.coconote-recent-tag {
+  margin-left: auto;
+  padding: 0.1em 0.5em;
+  font-size: 0.75em;
+  color: var(--text-accent);
+  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+  border-radius: 999px;
+}
+
+.coconote-recent-error {
+  color: var(--color-red);
+}

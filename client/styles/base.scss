@@ -1,0 +1,144 @@
+/* Code New Roman without the Nerd Font icon glyphs (adds ~10 MB). */
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("CodeNewRoman-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("CodeNewRoman-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman";
+  src: url("CodeNewRoman-Italic.woff2") format("woff2");
+  font-weight: normal;
+  font-style: italic;
+}
+
+// macOS paints a focus ring in the OS accent colour (orange on this Mac) on
+// whatever control is focused - most visibly the close button that
+// showModal() autofocuses when a modal opens via the keyboard, but it shows
+// on any chrome button / input / row reached by Tab. The app already conveys
+// focus through its own hover / active / caret styling (and .coconote-button
+// keeps its explicit accent ring, which wins on specificity), so drop the
+// jarring OS ring everywhere else. CodeMirror sets its own outline:none + caret.
+:focus-visible {
+  outline: none;
+}
+
+@font-face {
+  font-family: "CodeNewRoman Mono";
+  src: url("CodeNewRoman-Mono-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman Mono";
+  src: url("CodeNewRoman-Mono-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: "CodeNewRoman Mono";
+  src: url("CodeNewRoman-Mono-Italic.woff2") format("woff2");
+  font-weight: normal;
+  font-style: italic;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--top-background-color);
+}
+
+#coconote-root {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  background-color: var(--root-background-color);
+}
+
+#coconote-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+// Window-drag strip for Electron's hidden-inset title bar mode, inert in
+// a plain browser. The macOS traffic lights overlap its left edge but
+// stay clickable - native controls drawn above the page, not DOM.
+.coconote-window-drag {
+  height: 32px;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+#coconote-main {
+  display: flex;
+  flex-direction: row;
+  flex-grow: 1;
+  min-width: 0;
+  height: 0;
+  min-height: 0;
+}
+
+#coconote-editor {
+  flex: 2;
+  height: 100%;
+  width: 100%;
+}
+
+// Shown when nothing is open (the editor above is hidden): a quiet, centered,
+// non-editable prompt instead of a blank editable canvas.
+.coconote-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-interface);
+  user-select: none;
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+  }
+
+  .coconote-empty-state-sub {
+    font-size: 0.85rem;
+    opacity: 0.7;
+  }
+
+  kbd {
+    font-family: var(--font-monospace);
+    font-size: 0.85em;
+    padding: 0.15em 0.5em;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 5px;
+    background: var(--background-secondary);
+    color: var(--text-normal);
+  }
+}
+
+// Driven by @codemirror/autocomplete after snippet expansion.
+.cm-snippetField {
+  background: rgba(255, 213, 79, 0.25);
+  border-radius: 2px;
+}
+
+.cm-snippetFieldPosition {
+  border-left: 1px solid rgba(255, 152, 0, 0.7);
+  margin-left: -1px;
+}

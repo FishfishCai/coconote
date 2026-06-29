@@ -1,0 +1,74 @@
+// Callouts render as classic amsthm theorem environments: FRAMELESS - no box,
+// no background, no border - just serif type, a bold heading, and an upright
+// body for every kind (no italic). "Proof." carries a QED square.
+// Scoped under `#coconote-main .cm-editor`. HEIGHT INVARIANT: CM emits one DOM
+// line per row, so keep callout lines at the default line-height - never add
+// padding-top/bottom, or the heightMap drifts.
+#coconote-main .cm-editor {
+  .coconote-callout {
+    background: transparent !important;
+    font-family: "STIXTwoText", "Latin Modern Roman", Cambria, Georgia,
+      "Times New Roman", serif;
+    // Body templates control italics; clear any inherited blockquote slant.
+    font-style: normal;
+  }
+
+  // HEIGHT INVARIANT: keep body rows at the default line-height. A nested
+  // list / quote row inside a :::theorem or :::proof otherwise keeps the
+  // prose padding-block (prose.scss .coconote-line-li / blockquote), which
+  // CM's heightMap can't see - scrolling such a row into view re-measures it
+  // taller and jolts the content below, and clicks land on the wrong line.
+  .coconote-callout-body {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  // Bold serif heading for every kind: "Theorem 1 (Kantorovich duality).",
+  // "Proof.", etc. Bodies stay upright (no italic).
+  .coconote-callout-head { font-weight: 700; }
+
+  // Revealed `:::` markers (cursor inside) stay muted + monospace.
+  .coconote-callout-head .coconote-meta,
+  .coconote-callout-closer {
+    color: var(--editor-meta-color);
+    font-family: var(--font-monospace);
+    font-weight: normal;
+    font-style: normal;
+  }
+}
+
+.coconote-callout-suffix {
+  font-style: normal;
+  // CodeNewRoman lacks ∎ (U+220E).
+  font-family: "STIXTwoMath", "Cambria Math", "Latin Modern Math",
+    "DejaVu Sans", "Segoe UI Symbol", system-ui, serif;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+.coconote-callout-proof-suffix {
+  float: right;
+  margin-left: 0.5em;
+}
+.coconote-callout-closer-hidden {
+  // Hide the `:::` closer line without removing it from layout.
+  // `display: none` made CodeMirror's heightMap allocate a full line at
+  // first paint, then shrink to 0 after measuring, pushing every callout
+  // below by ~24 px and chopping content past the viewport until
+  // scrolled. Zero-box collapse keeps heightMap honest from the start.
+  height: 0 !important;
+  min-height: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.coconote-image-fallback {
+  color: var(--text-muted);
+  font-style: italic;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
