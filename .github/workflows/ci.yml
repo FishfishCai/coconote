@@ -26,6 +26,10 @@ jobs:
   test:
     name: checks + tests
     runs-on: ubuntu-latest
+    # Cap the job so a wedged test (e.g. a filesystem watcher whose backend
+    # behaves differently on a Linux CI sandbox) fails fast in minutes instead
+    # of riding the default 6-hour ceiling.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
