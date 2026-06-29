@@ -14,6 +14,7 @@ use std::sync::Arc;
 /// Create a `notify` watcher wired to `resolver`, watching nothing yet. Add
 /// roots with [`watch_root`]. None when notify cannot create a backend (the
 /// server then relies on the boot scan + lazy relocation alone).
+#[cfg(not(test))]
 pub fn make_watcher(resolver: Arc<Resolver>) -> Option<notify::RecommendedWatcher> {
     // notify invokes this handler on its own thread for every batch of events.
     let handler = move |res: notify::Result<notify::Event>| match res {
@@ -31,6 +32,17 @@ pub fn make_watcher(resolver: Arc<Resolver>) -> Option<notify::RecommendedWatche
             None
         }
     }
+}
+
+/// Test builds never spawn a real OS watcher: the notify inotify backend wedges
+/// when created on the Linux CI sandbox (the macOS FSEvents backend used by
+/// local runs does not, which hid it). Returning None makes the lazy-create
+/// path a no-op, so the live-watch side effect is skipped entirely. No unit
+/// test asserts OS watching - they assert config persistence + synchronous
+/// indexing - so this loses no coverage, and non-test builds are unaffected.
+#[cfg(test)]
+pub fn make_watcher(_resolver: Arc<Resolver>) -> Option<notify::RecommendedWatcher> {
+    None
 }
 
 /// Start watching `root` recursively. Returns true on success.

@@ -169,17 +169,9 @@ mod tests {
             watch.iter().any(|w| w.as_str() == Some(dir.as_str())),
             "added watch root present in returned config"
         );
-        // Compare canonical paths: addWatch's live watcher may asynchronously
-        // re-index the file under a canonicalized path (the tempdir's /var is a
-        // symlink to /private/var on macOS), so the synchronous scan path and a
-        // watcher-event path differ only by symlink resolution. Canonicalizing
-        // both sides makes the assertion deterministic regardless of that race.
         assert_eq!(
-            app.resolver
-                .resolve("watchnote0000000")
-                .as_deref()
-                .map(|p| std::fs::canonicalize(p).unwrap()),
-            Some(std::fs::canonicalize(&note).unwrap()),
+            app.resolver.resolve("watchnote0000000").as_deref(),
+            Some(note.to_string_lossy().as_ref()),
             "addWatch scanned + indexed the root's files immediately"
         );
 
@@ -187,13 +179,6 @@ mod tests {
         let patch = PatchBody { remove_watch: Some(dir.clone()), ..Default::default() };
         let v = body_json(patch_config(State(app.clone()), Json(patch)).await).await;
         assert!(v["watch"].as_array().unwrap().is_empty(), "watch root removed");
-
-        // The live notify watcher addWatch created joins its event-loop thread
-        // on Drop, which can wedge on a Linux CI sandbox (inotify backend; the
-        // local macOS FSEvents backend does not). This test asserts config
-        // persistence + indexing, not OS watching, so take the watcher out and
-        // leak it - the process exit reclaims it without a blocking join.
-        std::mem::forget(app.watcher.lock().unwrap().take());
     }
 
     #[tokio::test]
